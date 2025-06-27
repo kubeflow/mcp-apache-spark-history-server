@@ -22,7 +22,6 @@ RUN groupadd -r app && useradd -r -g app app
 
 COPY --from=builder --chown=app:app /app /app
 WORKDIR /app
-WORKDIR /app
 
 ENV PATH="/app/.venv/bin:$PATH"
 

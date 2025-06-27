@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+        
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+      
+    - name: Install dependencies
+      run: uv sync --group dev
+      
+    - name: Lint with ruff
+      run: uv run ruff check .
+      
+    - name: Type check with mypy
+      run: uv run mypy *.py --ignore-missing-imports
+      
+    - name: Test with pytest
+      run: uv run pytest --cov=. --cov-report=xml --cov-report=term-missing
+      
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      if: success()
+      
+  integration:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      
+    - name: Set up Python
+      run: uv python install 3.12
+      
+    - name: Install dependencies
+      run: uv sync
+      
+    - name: Setup test configuration
+      run: |
+        # Ensure config.yaml exists and is properly configured for CI
+        if [ ! -f config.yaml ]; then
+          echo "Creating default config.yaml for CI"
+          cat > config.yaml << EOF
+        servers:
+          default:
+            default: true
+            url: "http://localhost:18080"
+        EOF
+        fi
+        
+    - name: Verify test data
+      run: |
+        echo "Verifying test data structure..."
+        ls -la examples/basic/
+        ls -la examples/basic/events/
+        cat examples/basic/history-server.conf
+        
+    - name: Start Spark History Server
+      run: |
+        echo "Starting Spark History Server with Docker..."
+        docker run -d \
+          --name spark-history-server \
+          -v $(pwd)/examples/basic:/mnt/data \
+          -p 18080:18080 \
+          docker.io/apache/spark:3.5.5 \
+          /opt/java/openjdk/bin/java \
+          -cp '/opt/spark/conf:/opt/spark/jars/*' \
+          -Xmx1g \
+          org.apache.spark.deploy.history.HistoryServer \
+          --properties-file /mnt/data/history-server.conf
+          
+    - name: Wait for Spark History Server
+      run: |
+        timeout 60 bash -c 'until curl -f http://localhost:18080; do sleep 2; done'
+        
+    - name: Test MCP Server startup
+      run: |
+        # Test import structure
+        uv run python -c "import app; print('✓ App imports successfully')"
+        uv run python -c "import main; print('✓ Main imports successfully')"
+        
+        # Test MCP server can start (brief startup test)
+        timeout 10 uv run python main.py &
+        SERVER_PID=$!
+        sleep 5
+        kill $SERVER_PID 2>/dev/null || true
+        echo "✓ MCP Server startup test completed"
+        
+    - name: Cleanup
+      if: always()
+      run: |
+        echo "Cleaning up Docker containers..."
+        docker stop spark-history-server 2>/dev/null || true
+        docker rm spark-history-server 2>/dev/null || true
