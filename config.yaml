@@ -1,10 +1,32 @@
 servers:
-  my-server:
+  local:
     default: true
     url: "http://localhost:18080"
-    auth:
-      username: user
-      password: password
-      token: token
+    # Optional authentication (can also use environment variables)
+    # auth:
+    #   username: "your_username"  # or use SPARK_USERNAME env var
+    #   password: "your_password"  # or use SPARK_PASSWORD env var
+    #   token: "your_token"       # or use SPARK_TOKEN env var
 
-# spark-988f126664e3473ebd004d8de4344137
+  # Production server example
+  # production:
+  #   url: "https://spark-history.company.com:18080"
+  #   auth:
+      # Use environment variables for production
+      # username: ${SPARK_USERNAME}
+      # password: ${SPARK_PASSWORD}
+      # token: ${SPARK_TOKEN}
+
+  # Staging server example  
+  # staging:
+  #   url: "https://staging-spark-history.company.com:18080"
+  #   auth:
+      # username: "staging_user"
+      # token: "staging_token"
+
+# Environment Variables:
+# SPARK_USERNAME - Default username for authentication
+# SPARK_PASSWORD - Default password for authentication  
+# SPARK_TOKEN - Default token for authentication
+# MCP_PORT - Port for MCP server (default: 18888)
+# MCP_DEBUG - Enable debug mode (default: false)

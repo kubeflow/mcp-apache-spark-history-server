@@ -6,12 +6,12 @@ from urllib.parse import urljoin
 from config import ServerConfig
 from playwright.async_api import async_playwright
 
-# very experimental html client
+# HTML client for Spark History Server web interface
 
 
 class SparkHtmlClient:
-    def __init__(self, sever_config: ServerConfig):
-        self.config = sever_config
+    def __init__(self, server_config: ServerConfig):
+        self.config = server_config
         self.base_url = self.config.url.rstrip("/") + "/history/"
         self.auth = None
         self.browser = None
@@ -73,7 +73,6 @@ class SparkHtmlClient:
             page = await self.browser.new_page()
             await page.set_viewport_size({"width": 2560, "height": 800})
             url = urljoin(self.base_url, path)
-            print(url)
             await page.goto(url)
 
             # Wait for network to be idle
@@ -111,4 +110,5 @@ async def main():
     # print("HTML content saved to rendered_page.html")
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())

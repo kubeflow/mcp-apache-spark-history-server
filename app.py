@@ -40,9 +40,11 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
     yield AppContext(clients=clients, default_client=default_client)
 
 
+import os
+
 mcp = FastMCP("Spark Events", lifespan=app_lifespan)
-mcp.settings.port = 18888
-mcp.settings.debug = True
+mcp.settings.port = int(os.getenv("MCP_PORT", "18888"))
+mcp.settings.debug = os.getenv("MCP_DEBUG", "false").lower() == "true"
 
 # Import tools to register them with MCP
 import tools  # noqa: E402,F401

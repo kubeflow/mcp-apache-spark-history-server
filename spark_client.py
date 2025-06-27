@@ -31,7 +31,7 @@ class SparkRestClient:
     Python client for the Spark REST API.
     """
 
-    def __init__(self, sever_config: ServerConfig):
+    def __init__(self, server_config: ServerConfig):
         """
         Initialize the Spark REST client.
 
@@ -40,7 +40,7 @@ class SparkRestClient:
             config_path: Path to configuration file
         """
 
-        self.config = sever_config
+        self.config = server_config
         self.base_url = self.config.url.rstrip("/") + "/api/v1"
         self.auth = None
 
