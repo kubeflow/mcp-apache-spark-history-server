@@ -1,0 +1,17 @@
+# Markdown linting configuration
+# Disable problematic rules for our documentation style
+
+# MD013: Line length - disabled because code blocks can be long
+MD013: false
+
+# MD033: HTML tags - disabled because we use HTML for centering, etc.
+MD033: false
+
+# MD041: First line should be h1 - disabled because we have badges first
+MD041: false
+
+# MD024: Multiple headers with same content - disabled for FAQ sections
+MD024: false
+
+# MD026: Trailing punctuation in header - disabled for emoji headers
+MD026: false

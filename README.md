@@ -1,112 +1,230 @@
-# Spark History Server MCP Server
+# 🔥 Spark History Server MCP
 
-Welcome to the Spark History Server MCP Server! This tool bridges Apache Spark's history data with LLM-powered analysis through the Model Context Protocol (MCP).
+[![CI](https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/workflows/CI/badge.svg)](https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/actions)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-This MCP server exposes most Apache History Server REST APIs as tools, allowing you to analyze Spark job performance data through natural language interactions. Since Apache Spark History server supports read operations only, this tool is likewise focused on data retrieval and analysis rather than modifications.
+> **🤖 Connect AI agents to Apache Spark History Server for intelligent job analysis and performance monitoring**
 
-In addition to standard REST APIs, we've included enhanced analytics capabilities such as identifying the n slowest jobs, pinpointing bottleneck stages, and generating comprehensive executor metric summaries.
+Transform your Spark infrastructure monitoring with AI! This Model Context Protocol (MCP) server enables AI agents to analyze job performance, identify bottlenecks, and provide intelligent insights from your Spark History Server data.
 
-Some use cases for this include:
-- Investigating job failure scenarios with natural language queries
-- Identifying performance bottlenecks in complex Spark applications
-- Optimizing jobs based on historical execution data
-- Extracting insights from Spark metrics without writing custom queries
+## 🎯 What is This?
 
-This MCP server was tested with Qwen3 32B and 235B, but should work with other LLMs that support the Model Context Protocol.
+**Spark History Server MCP** bridges AI agents with your existing Apache Spark infrastructure, enabling:
 
-# Getting started
+- 🔍 **Query job details** through natural language
+- 📊 **Analyze performance metrics** across applications  
+- 🔄 **Compare multiple jobs** to identify regressions
+- 🚨 **Investigate failures** with detailed error analysis
+- 📈 **Generate insights** from historical execution data
 
-## Prerequisites
+## 🏗️ Architecture
 
-- Podman or Docker
-- [uv](https://docs.astral.sh/uv/getting-started/installation/)
-
-Python version and dependencies are available in [`.python-version`](./.python-version) and [`pyproject.toml`](./pyproject.toml).
-
-
-## Usage
-### Setting Up Your Environment
-
-**Step 1: Prepare the Spark History Server**
-
-This MCP server requires a running Spark History Server to connect to. For your convenience:
-- We've included example Spark event data in the repo
-- Location: `examples/basic/events` directory
-- These sample events will help you test the setup
-
-Run the following command to launch a Spark History Server with our sample data:
-
-
-```bash
-# This command:
-# - Uses Docker to run Apache Spark 3.5.5
-# - Mounts your local examples directory
-# - Exposes port 18080 for the History Server
-# - Configures the server using our example configuration
-
-docker run -it \
-  -v $(pwd)/examples/basic:/mnt/data \
-  -p 18080:18080 \
-  docker.io/apache/spark:3.5.5 \
-  /opt/java/openjdk/bin/java \
-  -cp '/opt/spark/conf:/opt/spark/jars/*' \
-  -Xmx1g \
-  org.apache.spark.deploy.history.HistoryServer \
-  --properties-file /mnt/data/history-server.conf
+```mermaid
+graph TB
+    A[🤖 AI Agent/LLM] --> B[📡 MCP Client]
+    B --> C[⚡ Spark History MCP Server]
+    C --> D[🔥 Your Spark History Server]
+    D --> E[📄 Spark Event Logs]
+    
+    F[🔧 LangChain Agent] --> B
+    G[📱 Custom AI App] --> B
+    H[🔬 MCP Inspector] --> B
 ```
 
-Once running, the History Server will be available at http://localhost:18080 
+**🔗 Components:**
+- **🔥 Spark History Server**: Your existing infrastructure serving Spark event data
+- **⚡ MCP Server**: This project - provides MCP tools for querying Spark data
+- **🤖 AI Agents**: LangChain, custom agents, or any MCP-compatible client
 
-**Step 2: Launch the MCP Server**
+## ⚡ Quick Start
 
-With the History Server running, start the MCP server in a new terminal:
+### 📋 Prerequisites
+- 🔥 Existing Spark History Server (running and accessible)
+- 🐍 Python 3.12+
+- ⚡ [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
+
+### 🚀 Setup
+```bash
+git clone https://github.com/DeepDiagnostix-AI/spark-history-server-mcp.git
+cd spark-history-server-mcp
+uv sync
+```
+
+### ⚙️ Configuration
+Edit `config.yaml`:
+```yaml
+servers:
+  default:
+    url: "http://your-spark-history-server:18080"
+    auth:  # optional
+      username: "user"
+      password: "pass"
+```
+
+### 🔬 Testing with MCP Inspector
+```bash
+# Start MCP server with Inspector (opens browser automatically)
+npx @modelcontextprotocol/inspector uv run main.py
+```
+
+**🌐 Test in Browser** - The MCP Inspector opens at http://localhost:6274 for interactive tool testing!
+
+## 📸 Screenshots
+
+### 🔍 Get Spark Applications
+![Get Applications](screenshots/get-applications.png)
+*Browse all available Spark applications with filtering options*
+
+### ⚡ Job Performance Comparison  
+![Job Comparison](screenshots/job-comparison.png)
+*Compare performance metrics between different Spark jobs*
+
+> 📝 **Note**: Replace placeholder screenshots with actual MCP Inspector screenshots showing the tool execution and results.
+
+## 🛠️ Available Tools
+
+| 🔧 Tool | 📝 Description |
+|---------|----------------|
+| `list_applications` | 📋 List Spark applications with filtering |
+| `get_application_details` | 📊 Get comprehensive application info |
+| `get_application_jobs` | 🔗 List jobs within an application |
+| `get_job_details` | 🔍 Get detailed job information |
+| `get_stage_details` | ⚡ Analyze stage-level metrics |
+| `get_task_details` | 🎯 Examine individual task performance |
+| `get_executor_summary` | 🖥️ Review executor utilization |
+| `compare_job_performance` | 📈 Compare multiple jobs |
+| `get_application_environment` | ⚙️ Review Spark configuration |
+| `get_storage_info` | 💾 Analyze RDD storage usage |
+| `get_sql_execution_details` | 🔎 Deep dive into SQL queries |
+
+## 🚀 Production Deployment
+
+Deploy using Kubernetes with Helm:
 
 ```bash
-# Make sure uv is installed before running this command
+# 📦 Deploy with Helm
+helm install spark-history-mcp ./deploy/kubernetes/helm/spark-history-mcp/
+
+# 🎯 Production configuration
+helm install spark-history-mcp ./deploy/kubernetes/helm/spark-history-mcp/ \
+  --set replicaCount=3 \
+  --set autoscaling.enabled=true \
+  --set monitoring.enabled=true
+```
+
+📚 See [`deploy/kubernetes/helm/`](deploy/kubernetes/helm/) for complete deployment manifests and configuration options.
+
+## 🧪 Testing & Development
+
+### 🔬 Local Development
+```bash
+# 🔥 Start local Spark History Server with sample data
+./start_local_spark_history.sh
+
+# ⚡ Start MCP server
 uv run main.py
+
+# 🌐 Test with MCP Inspector
+npx @modelcontextprotocol/inspector uv run main.py
 ```
- 
-The MCP server will start on port 18888 by default. 
 
-**Step 3: Run the MCP Inspector Tool**
+### 📊 Sample Data
+The repository includes real Spark event logs for testing:
+- `spark-bcec39f6201b42b9925124595baad260` - ✅ Successful ETL job
+- `spark-110be3a8424d4a2789cb88134418217b` - 🔄 Data processing job
+- `spark-cc4d115f011443d787f03a71a476a745` - 📈 Multi-stage analytics job
 
-MCP Inspector is a debugging tool that helps you interact with MCP-enabled services: 
+📖 **Complete testing guide**: **[TESTING.md](TESTING.md)**
 
+## ⚙️ Configuration
+
+### 🌐 Multi-server Setup
+```yaml
+servers:
+  production:
+    default: true
+    url: "http://prod-spark-history:18080"
+    auth:
+      username: "user"
+      password: "pass"
+  staging:
+    url: "http://staging-spark-history:18080"
+```
+
+### 🔐 Environment Variables
 ```bash
-# Note: Disabling auth is only recommended for local development
-DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector
+SPARK_USERNAME=your_username
+SPARK_PASSWORD=your_password
+SPARK_TOKEN=your_jwt_token
+MCP_PORT=18888
+MCP_DEBUG=false
 ```
 
-⚠️ Security Note: The above command disables authentication for testing. Never use this setting in production environments. 
+## 🤖 AI Agent Integration
 
-**Step 4: Connect to the Inspector Interface**
+For production AI agent integration, see [`examples/integrations/`](examples/integrations/):
 
-Open your browser and navigate to: http://localhost:6274  
- 
-Configure the connection: 
-1. In the Transport Type dropdown, select Streamable HTTP
-2. Set the URL field to: http://localhost:18888/mcp
-3. Click the Connect button
+- 🦙 [LlamaIndex](examples/integrations/llamaindex.md) - Vector indexing and search  
+- 🔗 [LangGraph](examples/integrations/langgraph.md) - Multi-agent workflows
+
+🧪 **For local testing and development, use [TESTING.md](TESTING.md) with MCP Inspector.**
+
+## 🎯 Example Use Cases
+
+### 🔍 Performance Investigation
+```
+🤖 AI Query: "Why is my ETL job running slower than usual?"
+
+📊 MCP Actions:
+✅ Analyze application metrics
+✅ Compare with historical performance  
+✅ Identify bottleneck stages
+✅ Generate optimization recommendations
+```
+
+### 🚨 Failure Analysis
+```
+🤖 AI Query: "What caused job 42 to fail?"
+
+🔍 MCP Actions:
+✅ Examine failed tasks and error messages
+✅ Review executor logs and resource usage
+✅ Identify root cause and suggest fixes
+```
+
+### 📈 Comparative Analysis
+```
+🤖 AI Query: "Compare today's batch job with yesterday's run"
+
+📊 MCP Actions:
+✅ Compare execution times and resource usage
+✅ Identify performance deltas
+✅ Highlight configuration differences
+```
+
+## 🤝 Contributing
+
+1. 🍴 Fork the repository
+2. 🌿 Create feature branch: `git checkout -b feature/new-tool`
+3. 🧪 Add tests for new functionality
+4. ✅ Run tests: `uv run pytest`
+5. 📤 Submit pull request
+
+## 📄 License
+
+Apache License 2.0 - see [LICENSE](LICENSE) file for details.
 
 
-**Step 5: Explore Available Tools**
+---
 
-Once connected:
-1. Navigate to the Tools tab
-2. Click the List Tools button to see available operations
-3. You should see a list of tools for interacting with Spark History data
-     
+<div align="center">
 
-**Step 6: Try a Sample Query**
+**🔥 Connect your Spark infrastructure to AI agents** 
 
-Let's test the setup by retrieving application details: 
+[🚀 Get Started](#-quick-start) | [🛠️ View Tools](#%EF%B8%8F-available-tools) | [🧪 Test Now](TESTING.md) | [🤝 Contribute](#-contributing)
 
-1. Select the get_application tool from the list
-2. In the application_id field, enter: spark-bcec39f6201b42b9925124595baad260
-3. Click Run Tool
+*Built by the community, for the community* 💙
 
-You should see a JSON response containing details about the Spark application. 
-
-### Configuration Options
-
-Configuration is done through a configuration file called [`config.yaml`](./config.yaml).
+</div>
