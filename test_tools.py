@@ -1,10 +1,26 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from tools import get_client_or_default, get_stage, get_slowest_jobs
+from tools import (
+    get_client_or_default, 
+    get_stage, 
+    get_slowest_jobs,
+    get_application,
+    get_jobs,
+    get_stages,
+    get_stage_task_summary,
+    get_slowest_sql_queries
+)
 from spark_client import SparkRestClient
 from datetime import datetime, timedelta
-from spark_types import JobData, StageData, TaskMetricDistributions
+from spark_types import (
+    JobData, 
+    StageData, 
+    TaskMetricDistributions, 
+    ApplicationInfo,
+    ApplicationAttemptInfo,
+    ExecutionData
+)
 
 
 class TestTools(unittest.TestCase):
@@ -333,3 +349,383 @@ class TestTools(unittest.TestCase):
             get_stage("app-123", stage_id=1)
 
         self.assertIn("No stage found with ID 1", str(context.exception))
+
+    # Tests for get_application tool
+    @patch("tools.get_client_or_default")
+    def test_get_application_success(self, mock_get_client):
+        """Test successful application retrieval"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_app = MagicMock(spec=ApplicationInfo)
+        mock_app.id = "spark-app-123"
+        mock_app.name = "Test Application"
+        mock_client.get_application.return_value = mock_app
+        mock_get_client.return_value = mock_client
+
+        # Call the function
+        result = get_application("spark-app-123")
+
+        # Verify results
+        self.assertEqual(result, mock_app)
+        mock_client.get_application.assert_called_once_with("spark-app-123")
+        mock_get_client.assert_called_once_with(unittest.mock.ANY, None)
+
+    @patch("tools.get_client_or_default")
+    def test_get_application_with_server(self, mock_get_client):
+        """Test application retrieval with specific server"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_app = MagicMock(spec=ApplicationInfo)
+        mock_client.get_application.return_value = mock_app
+        mock_get_client.return_value = mock_client
+
+        # Call the function with server
+        get_application("spark-app-123", server="production")
+
+        # Verify server parameter is passed
+        mock_get_client.assert_called_once_with(unittest.mock.ANY, "production")
+
+    @patch("tools.get_client_or_default")
+    def test_get_application_not_found(self, mock_get_client):
+        """Test application retrieval when app doesn't exist"""
+        # Setup mock client to raise exception
+        mock_client = MagicMock()
+        mock_client.get_application.side_effect = Exception("Application not found")
+        mock_get_client.return_value = mock_client
+
+        # Verify exception is propagated
+        with self.assertRaises(Exception) as context:
+            get_application("non-existent-app")
+        
+        self.assertIn("Application not found", str(context.exception))
+
+    # Tests for get_jobs tool
+    @patch("tools.get_client_or_default")
+    def test_get_jobs_no_filter(self, mock_get_client):
+        """Test job retrieval without status filter"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_jobs = [MagicMock(spec=JobData), MagicMock(spec=JobData)]
+        mock_client.get_jobs.return_value = mock_jobs
+        mock_get_client.return_value = mock_client
+
+        # Call the function
+        result = get_jobs("spark-app-123")
+
+        # Verify results
+        self.assertEqual(result, mock_jobs)
+        mock_client.get_jobs.assert_called_once_with(app_id="spark-app-123")
+
+    @patch("tools.get_client_or_default")
+    def test_get_jobs_with_status_filter(self, mock_get_client):
+        """Test job retrieval with status filter"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_jobs = [MagicMock(spec=JobData)]
+        mock_jobs[0].status = "SUCCEEDED"
+        mock_client.get_jobs.return_value = mock_jobs
+        mock_get_client.return_value = mock_client
+
+        # Call the function with status filter
+        result = get_jobs("spark-app-123", status=["SUCCEEDED"])
+
+        # Verify results
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].status, "SUCCEEDED")
+
+    @patch("tools.get_client_or_default")
+    def test_get_jobs_empty_result(self, mock_get_client):
+        """Test job retrieval with empty result"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_client.get_jobs.return_value = []
+        mock_get_client.return_value = mock_client
+
+        # Call the function
+        result = get_jobs("spark-app-123")
+
+        # Verify results
+        self.assertEqual(result, [])
+
+    @patch("tools.get_client_or_default")
+    def test_get_jobs_status_filtering(self, mock_get_client):
+        """Test job status filtering logic"""
+        # Setup mock client
+        mock_client = MagicMock()
+        
+        # Create jobs with different statuses
+        job1 = MagicMock(spec=JobData)
+        job1.status = "RUNNING"
+        job2 = MagicMock(spec=JobData)
+        job2.status = "SUCCEEDED"
+        job3 = MagicMock(spec=JobData)
+        job3.status = "FAILED"
+        
+        mock_client.get_jobs.return_value = [job1, job2, job3]
+        mock_get_client.return_value = mock_client
+
+        # Test filtering for SUCCEEDED jobs
+        result = get_jobs("spark-app-123", status=["SUCCEEDED"])
+        
+        # Should only return SUCCEEDED job
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].status, "SUCCEEDED")
+
+    # Tests for get_stages tool
+    @patch("tools.get_client_or_default")
+    def test_get_stages_no_filter(self, mock_get_client):
+        """Test stage retrieval without filters"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_stages = [MagicMock(spec=StageData), MagicMock(spec=StageData)]
+        mock_client.get_stages.return_value = mock_stages
+        mock_get_client.return_value = mock_client
+
+        # Call the function
+        result = get_stages("spark-app-123")
+
+        # Verify results
+        self.assertEqual(result, mock_stages)
+        mock_client.get_stages.assert_called_once_with(
+            app_id="spark-app-123",
+            status=None,
+            with_summaries=False
+        )
+
+    @patch("tools.get_client_or_default")
+    def test_get_stages_with_status_filter(self, mock_get_client):
+        """Test stage retrieval with status filter"""
+        # Setup mock client
+        mock_client = MagicMock()
+        
+        # Create stages with different statuses
+        stage1 = MagicMock(spec=StageData)
+        stage1.status = "COMPLETE"
+        stage2 = MagicMock(spec=StageData)
+        stage2.status = "ACTIVE"
+        stage3 = MagicMock(spec=StageData)
+        stage3.status = "FAILED"
+        
+        mock_client.get_stages.return_value = [stage1, stage2, stage3]
+        mock_get_client.return_value = mock_client
+
+        # Call with status filter
+        result = get_stages("spark-app-123", status=["COMPLETE"])
+
+        # Should only return COMPLETE stage
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].status, "COMPLETE")
+
+    @patch("tools.get_client_or_default")
+    def test_get_stages_with_summaries(self, mock_get_client):
+        """Test stage retrieval with summaries enabled"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_stages = [MagicMock(spec=StageData)]
+        mock_client.get_stages.return_value = mock_stages
+        mock_get_client.return_value = mock_client
+
+        # Call with summaries enabled
+        get_stages("spark-app-123", with_summaries=True)
+
+        # Verify summaries parameter is passed
+        mock_client.get_stages.assert_called_once_with(
+            app_id="spark-app-123",
+            status=None,
+            with_summaries=True
+        )
+
+    @patch("tools.get_client_or_default")
+    def test_get_stages_empty_result(self, mock_get_client):
+        """Test stage retrieval with empty result"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_client.get_stages.return_value = []
+        mock_get_client.return_value = mock_client
+
+        # Call the function
+        result = get_stages("spark-app-123")
+
+        # Verify results
+        self.assertEqual(result, [])
+
+    # Tests for get_stage_task_summary tool
+    @patch("tools.get_client_or_default")
+    def test_get_stage_task_summary_success(self, mock_get_client):
+        """Test successful stage task summary retrieval"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_summary = MagicMock(spec=TaskMetricDistributions)
+        mock_client.get_stage_task_summary.return_value = mock_summary
+        mock_get_client.return_value = mock_client
+
+        # Call the function
+        result = get_stage_task_summary("spark-app-123", 1, 0)
+
+        # Verify results
+        self.assertEqual(result, mock_summary)
+        mock_client.get_stage_task_summary.assert_called_once_with(
+            app_id="spark-app-123",
+            stage_id=1,
+            attempt_id=0,
+            quantiles="0.05,0.25,0.5,0.75,0.95"
+        )
+
+    @patch("tools.get_client_or_default")
+    def test_get_stage_task_summary_with_quantiles(self, mock_get_client):
+        """Test stage task summary with custom quantiles"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_summary = MagicMock(spec=TaskMetricDistributions)
+        mock_client.get_stage_task_summary.return_value = mock_summary
+        mock_get_client.return_value = mock_client
+
+        # Call with custom quantiles
+        get_stage_task_summary("spark-app-123", 1, 0, quantiles="0.25,0.5,0.75")
+
+        # Verify quantiles parameter is passed
+        mock_client.get_stage_task_summary.assert_called_once_with(
+            app_id="spark-app-123",
+            stage_id=1,
+            attempt_id=0,
+            quantiles="0.25,0.5,0.75"
+        )
+
+    @patch("tools.get_client_or_default")
+    def test_get_stage_task_summary_not_found(self, mock_get_client):
+        """Test stage task summary when stage doesn't exist"""
+        # Setup mock client to raise exception
+        mock_client = MagicMock()
+        mock_client.get_stage_task_summary.side_effect = Exception("Stage not found")
+        mock_get_client.return_value = mock_client
+
+        # Verify exception is propagated
+        with self.assertRaises(Exception) as context:
+            get_stage_task_summary("spark-app-123", 999, 0)
+        
+        self.assertIn("Stage not found", str(context.exception))
+
+    # Tests for get_slowest_sql_queries tool
+    @patch("tools.get_client_or_default")
+    def test_get_slowest_sql_queries_success(self, mock_get_client):
+        """Test successful SQL query retrieval and sorting"""
+        # Setup mock client
+        mock_client = MagicMock()
+        
+        # Create mock SQL executions with different durations
+        sql1 = MagicMock(spec=ExecutionData)
+        sql1.id = 1
+        sql1.duration = 5000  # 5 seconds
+        sql1.status = "COMPLETED"
+        
+        sql2 = MagicMock(spec=ExecutionData)
+        sql2.id = 2
+        sql2.duration = 10000  # 10 seconds
+        sql2.status = "COMPLETED"
+        
+        sql3 = MagicMock(spec=ExecutionData)
+        sql3.id = 3
+        sql3.duration = 2000  # 2 seconds
+        sql3.status = "COMPLETED"
+        
+        mock_client.get_sql_list.return_value = [sql1, sql2, sql3]
+        mock_get_client.return_value = mock_client
+
+        # Call the function
+        result = get_slowest_sql_queries("spark-app-123", top_n=2)
+
+        # Verify results are sorted by duration (descending)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].duration, 10000)  # Slowest first
+        self.assertEqual(result[1].duration, 5000)   # Second slowest
+
+    @patch("tools.get_client_or_default")
+    def test_get_slowest_sql_queries_exclude_running(self, mock_get_client):
+        """Test SQL query retrieval excluding running queries"""
+        # Setup mock client
+        mock_client = MagicMock()
+        
+        # Create mock SQL executions with different statuses
+        sql1 = MagicMock(spec=ExecutionData)
+        sql1.id = 1
+        sql1.duration = 5000
+        sql1.status = "RUNNING"
+        
+        sql2 = MagicMock(spec=ExecutionData)
+        sql2.id = 2
+        sql2.duration = 10000
+        sql2.status = "COMPLETED"
+        
+        mock_client.get_sql_list.return_value = [sql1, sql2]
+        mock_get_client.return_value = mock_client
+
+        # Call the function (include_running=False by default)
+        result = get_slowest_sql_queries("spark-app-123")
+
+        # Should exclude running query
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].status, "COMPLETED")
+
+    @patch("tools.get_client_or_default")
+    def test_get_slowest_sql_queries_include_running(self, mock_get_client):
+        """Test SQL query retrieval including running queries"""
+        # Setup mock client
+        mock_client = MagicMock()
+        
+        # Create mock SQL executions
+        sql1 = MagicMock(spec=ExecutionData)
+        sql1.id = 1
+        sql1.duration = 5000
+        sql1.status = "RUNNING"
+        
+        sql2 = MagicMock(spec=ExecutionData)
+        sql2.id = 2
+        sql2.duration = 10000
+        sql2.status = "COMPLETED"
+        
+        mock_client.get_sql_list.return_value = [sql1, sql2]
+        mock_get_client.return_value = mock_client
+
+        # Call the function with include_running=True
+        result = get_slowest_sql_queries("spark-app-123", include_running=True)
+
+        # Should include both queries
+        self.assertEqual(len(result), 2)
+
+    @patch("tools.get_client_or_default")
+    def test_get_slowest_sql_queries_empty_result(self, mock_get_client):
+        """Test SQL query retrieval with empty result"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_client.get_sql_list.return_value = []
+        mock_get_client.return_value = mock_client
+
+        # Call the function
+        result = get_slowest_sql_queries("spark-app-123")
+
+        # Verify results
+        self.assertEqual(result, [])
+
+    @patch("tools.get_client_or_default")
+    def test_get_slowest_sql_queries_limit(self, mock_get_client):
+        """Test SQL query retrieval with limit"""
+        # Setup mock client
+        mock_client = MagicMock()
+        
+        # Create 5 mock SQL executions
+        sql_queries = []
+        for i in range(5):
+            sql = MagicMock(spec=ExecutionData)
+            sql.id = i
+            sql.duration = (i + 1) * 1000  # Different durations
+            sql.status = "COMPLETED"
+            sql_queries.append(sql)
+        
+        mock_client.get_sql_list.return_value = sql_queries
+        mock_get_client.return_value = mock_client
+
+        # Call the function with limit
+        result = get_slowest_sql_queries("spark-app-123", top_n=3)
+
+        # Should return only 3 results
+        self.assertEqual(len(result), 3)

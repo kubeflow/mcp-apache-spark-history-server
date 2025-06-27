@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from app import mcp
 from spark_types import (
@@ -406,6 +406,293 @@ def get_executor_summary(spark_id: str, server: Optional[str] = None):
 
 
 @mcp.tool()
+def compare_job_environments(
+    spark_id1: str, spark_id2: str, server: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Compare Spark environment configurations between two jobs.
+    
+    Identifies differences in Spark properties, JVM settings, system properties,
+    and other configuration parameters between two Spark applications.
+    
+    Args:
+        spark_id1: First Spark application ID
+        spark_id2: Second Spark application ID
+        server: Optional server name to use (uses default if not specified)
+        
+    Returns:
+        Dictionary containing configuration differences and similarities
+    """
+    ctx = mcp.get_context()
+    client = get_client_or_default(ctx, server)
+    
+    env1 = client.get_environment(app_id=spark_id1)
+    env2 = client.get_environment(app_id=spark_id2)
+    
+    def props_to_dict(props):
+        return {k: v for k, v in props} if props else {}
+    
+    spark_props1 = props_to_dict(env1.spark_properties)
+    spark_props2 = props_to_dict(env2.spark_properties)
+    
+    system_props1 = props_to_dict(env1.system_properties)
+    system_props2 = props_to_dict(env2.system_properties)
+    
+    comparison = {
+        "applications": {
+            "app1": spark_id1,
+            "app2": spark_id2
+        },
+        "runtime_comparison": {
+            "app1": {
+                "java_version": env1.runtime.java_version,
+                "java_home": env1.runtime.java_home,
+                "scala_version": env1.runtime.scala_version
+            },
+            "app2": {
+                "java_version": env2.runtime.java_version,
+                "java_home": env2.runtime.java_home,
+                "scala_version": env2.runtime.scala_version
+            }
+        },
+        "spark_properties": {
+            "common": {k: {"app1": v, "app2": spark_props2.get(k)} 
+                      for k, v in spark_props1.items() 
+                      if k in spark_props2 and v == spark_props2[k]},
+            "different": {k: {"app1": v, "app2": spark_props2.get(k, "NOT_SET")} 
+                         for k, v in spark_props1.items() 
+                         if k in spark_props2 and v != spark_props2[k]},
+            "only_in_app1": {k: v for k, v in spark_props1.items() if k not in spark_props2},
+            "only_in_app2": {k: v for k, v in spark_props2.items() if k not in spark_props1}
+        },
+        "system_properties": {
+            "key_differences": {
+                k: {"app1": system_props1.get(k, "NOT_SET"), "app2": system_props2.get(k, "NOT_SET")}
+                for k in ["java.version", "java.runtime.version", "os.name", "os.version", 
+                         "user.timezone", "file.encoding"]
+                if system_props1.get(k) != system_props2.get(k)
+            }
+        }
+    }
+    
+    return comparison
+
+
+@mcp.tool()
+def compare_job_performance(
+    spark_id1: str, spark_id2: str, server: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Compare performance metrics between two Spark jobs.
+    
+    Analyzes execution times, resource usage, task distribution, and other
+    performance indicators to identify differences between jobs.
+    
+    Args:
+        spark_id1: First Spark application ID
+        spark_id2: Second Spark application ID
+        server: Optional server name to use (uses default if not specified)
+        
+    Returns:
+        Dictionary containing detailed performance comparison
+    """
+    ctx = mcp.get_context()
+    client = get_client_or_default(ctx, server)
+    
+    # Get application info
+    app1 = client.get_application(spark_id1)
+    app2 = client.get_application(spark_id2)
+    
+    # Get executor summaries
+    exec_summary1 = get_executor_summary(spark_id1, server)
+    exec_summary2 = get_executor_summary(spark_id2, server)
+    
+    # Get job data
+    jobs1 = client.get_jobs(app_id=spark_id1)
+    jobs2 = client.get_jobs(app_id=spark_id2)
+    
+    # Calculate job duration statistics
+    def calc_job_stats(jobs):
+        if not jobs:
+            return {"count": 0, "total_duration": 0, "avg_duration": 0}
+        
+        completed_jobs = [j for j in jobs if j.completion_time and j.submission_time]
+        if not completed_jobs:
+            return {"count": len(jobs), "total_duration": 0, "avg_duration": 0}
+            
+        durations = [(j.completion_time - j.submission_time).total_seconds() 
+                    for j in completed_jobs]
+        
+        return {
+            "count": len(jobs),
+            "completed_count": len(completed_jobs),
+            "total_duration": sum(durations),
+            "avg_duration": sum(durations) / len(durations),
+            "min_duration": min(durations),
+            "max_duration": max(durations)
+        }
+    
+    job_stats1 = calc_job_stats(jobs1)
+    job_stats2 = calc_job_stats(jobs2)
+    
+    comparison = {
+        "applications": {
+            "app1": {"id": spark_id1, "name": app1.name},
+            "app2": {"id": spark_id2, "name": app2.name}
+        },
+        "resource_allocation": {
+            "app1": {
+                "cores_granted": app1.cores_granted,
+                "max_cores": app1.max_cores,
+                "cores_per_executor": app1.cores_per_executor,
+                "memory_per_executor_mb": app1.memory_per_executor_mb
+            },
+            "app2": {
+                "cores_granted": app2.cores_granted,
+                "max_cores": app2.max_cores,
+                "cores_per_executor": app2.cores_per_executor,
+                "memory_per_executor_mb": app2.memory_per_executor_mb
+            }
+        },
+        "executor_metrics": {
+            "app1": exec_summary1,
+            "app2": exec_summary2,
+            "comparison": {
+                "executor_count_ratio": exec_summary2["total_executors"] / max(exec_summary1["total_executors"], 1),
+                "memory_usage_ratio": exec_summary2["memory_used"] / max(exec_summary1["memory_used"], 1),
+                "task_completion_ratio": exec_summary2["completed_tasks"] / max(exec_summary1["completed_tasks"], 1),
+                "gc_time_ratio": exec_summary2["total_gc_time"] / max(exec_summary1["total_gc_time"], 1)
+            }
+        },
+        "job_performance": {
+            "app1": job_stats1,
+            "app2": job_stats2,
+            "comparison": {
+                "job_count_ratio": job_stats2["count"] / max(job_stats1["count"], 1),
+                "avg_duration_ratio": job_stats2["avg_duration"] / max(job_stats1["avg_duration"], 1) if job_stats1["avg_duration"] > 0 else 0,
+                "total_duration_ratio": job_stats2["total_duration"] / max(job_stats1["total_duration"], 1) if job_stats1["total_duration"] > 0 else 0
+            }
+        }
+    }
+    
+    return comparison
+
+
+@mcp.tool()
+def compare_sql_execution_plans(
+    spark_id1: str, spark_id2: str, 
+    execution_id1: Optional[int] = None,
+    execution_id2: Optional[int] = None,
+    server: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Compare SQL execution plans between two Spark jobs.
+    
+    Analyzes the logical and physical plans, identifies differences in operations,
+    and compares execution metrics between SQL queries.
+    
+    Args:
+        spark_id1: First Spark application ID
+        spark_id2: Second Spark application ID
+        execution_id1: Optional specific execution ID for first app (uses longest if not specified)
+        execution_id2: Optional specific execution ID for second app (uses longest if not specified)
+        server: Optional server name to use (uses default if not specified)
+        
+    Returns:
+        Dictionary containing SQL execution plan comparison
+    """
+    ctx = mcp.get_context()
+    client = get_client_or_default(ctx, server)
+    
+    # Get SQL executions for both applications
+    sql_execs1 = client.get_sql_list(app_id=spark_id1, details=True, plan_description=True)
+    sql_execs2 = client.get_sql_list(app_id=spark_id2, details=True, plan_description=True)
+    
+    # If specific execution IDs not provided, use the longest running ones
+    if execution_id1 is None and sql_execs1:
+        execution_id1 = max(sql_execs1, key=lambda x: x.duration or 0).id
+    if execution_id2 is None and sql_execs2:
+        execution_id2 = max(sql_execs2, key=lambda x: x.duration or 0).id
+    
+    if execution_id1 is None or execution_id2 is None:
+        return {
+            "error": "No SQL executions found in one or both applications",
+            "app1_sql_count": len(sql_execs1),
+            "app2_sql_count": len(sql_execs2)
+        }
+    
+    # Get specific execution details
+    exec1 = client.get_sql_execution(spark_id1, execution_id1, details=True, plan_description=True)
+    exec2 = client.get_sql_execution(spark_id2, execution_id2, details=True, plan_description=True)
+    
+    # Analyze nodes and operations
+    def analyze_nodes(execution):
+        node_types = {}
+        for node in execution.nodes:
+            node_type = node.node_name
+            if node_type not in node_types:
+                node_types[node_type] = 0
+            node_types[node_type] += 1
+        return node_types
+    
+    nodes1 = analyze_nodes(exec1)
+    nodes2 = analyze_nodes(exec2)
+    
+    all_node_types = set(nodes1.keys()) | set(nodes2.keys())
+    
+    comparison = {
+        "applications": {
+            "app1": spark_id1,
+            "app2": spark_id2
+        },
+        "executions": {
+            "app1": {
+                "execution_id": execution_id1,
+                "duration": exec1.duration,
+                "status": exec1.status,
+                "node_count": len(exec1.nodes),
+                "edge_count": len(exec1.edges)
+            },
+            "app2": {
+                "execution_id": execution_id2,
+                "duration": exec2.duration,
+                "status": exec2.status,
+                "node_count": len(exec2.nodes),
+                "edge_count": len(exec2.edges)
+            }
+        },
+        "plan_structure": {
+            "node_type_comparison": {
+                node_type: {
+                    "app1_count": nodes1.get(node_type, 0),
+                    "app2_count": nodes2.get(node_type, 0)
+                }
+                for node_type in sorted(all_node_types)
+            },
+            "complexity_metrics": {
+                "node_count_ratio": len(exec2.nodes) / max(len(exec1.nodes), 1),
+                "edge_count_ratio": len(exec2.edges) / max(len(exec1.edges), 1),
+                "duration_ratio": (exec2.duration or 0) / max(exec1.duration or 1, 1)
+            }
+        },
+        "job_associations": {
+            "app1": {
+                "running_jobs": exec1.running_job_ids,
+                "success_jobs": exec1.success_job_ids,
+                "failed_jobs": exec1.failed_job_ids
+            },
+            "app2": {
+                "running_jobs": exec2.running_job_ids,
+                "success_jobs": exec2.success_job_ids,
+                "failed_jobs": exec2.failed_job_ids
+            }
+        }
+    }
+    
+    return comparison
+
+
+@mcp.tool()
 def get_stage_task_summary(
     spark_id: str,
     stage_id: int,
@@ -497,4 +784,235 @@ def get_slowest_sql_queries(
 
     # Sort by duration (descending) and take top N
     sorted_executions = sorted(all_executions, key=lambda e: e.duration, reverse=True)
-    return sorted_executions[:2]
+    return sorted_executions[:top_n]
+
+
+@mcp.tool()
+def get_job_bottlenecks(
+    spark_id: str, server: Optional[str] = None, top_n: int = 5
+) -> Dict[str, Any]:
+    """
+    Identify performance bottlenecks in a Spark job.
+    
+    Analyzes stages, tasks, and executors to find the most time-consuming
+    operations and resource-intensive components.
+    
+    Args:
+        spark_id: The Spark application ID
+        server: Optional server name to use (uses default if not specified)
+        top_n: Number of top bottlenecks to return
+        
+    Returns:
+        Dictionary containing identified bottlenecks and recommendations
+    """
+    ctx = mcp.get_context()
+    client = get_client_or_default(ctx, server)
+    
+    # Get slowest stages
+    slowest_stages = get_slowest_stages(spark_id, server, False, top_n)
+    
+    # Get slowest jobs
+    slowest_jobs = get_slowest_jobs(spark_id, server, False, top_n)
+    
+    # Get executor summary
+    exec_summary = get_executor_summary(spark_id, server)
+    
+    # Get all stages for detailed analysis
+    all_stages = client.get_stages(app_id=spark_id, details=True)
+    
+    # Identify stages with high spill
+    high_spill_stages = []
+    for stage in all_stages:
+        if stage.memory_bytes_spilled and stage.memory_bytes_spilled > 100 * 1024 * 1024:  # > 100MB
+            high_spill_stages.append({
+                "stage_id": stage.stage_id,
+                "attempt_id": stage.attempt_id,
+                "name": stage.name,
+                "memory_spilled_mb": stage.memory_bytes_spilled / (1024 * 1024),
+                "disk_spilled_mb": stage.disk_bytes_spilled / (1024 * 1024) if stage.disk_bytes_spilled else 0
+            })
+    
+    # Sort by memory spilled
+    high_spill_stages.sort(key=lambda x: x["memory_spilled_mb"], reverse=True)
+    
+    # Identify GC pressure
+    gc_pressure = exec_summary["total_gc_time"] / max(exec_summary["total_duration"], 1) if exec_summary["total_duration"] > 0 else 0
+    
+    bottlenecks = {
+        "application_id": spark_id,
+        "performance_bottlenecks": {
+            "slowest_stages": [
+                {
+                    "stage_id": stage.stage_id,
+                    "attempt_id": stage.attempt_id,
+                    "name": stage.name,
+                    "duration_seconds": (stage.completion_time - stage.submission_time).total_seconds() if stage.completion_time and stage.submission_time else 0,
+                    "task_count": stage.num_tasks,
+                    "failed_tasks": stage.num_failed_tasks
+                }
+                for stage in slowest_stages[:top_n]
+            ],
+            "slowest_jobs": [
+                {
+                    "job_id": job.job_id,
+                    "name": job.name,
+                    "duration_seconds": (job.completion_time - job.submission_time).total_seconds() if job.completion_time and job.submission_time else 0,
+                    "failed_tasks": job.num_failed_tasks,
+                    "status": job.status
+                }
+                for job in slowest_jobs[:top_n]
+            ]
+        },
+        "resource_bottlenecks": {
+            "memory_spill_stages": high_spill_stages[:top_n],
+            "gc_pressure_ratio": gc_pressure,
+            "executor_utilization": {
+                "total_executors": exec_summary["total_executors"],
+                "active_executors": exec_summary["active_executors"],
+                "utilization_ratio": exec_summary["active_executors"] / max(exec_summary["total_executors"], 1)
+            }
+        },
+        "recommendations": []
+    }
+    
+    # Generate recommendations
+    if gc_pressure > 0.1:  # More than 10% time in GC
+        bottlenecks["recommendations"].append({
+            "type": "memory",
+            "priority": "high",
+            "issue": f"High GC pressure ({gc_pressure:.1%})",
+            "suggestion": "Consider increasing executor memory or reducing memory usage"
+        })
+    
+    if high_spill_stages:
+        bottlenecks["recommendations"].append({
+            "type": "memory",
+            "priority": "high", 
+            "issue": f"Memory spilling detected in {len(high_spill_stages)} stages",
+            "suggestion": "Increase executor memory or optimize data partitioning"
+        })
+    
+    if exec_summary["failed_tasks"] > 0:
+        bottlenecks["recommendations"].append({
+            "type": "reliability",
+            "priority": "medium",
+            "issue": f"{exec_summary['failed_tasks']} failed tasks",
+            "suggestion": "Investigate task failures and consider increasing task retry settings"
+        })
+    
+    return bottlenecks
+
+
+@mcp.tool()
+def get_resource_usage_timeline(
+    spark_id: str, server: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Get resource usage timeline for a Spark application.
+    
+    Provides a chronological view of resource allocation and usage patterns
+    including executor additions/removals and stage execution overlap.
+    
+    Args:
+        spark_id: The Spark application ID
+        server: Optional server name to use (uses default if not specified)
+        
+    Returns:
+        Dictionary containing timeline of resource usage
+    """
+    ctx = mcp.get_context()
+    client = get_client_or_default(ctx, server)
+    
+    # Get application info
+    app = client.get_application(spark_id)
+    
+    # Get all executors
+    executors = client.get_all_executors(app_id=spark_id)
+    
+    # Get stages
+    stages = client.get_stages(app_id=spark_id, details=True)
+    
+    # Create timeline events
+    timeline_events = []
+    
+    # Add executor events
+    for executor in executors:
+        if executor.add_time:
+            timeline_events.append({
+                "timestamp": executor.add_time,
+                "type": "executor_add",
+                "executor_id": executor.id,
+                "cores": executor.total_cores,
+                "memory_mb": executor.max_memory / (1024 * 1024) if executor.max_memory else 0
+            })
+        
+        if executor.remove_time:
+            timeline_events.append({
+                "timestamp": executor.remove_time,
+                "type": "executor_remove",
+                "executor_id": executor.id,
+                "reason": executor.remove_reason
+            })
+    
+    # Add stage events
+    for stage in stages:
+        if stage.submission_time:
+            timeline_events.append({
+                "timestamp": stage.submission_time,
+                "type": "stage_start",
+                "stage_id": stage.stage_id,
+                "attempt_id": stage.attempt_id,
+                "name": stage.name,
+                "task_count": stage.num_tasks
+            })
+        
+        if stage.completion_time:
+            timeline_events.append({
+                "timestamp": stage.completion_time,
+                "type": "stage_end",
+                "stage_id": stage.stage_id,
+                "attempt_id": stage.attempt_id,
+                "status": stage.status,
+                "duration_seconds": (stage.completion_time - stage.submission_time).total_seconds() if stage.submission_time else 0
+            })
+    
+    # Sort events by timestamp
+    timeline_events.sort(key=lambda x: x["timestamp"])
+    
+    # Calculate resource utilization over time
+    active_executors = 0
+    total_cores = 0
+    total_memory = 0
+    
+    resource_timeline = []
+    
+    for event in timeline_events:
+        if event["type"] == "executor_add":
+            active_executors += 1
+            total_cores += event["cores"]
+            total_memory += event["memory_mb"]
+        elif event["type"] == "executor_remove":
+            active_executors -= 1
+            # Note: We don't have cores/memory info in remove events
+            
+        resource_timeline.append({
+            "timestamp": event["timestamp"],
+            "active_executors": active_executors,
+            "total_cores": total_cores,
+            "total_memory_mb": total_memory,
+            "event": event
+        })
+    
+    return {
+        "application_id": spark_id,
+        "application_name": app.name,
+        "timeline": resource_timeline,
+        "summary": {
+            "total_events": len(timeline_events),
+            "executor_additions": len([e for e in timeline_events if e["type"] == "executor_add"]),
+            "executor_removals": len([e for e in timeline_events if e["type"] == "executor_remove"]),
+            "stage_executions": len([e for e in timeline_events if e["type"] == "stage_start"]),
+            "peak_executors": max([r["active_executors"] for r in resource_timeline] + [0]),
+            "peak_cores": max([r["total_cores"] for r in resource_timeline] + [0])
+        }
+    }
