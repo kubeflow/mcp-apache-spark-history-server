@@ -1,19 +1,73 @@
 [project]
-name = "mcp-spark-events"
+name = "spark-history-server-mcp"
 version = "0.1.0"
-description = "Add your description here"
+description = "Model Context Protocol (MCP) server for Apache Spark History Server with job comparison and analytics"
 readme = "README.md"
+authors = [
+    {name = "Manabu McCloskey", email = "Manabu.McCloskey@gmail.com"},
+    {name = "Vara Bonthu", email = "vara.bonthu@gmail.com"}
+]
+license = {text = "Apache-2.0"}
 requires-python = ">=3.12"
+keywords = ["spark", "mcp", "analytics", "performance", "history-server", "model-context-protocol"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers", 
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Monitoring",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
 dependencies = [
     "mcp[cli]>=1.9.4",
     "pyyaml>=6.0.2",
     "requests>=2.32.4",
+    "pydantic>=2.0.0",
 ]
+
+# Development dependencies moved to [dependency-groups] section below
+
+[project.scripts]
+spark-mcp = "main:main"
+
+[project.urls]
+Homepage = "https://github.com/DeepDiagnostix-AI/spark-history-server-mcp"
+Repository = "https://github.com/DeepDiagnostix-AI/spark-history-server-mcp"
+Issues = "https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/issues"
 
 [tool.ruff]
 target-version = "py312"
+line-length = 88
+select = ["E", "F", "W", "I", "N", "B", "A", "S", "T20"]
+ignore = ["E501", "S101"]
+
+[tool.ruff.per-file-ignores]
+"test_*.py" = ["S101"]
+
+[tool.black]
+line-length = 88
+target-version = ['py312']
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Start with false, gradually enable
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "."]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=. --cov-report=term-missing"
+pythonpath = ["."]
 
 [dependency-groups]
 dev = [
     "pytest>=8.4.1",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
 ]
