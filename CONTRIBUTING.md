@@ -80,7 +80,7 @@ uv run bandit -r . -f json -o bandit-report.json
 - **Error Handling**: Better error messages and recovery
 - **Documentation**: Examples, tutorials, and guides
 
-#### 📊 Medium Priority  
+#### 📊 Medium Priority
 - **Testing**: More comprehensive test coverage
 - **Monitoring**: Metrics and observability features
 - **Configuration**: More flexible configuration options
@@ -139,23 +139,23 @@ When adding new tools, follow this pattern:
 ```python
 @mcp.tool()
 def your_new_tool(
-    spark_id: str, 
+    spark_id: str,
     server: Optional[str] = None,
     # other parameters
 ) -> YourReturnType:
     """
     Brief description of what this tool does.
-    
+
     Args:
         spark_id: The Spark application ID
         server: Optional server name to use
-        
+
     Returns:
         Description of return value
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server)
-    
+
     # Your implementation here
     return client.your_method(spark_id)
 ```
@@ -170,10 +170,10 @@ def test_your_new_tool(self, mock_get_client):
     mock_client = MagicMock()
     mock_client.your_method.return_value = expected_result
     mock_get_client.return_value = mock_client
-    
+
     # Call the tool
     result = your_new_tool("spark-app-123")
-    
+
     # Verify results
     self.assertEqual(result, expected_result)
     mock_client.your_method.assert_called_once_with("spark-app-123")
@@ -232,6 +232,6 @@ Contributors are recognized in:
 
 ---
 
-**🎉 Thank you for contributing to Spark History Server MCP!** 
+**🎉 Thank you for contributing to Spark History Server MCP!**
 
 Your contributions help make Apache Spark monitoring more intelligent and accessible to the community.

@@ -1,25 +1,24 @@
 import unittest
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-from tools import (
-    get_client_or_default, 
-    get_stage, 
-    get_slowest_jobs,
-    get_application,
-    get_jobs,
-    get_stages,
-    get_stage_task_summary,
-    get_slowest_sql_queries
-)
 from spark_client import SparkRestClient
-from datetime import datetime, timedelta
 from spark_types import (
-    JobData, 
-    StageData, 
-    TaskMetricDistributions, 
     ApplicationInfo,
-    ApplicationAttemptInfo,
-    ExecutionData
+    ExecutionData,
+    JobData,
+    StageData,
+    TaskMetricDistributions,
+)
+from tools import (
+    get_application,
+    get_client_or_default,
+    get_jobs,
+    get_slowest_jobs,
+    get_slowest_sql_queries,
+    get_stage,
+    get_stage_task_summary,
+    get_stages,
 )
 
 
@@ -396,7 +395,7 @@ class TestTools(unittest.TestCase):
         # Verify exception is propagated
         with self.assertRaises(Exception) as context:
             get_application("non-existent-app")
-        
+
         self.assertIn("Application not found", str(context.exception))
 
     # Tests for get_jobs tool
@@ -452,7 +451,7 @@ class TestTools(unittest.TestCase):
         """Test job status filtering logic"""
         # Setup mock client
         mock_client = MagicMock()
-        
+
         # Create jobs with different statuses
         job1 = MagicMock(spec=JobData)
         job1.status = "RUNNING"
@@ -460,13 +459,13 @@ class TestTools(unittest.TestCase):
         job2.status = "SUCCEEDED"
         job3 = MagicMock(spec=JobData)
         job3.status = "FAILED"
-        
+
         mock_client.get_jobs.return_value = [job1, job2, job3]
         mock_get_client.return_value = mock_client
 
         # Test filtering for SUCCEEDED jobs
         result = get_jobs("spark-app-123", status=["SUCCEEDED"])
-        
+
         # Should only return SUCCEEDED job
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].status, "SUCCEEDED")
@@ -487,9 +486,7 @@ class TestTools(unittest.TestCase):
         # Verify results
         self.assertEqual(result, mock_stages)
         mock_client.get_stages.assert_called_once_with(
-            app_id="spark-app-123",
-            status=None,
-            with_summaries=False
+            app_id="spark-app-123", status=None, with_summaries=False
         )
 
     @patch("tools.get_client_or_default")
@@ -497,7 +494,7 @@ class TestTools(unittest.TestCase):
         """Test stage retrieval with status filter"""
         # Setup mock client
         mock_client = MagicMock()
-        
+
         # Create stages with different statuses
         stage1 = MagicMock(spec=StageData)
         stage1.status = "COMPLETE"
@@ -505,7 +502,7 @@ class TestTools(unittest.TestCase):
         stage2.status = "ACTIVE"
         stage3 = MagicMock(spec=StageData)
         stage3.status = "FAILED"
-        
+
         mock_client.get_stages.return_value = [stage1, stage2, stage3]
         mock_get_client.return_value = mock_client
 
@@ -530,9 +527,7 @@ class TestTools(unittest.TestCase):
 
         # Verify summaries parameter is passed
         mock_client.get_stages.assert_called_once_with(
-            app_id="spark-app-123",
-            status=None,
-            with_summaries=True
+            app_id="spark-app-123", status=None, with_summaries=True
         )
 
     @patch("tools.get_client_or_default")
@@ -568,7 +563,7 @@ class TestTools(unittest.TestCase):
             app_id="spark-app-123",
             stage_id=1,
             attempt_id=0,
-            quantiles="0.05,0.25,0.5,0.75,0.95"
+            quantiles="0.05,0.25,0.5,0.75,0.95",
         )
 
     @patch("tools.get_client_or_default")
@@ -585,10 +580,7 @@ class TestTools(unittest.TestCase):
 
         # Verify quantiles parameter is passed
         mock_client.get_stage_task_summary.assert_called_once_with(
-            app_id="spark-app-123",
-            stage_id=1,
-            attempt_id=0,
-            quantiles="0.25,0.5,0.75"
+            app_id="spark-app-123", stage_id=1, attempt_id=0, quantiles="0.25,0.5,0.75"
         )
 
     @patch("tools.get_client_or_default")
@@ -602,7 +594,7 @@ class TestTools(unittest.TestCase):
         # Verify exception is propagated
         with self.assertRaises(Exception) as context:
             get_stage_task_summary("spark-app-123", 999, 0)
-        
+
         self.assertIn("Stage not found", str(context.exception))
 
     # Tests for get_slowest_sql_queries tool
@@ -611,23 +603,23 @@ class TestTools(unittest.TestCase):
         """Test successful SQL query retrieval and sorting"""
         # Setup mock client
         mock_client = MagicMock()
-        
+
         # Create mock SQL executions with different durations
         sql1 = MagicMock(spec=ExecutionData)
         sql1.id = 1
         sql1.duration = 5000  # 5 seconds
         sql1.status = "COMPLETED"
-        
+
         sql2 = MagicMock(spec=ExecutionData)
         sql2.id = 2
         sql2.duration = 10000  # 10 seconds
         sql2.status = "COMPLETED"
-        
+
         sql3 = MagicMock(spec=ExecutionData)
         sql3.id = 3
         sql3.duration = 2000  # 2 seconds
         sql3.status = "COMPLETED"
-        
+
         mock_client.get_sql_list.return_value = [sql1, sql2, sql3]
         mock_get_client.return_value = mock_client
 
@@ -637,25 +629,25 @@ class TestTools(unittest.TestCase):
         # Verify results are sorted by duration (descending)
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].duration, 10000)  # Slowest first
-        self.assertEqual(result[1].duration, 5000)   # Second slowest
+        self.assertEqual(result[1].duration, 5000)  # Second slowest
 
     @patch("tools.get_client_or_default")
     def test_get_slowest_sql_queries_exclude_running(self, mock_get_client):
         """Test SQL query retrieval excluding running queries"""
         # Setup mock client
         mock_client = MagicMock()
-        
+
         # Create mock SQL executions with different statuses
         sql1 = MagicMock(spec=ExecutionData)
         sql1.id = 1
         sql1.duration = 5000
         sql1.status = "RUNNING"
-        
+
         sql2 = MagicMock(spec=ExecutionData)
         sql2.id = 2
         sql2.duration = 10000
         sql2.status = "COMPLETED"
-        
+
         mock_client.get_sql_list.return_value = [sql1, sql2]
         mock_get_client.return_value = mock_client
 
@@ -671,18 +663,18 @@ class TestTools(unittest.TestCase):
         """Test SQL query retrieval including running queries"""
         # Setup mock client
         mock_client = MagicMock()
-        
+
         # Create mock SQL executions
         sql1 = MagicMock(spec=ExecutionData)
         sql1.id = 1
         sql1.duration = 5000
         sql1.status = "RUNNING"
-        
+
         sql2 = MagicMock(spec=ExecutionData)
         sql2.id = 2
         sql2.duration = 10000
         sql2.status = "COMPLETED"
-        
+
         mock_client.get_sql_list.return_value = [sql1, sql2]
         mock_get_client.return_value = mock_client
 
@@ -711,7 +703,7 @@ class TestTools(unittest.TestCase):
         """Test SQL query retrieval with limit"""
         # Setup mock client
         mock_client = MagicMock()
-        
+
         # Create 5 mock SQL executions
         sql_queries = []
         for i in range(5):
@@ -720,7 +712,7 @@ class TestTools(unittest.TestCase):
             sql.duration = (i + 1) * 1000  # Different durations
             sql.status = "COMPLETED"
             sql_queries.append(sql)
-        
+
         mock_client.get_sql_list.return_value = sql_queries
         mock_get_client.return_value = mock_client
 

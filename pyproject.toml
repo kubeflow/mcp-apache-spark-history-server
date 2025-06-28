@@ -12,7 +12,7 @@ requires-python = ">=3.12"
 keywords = ["spark", "mcp", "analytics", "performance", "history-server", "model-context-protocol"]
 classifiers = [
     "Development Status :: 3 - Alpha",
-    "Intended Audience :: Developers", 
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -39,10 +39,12 @@ Issues = "https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/issues"
 [tool.ruff]
 target-version = "py312"
 line-length = 88
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "B", "A", "S", "T20"]
 ignore = ["E501", "S101"]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "test_*.py" = ["S101"]
 
 [tool.black]

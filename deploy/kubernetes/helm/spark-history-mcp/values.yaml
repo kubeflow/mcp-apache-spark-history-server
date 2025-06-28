@@ -80,7 +80,7 @@ autoscaling:
 config:
   port: 18888
   debug: false
-  
+
   # Spark History Server configuration
   servers:
     default:

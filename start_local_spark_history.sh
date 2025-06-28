@@ -73,7 +73,7 @@ validate_test_data() {
         echo "   Please ensure you're running this script from the project root directory."
         exit 1
     fi
-    
+
     if [ ! -f "examples/basic/history-server.conf" ]; then
         echo "❌ Error: Spark History Server configuration file not found."
         echo "   Expected: examples/basic/history-server.conf"

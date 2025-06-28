@@ -13,7 +13,7 @@ This directory contains screenshots for the README.md file.
 3. Click "Call Tool" button
 4. Capture the results showing all 3 Spark applications:
    - spark-bcec39f6201b42b9925124595baad260
-   - spark-110be3a8424d4a2789cb88134418217b  
+   - spark-110be3a8424d4a2789cb88134418217b
    - spark-cc4d115f011443d787f03a71a476a745
 
 **Screenshot should show**:
@@ -21,7 +21,7 @@ This directory contains screenshots for the README.md file.
 - JSON response with application list
 - Application IDs, names, and status
 
-### ⚡ Job Comparison Screenshot  
+### ⚡ Job Comparison Screenshot
 **Filename**: `job-comparison.png`
 
 **What to capture**:
@@ -55,7 +55,7 @@ These screenshots are referenced in the main README.md file:
 ![Get Applications](screenshots/get-applications.png)
 *Browse all available Spark applications with filtering options*
 
-### ⚡ Job Performance Comparison  
+### ⚡ Job Performance Comparison
 ![Job Comparison](screenshots/job-comparison.png)
 *Compare performance metrics between different Spark jobs*
 ```

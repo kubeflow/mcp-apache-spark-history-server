@@ -17,7 +17,7 @@ servers:
       # password: ${SPARK_PASSWORD}
       # token: ${SPARK_TOKEN}
 
-  # Staging server example  
+  # Staging server example
   # staging:
   #   url: "https://staging-spark-history.company.com:18080"
   #   auth:
@@ -26,7 +26,7 @@ servers:
 
 # Environment Variables:
 # SPARK_USERNAME - Default username for authentication
-# SPARK_PASSWORD - Default password for authentication  
+# SPARK_PASSWORD - Default password for authentication
 # SPARK_TOKEN - Default token for authentication
 # MCP_PORT - Port for MCP server (default: 18888)
 # MCP_DEBUG - Enable debug mode (default: false)

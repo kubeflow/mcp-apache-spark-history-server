@@ -1,13 +1,15 @@
-from typing import Optional
-from contextlib import asynccontextmanager
-from collections.abc import AsyncIterator
-from dataclasses import dataclass
 import json
+import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
-from spark_client import SparkRestClient
-from config import Config
 from mcp.server.fastmcp import FastMCP
+
+from config import Config
+from spark_client import SparkRestClient
 
 
 @dataclass
@@ -39,8 +41,6 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
 
     yield AppContext(clients=clients, default_client=default_client)
 
-
-import os
 
 mcp = FastMCP("Spark Events", lifespan=app_lifespan)
 mcp.settings.port = int(os.getenv("MCP_PORT", "18888"))

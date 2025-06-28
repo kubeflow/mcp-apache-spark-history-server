@@ -1,6 +1,5 @@
 import unittest
-from unittest.mock import patch, MagicMock
-
+from unittest.mock import MagicMock, patch
 
 from config import ServerConfig
 from spark_client import SparkRestClient

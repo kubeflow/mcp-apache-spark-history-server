@@ -68,7 +68,9 @@ class SparkRestClient:
         if self.config.auth and self.config.auth.token:
             headers["Authorization"] = f"Bearer {self.config.auth.token}"
 
-        response = requests.get(url, params=params, headers=headers, auth=self.auth, timeout=30)
+        response = requests.get(
+            url, params=params, headers=headers, auth=self.auth, timeout=30
+        )
         response.raise_for_status()
         return response.json()
 

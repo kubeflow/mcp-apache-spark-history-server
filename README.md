@@ -14,7 +14,7 @@ Transform your Spark infrastructure monitoring with AI! This Model Context Proto
 **Spark History Server MCP** bridges AI agents with your existing Apache Spark infrastructure, enabling:
 
 - 🔍 **Query job details** through natural language
-- 📊 **Analyze performance metrics** across applications  
+- 📊 **Analyze performance metrics** across applications
 - 🔄 **Compare multiple jobs** to identify regressions
 - 🚨 **Investigate failures** with detailed error analysis
 - 📈 **Generate insights** from historical execution data
@@ -27,7 +27,7 @@ graph TB
     B --> C[⚡ Spark History MCP Server]
     C --> D[🔥 Your Spark History Server]
     D --> E[📄 Spark Event Logs]
-    
+
     F[🔧 LangChain Agent] --> B
     G[📱 Custom AI App] --> B
     H[🔬 MCP Inspector] --> B
@@ -76,7 +76,7 @@ npx @modelcontextprotocol/inspector uv run main.py
 ### 🔍 Get Spark Application
 ![Get Application](screenshots/get-application.png)
 
-### ⚡ Job Performance Comparison  
+### ⚡ Job Performance Comparison
 ![Job Comparison](screenshots/job-compare.png)
 *Compare performance metrics between different Spark jobs*
 ![alt text](job-compare.png)
@@ -167,7 +167,7 @@ MCP_DEBUG=false
 
 For production AI agent integration, see [`examples/integrations/`](examples/integrations/):
 
-- 🦙 [LlamaIndex](examples/integrations/llamaindex.md) - Vector indexing and search  
+- 🦙 [LlamaIndex](examples/integrations/llamaindex.md) - Vector indexing and search
 - 🔗 [LangGraph](examples/integrations/langgraph.md) - Multi-agent workflows
 
 🧪 **For local testing and development, use [TESTING.md](TESTING.md) with MCP Inspector.**
@@ -180,7 +180,7 @@ For production AI agent integration, see [`examples/integrations/`](examples/int
 
 📊 MCP Actions:
 ✅ Analyze application metrics
-✅ Compare with historical performance  
+✅ Compare with historical performance
 ✅ Identify bottleneck stages
 ✅ Generate optimization recommendations
 ```
@@ -222,7 +222,7 @@ Apache License 2.0 - see [LICENSE](LICENSE) file for details.
 
 <div align="center">
 
-**🔥 Connect your Spark infrastructure to AI agents** 
+**🔥 Connect your Spark infrastructure to AI agents**
 
 [🚀 Get Started](#-quick-start) | [🛠️ View Tools](#%EF%B8%8F-available-tools) | [🧪 Test Now](TESTING.md) | [🤝 Contribute](#-contributing)
 

@@ -82,7 +82,12 @@ class SparkHtmlClient:
 
             # Use provided save_path or generate a random filename
             import tempfile
-            filename = save_path if save_path else f"{tempfile.gettempdir()}/{uuid.uuid4()}.jpg"
+
+            filename = (
+                save_path
+                if save_path
+                else f"{tempfile.gettempdir()}/{uuid.uuid4()}.jpg"
+            )
 
             # Ensure directory exists
             os.makedirs(os.path.dirname(os.path.abspath(filename)), exist_ok=True)

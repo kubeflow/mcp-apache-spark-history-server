@@ -1,13 +1,13 @@
 """Main entry point for Spark History Server MCP."""
 
-import sys
 import logging
+import sys
+
 from app import mcp
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 

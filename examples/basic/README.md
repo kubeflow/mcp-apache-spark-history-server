@@ -10,7 +10,7 @@ This directory contains real Spark application event logs for testing the MCP se
   - **Status**: ✅ Completed Successfully
   - **Use Case**: Basic functionality testing and job comparison baseline
 
-- **`eventlog_v2_spark-110be3a8424d4a2789cb88134418217b/`**  
+- **`eventlog_v2_spark-110be3a8424d4a2789cb88134418217b/`**
   - **Status**: ✅ Completed Successfully
   - **Use Case**: Job comparison testing (compare with bcec39f application)
 

@@ -44,7 +44,7 @@ DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector
 ### Test Applications Available
 Your 3 real Spark applications (all successful):
 - `spark-bcec39f6201b42b9925124595baad260`
-- `spark-110be3a8424d4a2789cb88134418217b` 
+- `spark-110be3a8424d4a2789cb88134418217b`
 - `spark-cc4d115f011443d787f03a71a476a745`
 
 ## 🌐 Using MCP Inspector
@@ -63,14 +63,14 @@ Once the MCP Inspector opens in your browser (http://localhost:6274), you can:
 - **Parameter**: `spark_id` = `spark-cc4d115f011443d787f03a71a476a745`
 - **Expected**: Application info including name, duration, status
 
-#### List All Applications  
+#### List All Applications
 - **Tool**: `list_applications`
 - **Parameters**: (none required)
 - **Expected**: Array of 3 applications
 
 #### Compare Job Performance
 - **Tool**: `compare_job_performance`
-- **Parameters**: 
+- **Parameters**:
   - `spark_id1` = `spark-bcec39f6201b42b9925124595baad260`
   - `spark_id2` = `spark-110be3a8424d4a2789cb88134418217b`
 - **Expected**: Performance comparison metrics
@@ -83,7 +83,7 @@ Tool: list_applications
 Expected: 3 applications returned
 ```
 
-### 2. **Job Environment Comparison** 
+### 2. **Job Environment Comparison**
 ```json
 Tool: compare_job_environments
 Parameters: {
@@ -100,7 +100,7 @@ Expected: Configuration differences including:
 ```json
 Tool: compare_job_performance
 Parameters: {
-  "spark_id1": "spark-bcec39f6201b42b9925124595baad260", 
+  "spark_id1": "spark-bcec39f6201b42b9925124595baad260",
   "spark_id2": "spark-cc4d115f011443d787f03a71a476a745"
 }
 Expected: Performance metrics including:
@@ -137,7 +137,7 @@ Expected: Timeline showing:
 
 - [ ] All 3 applications visible in list_applications
 - [ ] Job comparison tools return detailed analysis
-- [ ] Performance comparison shows meaningful differences  
+- [ ] Performance comparison shows meaningful differences
 - [ ] Bottleneck analysis provides recommendations
 - [ ] No errors in any tool execution
 - [ ] Upstream stage optimizations work (no overwhelming data)
