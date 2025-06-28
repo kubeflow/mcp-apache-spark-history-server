@@ -413,7 +413,9 @@ class TestTools(unittest.TestCase):
 
         # Verify results
         self.assertEqual(result, mock_jobs)
-        mock_client.get_jobs.assert_called_once_with(app_id="spark-app-123")
+        mock_client.get_jobs.assert_called_once_with(
+            app_id="spark-app-123", status=None
+        )
 
     @patch("tools.get_client_or_default")
     def test_get_jobs_with_status_filter(self, mock_get_client):
@@ -460,7 +462,8 @@ class TestTools(unittest.TestCase):
         job3 = MagicMock(spec=JobData)
         job3.status = "FAILED"
 
-        mock_client.get_jobs.return_value = [job1, job2, job3]
+        # Mock client to return only SUCCEEDED job when filtered
+        mock_client.get_jobs.return_value = [job2]  # Only return SUCCEEDED job
         mock_get_client.return_value = mock_client
 
         # Test filtering for SUCCEEDED jobs
@@ -503,7 +506,8 @@ class TestTools(unittest.TestCase):
         stage3 = MagicMock(spec=StageData)
         stage3.status = "FAILED"
 
-        mock_client.get_stages.return_value = [stage1, stage2, stage3]
+        # Mock client to return only COMPLETE stage when filtered
+        mock_client.get_stages.return_value = [stage1]  # Only return COMPLETE stage
         mock_get_client.return_value = mock_client
 
         # Call with status filter
@@ -678,8 +682,8 @@ class TestTools(unittest.TestCase):
         mock_client.get_sql_list.return_value = [sql1, sql2]
         mock_get_client.return_value = mock_client
 
-        # Call the function with include_running=True
-        result = get_slowest_sql_queries("spark-app-123", include_running=True)
+        # Call the function with include_running=True and top_n=2
+        result = get_slowest_sql_queries("spark-app-123", include_running=True, top_n=2)
 
         # Should include both queries
         self.assertEqual(len(result), 2)
