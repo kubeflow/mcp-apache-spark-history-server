@@ -6,6 +6,7 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        exclude: ^deploy/kubernetes/helm/.*\.yaml$
       - id: check-json
       - id: check-toml
       - id: check-merge-conflict
@@ -39,7 +40,7 @@ repos:
     rev: 1.7.10
     hooks:
       - id: bandit
-        args: [-r, ., -f, json, -o, bandit-report.json]
+        args: [--recursive, --format, json, --output, bandit-report.json]
         exclude: ^tests/
 
   # Documentation and markdown

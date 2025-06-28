@@ -3,8 +3,9 @@ import os
 import uuid
 from urllib.parse import urljoin
 
-from config import ServerConfig
 from playwright.async_api import async_playwright
+
+from config import ServerConfig
 
 # HTML client for Spark History Server web interface
 
@@ -80,7 +81,8 @@ class SparkHtmlClient:
             await page.wait_for_timeout(3000)  # 3 seconds
 
             # Use provided save_path or generate a random filename
-            filename = save_path if save_path else f"/tmp/{uuid.uuid4()}.jpg"
+            import tempfile
+            filename = save_path if save_path else f"{tempfile.gettempdir()}/{uuid.uuid4()}.jpg"
 
             # Ensure directory exists
             os.makedirs(os.path.dirname(os.path.abspath(filename)), exist_ok=True)
