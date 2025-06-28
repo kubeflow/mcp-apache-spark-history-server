@@ -7,6 +7,29 @@ on:
     branches: [ main ]
 
 jobs:
+  build:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Install uv
+      uses: astral-sh/setup-uv@v2
+      
+    - name: Set up Python
+      run: uv python install 3.12
+      
+    - name: Install dependencies
+      run: uv sync --group dev
+      
+    - name: Install pre-commit
+      run: uv add --group dev pre-commit
+      
+    - name: Run pre-commit
+      run: uv run pre-commit run --all-files --show-diff-on-failure
+
   test:
     runs-on: ubuntu-latest
     strategy:
