@@ -1,0 +1,250 @@
+version: '3'
+
+output: group
+
+vars:
+  PROJECT_NAME: spark-history-server-mcp
+  PYTHON_VERSION: 3.12
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  check-uv:
+    desc: Check if uv is installed and install if needed
+    cmds:
+      - |
+        if ! command -v uv &> /dev/null; then
+          echo "📦 Installing uv..."
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          echo "✅ uv installed! Please restart your terminal or run: export PATH=\"\$HOME/.local/bin:\$PATH\""
+        else
+          echo "✅ uv is already installed"
+        fi
+
+  install:
+    desc: Install project dependencies
+    deps: [check-uv]
+    cmds:
+      - uv sync --group dev
+      - echo "✅ Dependencies installed!"
+
+  lint:
+    desc: Run code linting with ruff
+    cmds:
+      - uv run ruff check .
+      - echo "✅ Linting completed!"
+
+  format:
+    desc: Format code with ruff
+    cmds:
+      - uv run ruff format .
+      - echo "✅ Code formatted!"
+
+  lint-fix:
+    desc: Run linting with auto-fix
+    cmds:
+      - uv run ruff check --fix .
+      - echo "✅ Linting issues fixed!"
+
+  type-check:
+    desc: Run type checking with mypy
+    cmds:
+      - uv run mypy *.py --ignore-missing-imports
+      - echo "✅ Type checking completed!"
+
+  test:
+    desc: Run tests with pytest
+    cmds:
+      - uv run pytest --cov=. --cov-report=term-missing
+      - echo "✅ Tests completed!"
+
+  test-verbose:
+    desc: Run tests with verbose output
+    cmds:
+      - uv run pytest -v --cov=. --cov-report=term-missing
+
+  security:
+    desc: Run security scan with bandit
+    cmds:
+      - uv run bandit -r . -f json -o bandit-report.json
+      - echo "✅ Security scan completed! Check bandit-report.json"
+
+  pre-commit:
+    desc: Run all pre-commit checks
+    cmds:
+      - pre-commit run --all-files
+      - echo "✅ Pre-commit checks completed!"
+
+  pre-commit-install:
+    desc: Install pre-commit hooks
+    cmds:
+      - pre-commit install
+      - echo "✅ Pre-commit hooks installed!"
+
+  clean:
+    desc: Clean build artifacts and cache
+    cmds:
+      - rm -rf __pycache__/
+      - rm -rf .pytest_cache/
+      - rm -rf .coverage
+      - rm -rf htmlcov/
+      - rm -rf .mypy_cache/
+      - rm -rf bandit-report.json
+      - find . -type f -name "*.pyc" -delete
+      - find . -type d -name "__pycache__" -delete
+      - echo "✅ Cleanup completed!"
+
+  start-spark:
+    desc: Start local Spark History Server for testing
+    cmds:
+      - ./start_local_spark_history.sh
+      - echo "🔥 Spark History Server started!"
+
+  start-spark-bg:
+    desc: Start local Spark History Server in background
+    silent: true
+    cmds:
+      - |
+        echo "Starting Spark History Server in background..."
+        nohup ./start_local_spark_history.sh > spark-history.log 2>&1 &
+        sleep 3
+        echo "✅ Spark History Server started (logs: spark-history.log)"
+
+  start-mcp:
+    desc: Start MCP server
+    cmds:
+      - uv run main.py
+
+  start-mcp-bg:
+    desc: Start MCP server in background
+    silent: true
+    cmds:
+      - |
+        echo "Starting MCP server in background..."
+        nohup uv run main.py > mcp-server.log 2>&1 &
+        sleep 2
+        echo "✅ MCP server started (logs: mcp-server.log)"
+
+  start-inspector:
+    desc: Start MCP Inspector for testing
+    cmds:
+      - echo "Starting MCP Inspector at http://localhost:6274"
+      - echo "Press Ctrl+C to stop the inspector"
+      - DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector uv run main.py
+
+  start-inspector-bg:
+    desc: Start MCP Inspector in background
+    silent: true
+    cmds:
+      - |
+        echo "Starting MCP Inspector in background..."
+        nohup sh -c 'DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector uv run main.py' > inspector.log 2>&1 &
+        sleep 3
+        echo "✅ MCP Inspector started at http://localhost:6274"
+
+  dev-all:
+    desc: Start all development services and prepare for testing
+    silent: true
+    cmds:
+      - task start-spark-bg
+      - task start-mcp-bg
+      - sleep 1
+      - |
+        echo ""
+        echo "🎉 All services are running!"
+        echo ""
+        echo "🌐 Spark History Server: http://localhost:18080"
+        echo "🚀 MCP Server: http://localhost:18888"
+        echo ""
+        echo "Next steps:"
+        echo "  • Run: task start-inspector (foreground, press Ctrl+C to stop)"
+        echo "  • Or: task start-inspector-bg (background)"
+        echo "  • Then open: http://localhost:6274"
+        echo ""
+        echo "To stop all services: task stop-all"
+        echo ""
+
+  stop-all:
+    desc: Stop all background services
+    silent: true
+    cmds:
+      - |
+        echo "Stopping all services..."
+        pkill -f "start_local_spark_history.sh" || true
+        pkill -f "main.py" || true
+        pkill -f "inspector" || true
+        docker stop spark-history-server 2>/dev/null || true
+        sleep 1
+        echo "✅ All services stopped!"
+
+  validate:
+    desc: Run all validation checks (lint, type-check, test)
+    deps: [lint, test]
+    cmds:
+      - echo "✅ All validations passed!"
+
+  ci:
+    desc: Run full CI pipeline locally
+    deps: [lint, test, security]
+    cmds:
+      - echo "✅ CI pipeline completed successfully!"
+
+  dev-setup:
+    desc: Complete development environment setup
+    cmds:
+      - task: install
+      - task: pre-commit-install
+      - echo "🎉 Development environment ready!"
+
+  docker-build:
+    desc: Build Docker image
+    cmds:
+      - docker build -t {{.PROJECT_NAME}}:latest .
+      - echo "🐳 Docker image built!"
+
+  docker-run:
+    desc: Run Docker container
+    cmds:
+      - docker run -p 18888:18888 {{.PROJECT_NAME}}:latest
+      - echo "🐳 Docker container started!"
+
+  helm-install:
+    desc: Install with Helm (local)
+    cmds:
+      - helm install {{.PROJECT_NAME}} ./deploy/kubernetes/helm/{{.PROJECT_NAME}}/
+      - echo "⚓ Helm installation completed!"
+
+  helm-upgrade:
+    desc: Upgrade Helm release
+    cmds:
+      - helm upgrade {{.PROJECT_NAME}} ./deploy/kubernetes/helm/{{.PROJECT_NAME}}/
+      - echo "⚓ Helm upgrade completed!"
+
+  helm-uninstall:
+    desc: Uninstall Helm release
+    cmds:
+      - helm uninstall {{.PROJECT_NAME}}
+      - echo "⚓ Helm uninstallation completed!"
+
+  docs-serve:
+    desc: Serve documentation locally (if using mkdocs)
+    cmds:
+      - echo "📚 Documentation server would start here"
+      - echo "💡 Consider adding mkdocs for documentation"
+
+  benchmark:
+    desc: Run performance benchmarks
+    cmds:
+      - echo "🏃 Running performance benchmarks..."
+      - echo "💡 Add specific benchmark commands here"
+
+  release-check:
+    desc: Pre-release validation
+    deps: [clean, install, ci]
+    cmds:
+      - echo "🚀 Release validation completed!"
+      - echo "✅ Ready for release!"

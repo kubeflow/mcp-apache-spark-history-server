@@ -86,19 +86,42 @@ npx @modelcontextprotocol/inspector
 
 ## 🛠️ Available Tools
 
+### 📊 Application & Job Analysis
 | 🔧 Tool | 📝 Description |
 |---------|----------------|
-| `list_applications` | 📋 List Spark applications with filtering |
-| `get_application_details` | 📊 Get comprehensive application info |
-| `get_application_jobs` | 🔗 List jobs within an application |
-| `get_job_details` | 🔍 Get detailed job information |
-| `get_stage_details` | ⚡ Analyze stage-level metrics |
-| `get_task_details` | 🎯 Examine individual task performance |
-| `get_executor_summary` | 🖥️ Review executor utilization |
-| `compare_job_performance` | 📈 Compare multiple jobs |
-| `get_application_environment` | ⚙️ Review Spark configuration |
-| `get_storage_info` | 💾 Analyze RDD storage usage |
-| `get_sql_execution_details` | 🔎 Deep dive into SQL queries |
+| `get_application` | Get detailed information about a specific Spark application |
+| `get_jobs` | Get a list of all jobs for a Spark application |
+| `get_slowest_jobs` | Get the N slowest jobs for a Spark application |
+
+### ⚡ Stage & Task Analysis
+| 🔧 Tool | 📝 Description |
+|---------|----------------|
+| `get_stages` | Get a list of all stages for a Spark application |
+| `get_slowest_stages` | Get the N slowest stages for a Spark application |
+| `get_stage` | Get information about a specific stage |
+| `get_stage_task_summary` | Get task metrics summary for a specific stage |
+
+### 🖥️ Executor & Resource Analysis
+| 🔧 Tool | 📝 Description |
+|---------|----------------|
+| `get_executors` | Get executor information for an application |
+| `get_executor` | Get information about a specific executor |
+| `get_executor_summary` | Get aggregated metrics across all executors |
+| `get_resource_usage_timeline` | Get resource usage timeline for an application |
+
+### 🔍 SQL & Performance Analysis
+| 🔧 Tool | 📝 Description |
+|---------|----------------|
+| `get_slowest_sql_queries` | Get the top N slowest SQL queries for an application |
+| `get_job_bottlenecks` | Identify performance bottlenecks in a Spark job |
+| `get_environment` | Get comprehensive Spark runtime configuration |
+
+### 📈 Comparison Tools
+| 🔧 Tool | 📝 Description |
+|---------|----------------|
+| `compare_job_performance` | Compare performance metrics between two Spark jobs |
+| `compare_job_environments` | Compare Spark environment configurations between two jobs |
+| `compare_sql_execution_plans` | Compare SQL execution plans between two Spark jobs |
 
 ## 🚀 Production Deployment
 
@@ -122,16 +145,55 @@ helm install spark-history-mcp ./deploy/kubernetes/helm/spark-history-mcp/ \
 ## 🧪 Testing & Development
 
 ### 🔬 Local Development
+
+#### 📋 Prerequisites
+- Install [Task](https://taskfile.dev/installation/) for running development commands:
+  ```bash
+  # macOS
+  brew install go-task
+
+  # Other platforms - see https://taskfile.dev/installation/
+  ```
+
+*Note: uv will be automatically installed when you run `task install`*
+
+#### 🚀 Development Commands
+
+**Quick Setup:**
 ```bash
-# 🔥 Start local Spark History Server with sample data
-./start_local_spark_history.sh
+# 📦 Install dependencies and setup pre-commit hooks
+task install
+task pre-commit-install
 
-# ⚡ Start MCP server
-uv run main.py
+# 🚀 Start services one by one (all in background)
+task start-spark-bg      # Start Spark History Server
+task start-mcp-bg        # Start MCP Server
+task start-inspector-bg  # Start MCP Inspector
 
-# 🌐 Test with MCP Inspector
-npx @modelcontextprotocol/inspector uv run main.py
+# 🌐 Then open http://localhost:6274 in your browser
+
+# 🛑 When done, stop all services
+task stop-all
 ```
+
+**Essential Commands:**
+```bash
+
+# 🛑 Stop all background services
+task stop-all
+
+# 🧪 Run tests and checks
+task test               # Run pytest
+task lint               # Check code style
+task pre-commit         # Run all pre-commit hooks
+task validate           # Run lint + tests
+
+# 🔧 Development utilities
+task format             # Auto-format code
+task clean              # Clean build artifacts
+```
+
+*For complete command reference, see `Taskfile.yml`*
 
 ### 📊 Sample Data
 The repository includes real Spark event logs for testing:
@@ -215,7 +277,7 @@ For production AI agent integration, see [`examples/integrations/`](examples/int
 1. 🍴 Fork the repository
 2. 🌿 Create feature branch: `git checkout -b feature/new-tool`
 3. 🧪 Add tests for new functionality
-4. ✅ Run tests: `uv run pytest`
+4. ✅ Run tests: `task test`
 5. 📤 Submit pull request
 
 ## 📄 License

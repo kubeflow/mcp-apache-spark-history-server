@@ -14,7 +14,7 @@ Brief description of changes and motivation.
 
 ## 🧪 Testing
 <!-- Describe how you tested your changes -->
-- [ ] ✅ All existing tests pass (`uv run pytest`)
+- [ ] ✅ All existing tests pass (`task test`)
 - [ ] 🔬 Tested with MCP Inspector
 - [ ] 📊 Tested with sample Spark data
 - [ ] 🚀 Tested with real Spark History Server (if applicable)
@@ -22,7 +22,7 @@ Brief description of changes and motivation.
 ### 🔬 Test Commands Run
 ```bash
 # Example:
-# uv run pytest test_tools.py -v
+# task test
 # npx @modelcontextprotocol/inspector uv run main.py
 ```
 
