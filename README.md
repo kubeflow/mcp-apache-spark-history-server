@@ -73,15 +73,14 @@ npx @modelcontextprotocol/inspector uv run main.py
 
 ## 📸 Screenshots
 
-### 🔍 Get Spark Applications
-![Get Applications](screenshots/get-applications.png)
-*Browse all available Spark applications with filtering options*
+### 🔍 Get Spark Application
+![Get Application](screenshots/get-application.png)
 
 ### ⚡ Job Performance Comparison  
-![Job Comparison](screenshots/job-comparison.png)
+![Job Comparison](screenshots/job-compare.png)
 *Compare performance metrics between different Spark jobs*
+![alt text](job-compare.png)
 
-> 📝 **Note**: Replace placeholder screenshots with actual MCP Inspector screenshots showing the tool execution and results.
 
 ## 🛠️ Available Tools
 
@@ -102,6 +101,8 @@ npx @modelcontextprotocol/inspector uv run main.py
 ## 🚀 Production Deployment
 
 Deploy using Kubernetes with Helm:
+
+> ⚠️ **Work in Progress**: We are still testing and will soon publish the container image and Helm registry to GitHub for easy deployment.
 
 ```bash
 # 📦 Deploy with Helm
