@@ -1,6 +1,6 @@
 # 🔥 Spark History Server MCP
 
-[![CI](https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/workflows/CI/badge.svg)](https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/actions)
+[![CI](https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/actions)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
