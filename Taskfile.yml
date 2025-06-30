@@ -76,13 +76,13 @@ tasks:
   pre-commit:
     desc: Run all pre-commit checks
     cmds:
-      - pre-commit run --all-files
+      - uv run pre-commit run --all-files
       - echo "✅ Pre-commit checks completed!"
 
   pre-commit-install:
     desc: Install pre-commit hooks
     cmds:
-      - pre-commit install
+      - uv run pre-commit install
       - echo "✅ Pre-commit hooks installed!"
 
   clean:
