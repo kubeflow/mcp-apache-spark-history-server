@@ -45,33 +45,35 @@ graph TB
 - 🐍 Python 3.12+
 - ⚡ [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
 
-### 🚀 Setup
+### 🚀 Setup & Testing
 ```bash
 git clone https://github.com/DeepDiagnostix-AI/spark-history-server-mcp.git
 cd spark-history-server-mcp
-uv sync --frozen
-uv run main.py
+
+# Install Task (if not already installed)
+brew install go-task  # macOS, see https://taskfile.dev/installation/ for others
+
+# Setup and start testing
+task install                    # Install dependencies
+task start-spark-bg            # Start Spark History Server with sample data
+task start-mcp-bg             # Start MCP Server
+task start-inspector-bg       # Start MCP Inspector
+
+# Opens http://localhost:6274 for interactive testing
+# When done: task stop-all
 ```
 
 ### ⚙️ Configuration
-Edit `config.yaml`:
+Edit `config.yaml` for your Spark History Server:
 ```yaml
 servers:
   local:
-    default: true # if server name is not provided in tool calls, this Spark History Server is used
+    default: true
     url: "http://your-spark-history-server:18080"
     auth:  # optional
       username: "user"
       password: "pass"
 ```
-
-### 🔬 Testing with MCP Inspector
-```bash
-# Start MCP server with Inspector (opens browser automatically)
-npx @modelcontextprotocol/inspector
-```
-
-**🌐 Test in Browser** - The MCP Inspector opens at http://localhost:6274 for interactive tool testing!
 
 ## 📸 Screenshots
 
@@ -80,45 +82,37 @@ npx @modelcontextprotocol/inspector
 
 ### ⚡ Job Performance Comparison
 ![Job Comparison](screenshots/job-compare.png)
+*Compare performance metrics between different Spark jobs*
+![alt text](job-compare.png)
+
 
 ## 🛠️ Available Tools
 
-### 📊 Application & Job Analysis
+### Core Analysis Tools (All Integrations)
 | 🔧 Tool | 📝 Description |
 |---------|----------------|
-| `get_application` | Get detailed information about a specific Spark application |
-| `get_jobs` | Get a list of all jobs for a Spark application |
-| `get_slowest_jobs` | Get the N slowest jobs for a Spark application |
+| `get_application` | 📊 Get detailed application information |
+| `get_jobs` | 🔗 List jobs within an application |
+| `compare_job_performance` | 📈 Compare performance between applications |
+| `compare_sql_execution_plans` | 🔎 Compare SQL execution plans |
+| `get_job_bottlenecks` | 🚨 Identify performance bottlenecks |
+| `get_slowest_jobs` | ⏱️ Find slowest jobs in application |
 
-### ⚡ Stage & Task Analysis
+### Additional Tools (LlamaIndex/LangGraph HTTP Mode)
 | 🔧 Tool | 📝 Description |
 |---------|----------------|
-| `get_stages` | Get a list of all stages for a Spark application |
-| `get_slowest_stages` | Get the N slowest stages for a Spark application |
-| `get_stage` | Get information about a specific stage |
-| `get_stage_task_summary` | Get task metrics summary for a specific stage |
-
-### 🖥️ Executor & Resource Analysis
-| 🔧 Tool | 📝 Description |
-|---------|----------------|
-| `get_executors` | Get executor information for an application |
-| `get_executor` | Get information about a specific executor |
-| `get_executor_summary` | Get aggregated metrics across all executors |
-| `get_resource_usage_timeline` | Get resource usage timeline for an application |
-
-### 🔍 SQL & Performance Analysis
-| 🔧 Tool | 📝 Description |
-|---------|----------------|
-| `get_slowest_sql_queries` | Get the top N slowest SQL queries for an application |
-| `get_job_bottlenecks` | Identify performance bottlenecks in a Spark job |
-| `get_environment` | Get comprehensive Spark runtime configuration |
-
-### 📈 Comparison Tools
-| 🔧 Tool | 📝 Description |
-|---------|----------------|
-| `compare_job_performance` | Compare performance metrics between two Spark jobs |
-| `compare_job_environments` | Compare Spark environment configurations between two jobs |
-| `compare_sql_execution_plans` | Compare SQL execution plans between two Spark jobs |
+| `list_applications` | 📋 List Spark applications with filtering |
+| `get_application_details` | 📊 Get comprehensive application info |
+| `get_stage_details` | ⚡ Analyze stage-level metrics |
+| `get_task_details` | 🎯 Examine individual task performance |
+| `get_executor_summary` | 🖥️ Review executor utilization |
+| `get_application_environment` | ⚙️ Review Spark configuration |
+| `get_storage_info` | 💾 Analyze RDD storage usage |
+| `get_sql_execution_details` | 🔎 Deep dive into SQL queries |
+| `get_resource_usage_timeline` | 📈 Resource allocation over time |
+| `compare_job_environments` | ⚙️ Compare Spark configurations |
+| `get_slowest_stages` | ⏱️ Find slowest stages |
+| `get_task_metrics` | 📊 Detailed task performance metrics |
 
 ## 🚀 Production Deployment
 
@@ -139,69 +133,13 @@ helm install spark-history-mcp ./deploy/kubernetes/helm/spark-history-mcp/ \
 
 📚 See [`deploy/kubernetes/helm/`](deploy/kubernetes/helm/) for complete deployment manifests and configuration options.
 
-## 🧪 Testing & Development
-
-### 🔬 Local Development
-
-#### 📋 Prerequisites
-- Install [Task](https://taskfile.dev/installation/) for running development commands:
-  ```bash
-  # macOS
-  brew install go-task
-
-  # Other platforms - see https://taskfile.dev/installation/
-  ```
-
-*Note: uv will be automatically installed when you run `task install`*
-
-#### 🚀 Development Commands
-
-**Quick Setup:**
-```bash
-# 📦 Install dependencies and setup pre-commit hooks
-task install
-task pre-commit-install
-
-# 🚀 Start services one by one (all in background)
-task start-spark-bg      # Start Spark History Server
-task start-mcp-bg        # Start MCP Server
-task start-inspector-bg  # Start MCP Inspector
-
-# 🌐 Then open http://localhost:6274 in your browser
-
-# 🛑 When done, stop all services
-task stop-all
-```
-
-**Essential Commands:**
-```bash
-
-# 🛑 Stop all background services
-task stop-all
-
-# 🧪 Run tests and checks
-task test               # Run pytest
-task lint               # Check code style
-task pre-commit         # Run all pre-commit hooks
-task validate           # Run lint + tests
-
-# 🔧 Development utilities
-task format             # Auto-format code
-task clean              # Clean build artifacts
-```
-
-*For complete command reference, see `Taskfile.yml`*
-
-### 📊 Sample Data
+## 📊 Sample Data
 The repository includes real Spark event logs for testing:
 - `spark-bcec39f6201b42b9925124595baad260` - ✅ Successful ETL job
 - `spark-110be3a8424d4a2789cb88134418217b` - 🔄 Data processing job
 - `spark-cc4d115f011443d787f03a71a476a745` - 📈 Multi-stage analytics job
 
-They are available in the [`examples/basic/events`](examples/basic/events) directory.
-The [`start_local_spark_history.sh`](start_local_spark_history.sh) script automatically makes them available for local testing.
-
-📖 **Complete testing guide**: **[TESTING.md](TESTING.md)**
+📖 **Advanced testing**: **[TESTING.md](TESTING.md)**
 
 ## ⚙️ Configuration
 
@@ -229,12 +167,17 @@ MCP_DEBUG=false
 
 ## 🤖 AI Agent Integration
 
-For production AI agent integration, see [`examples/integrations/`](examples/integrations/):
+### Quick Start Options
 
-- 🦙 [LlamaIndex](examples/integrations/llamaindex.md) - Vector indexing and search
-- 🔗 [LangGraph](examples/integrations/langgraph.md) - Multi-agent workflows
+| Integration | Transport | Entry Point | Best For |
+|-------------|-----------|-------------|----------|
+| **[Local Testing](TESTING.md)** | HTTP | `main.py` | Development, testing tools |
+| **[Claude Desktop](examples/integrations/claude-desktop/)** | STDIO | `main_stdio.py` | Interactive analysis |
+| **[Amazon Q CLI](examples/integrations/amazon-q-cli/)** | STDIO | `main_stdio.py` | Command-line automation |
+| **[LlamaIndex](examples/integrations/llamaindex.md)** | HTTP | `main.py` | Knowledge systems, RAG |
+| **[LangGraph](examples/integrations/langgraph.md)** | HTTP | `main.py` | Multi-agent workflows |
 
-🧪 **For local testing and development, use [TESTING.md](TESTING.md) with MCP Inspector.**
+**Note**: Claude Desktop and Amazon Q CLI use STDIO transport with 6 core tools. LlamaIndex/LangGraph use HTTP transport with 18 comprehensive tools.
 
 ## 🎯 Example Use Cases
 
