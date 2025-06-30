@@ -82,8 +82,6 @@ servers:
 
 ### ⚡ Job Performance Comparison
 ![Job Comparison](screenshots/job-compare.png)
-*Compare performance metrics between different Spark jobs*
-![alt text](job-compare.png)
 
 
 ## 🛠️ Available Tools
