@@ -35,8 +35,9 @@ curl http://localhost:18080/api/v1/applications
 ```bash
 q mcp add \
   --name spark-history-server-mcp \
-  --command /Users/username/.local/bin/uv \
-  --args "run,--project,/Users/username/spark-history-server-mcp,python,main_stdio.py" \
+  --command uv \
+  --args "run,main.py" \
+  --env SHS_MCP_TRANSPORT=stdio \
   --scope workspace
 ```
 

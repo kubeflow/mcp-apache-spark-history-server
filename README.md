@@ -60,8 +60,16 @@ task start-mcp-bg             # Start MCP Server
 task start-inspector-bg       # Start MCP Inspector
 
 # Opens http://localhost:6274 for interactive testing
-# When done: task stop-all
+# When done, run `task stop-all`
 ```
+
+### 📊 Sample Data
+The repository includes real Spark event logs for testing:
+- `spark-bcec39f6201b42b9925124595baad260` - ✅ Successful ETL job
+- `spark-110be3a8424d4a2789cb88134418217b` - 🔄 Data processing job
+- `spark-cc4d115f011443d787f03a71a476a745` - 📈 Multi-stage analytics job
+
+See **[TESTING.md](TESTING.md)** for using them.
 
 ### ⚙️ Configuration
 Edit `config.yaml` for your Spark History Server:
@@ -73,6 +81,11 @@ servers:
     auth:  # optional
       username: "user"
       password: "pass"
+mcp:
+  transports:
+    - streamable-http # streamable-http or stdio.
+  port: "18888"
+  debug: true
 ```
 
 ## 📸 Screenshots
@@ -131,14 +144,6 @@ helm install spark-history-mcp ./deploy/kubernetes/helm/spark-history-mcp/ \
 
 📚 See [`deploy/kubernetes/helm/`](deploy/kubernetes/helm/) for complete deployment manifests and configuration options.
 
-## 📊 Sample Data
-The repository includes real Spark event logs for testing:
-- `spark-bcec39f6201b42b9925124595baad260` - ✅ Successful ETL job
-- `spark-110be3a8424d4a2789cb88134418217b` - 🔄 Data processing job
-- `spark-cc4d115f011443d787f03a71a476a745` - 📈 Multi-stage analytics job
-
-📖 **Advanced testing**: **[TESTING.md](TESTING.md)**
-
 ## ⚙️ Configuration
 
 ### 🌐 Multi-server Setup
@@ -156,26 +161,24 @@ servers:
 
 ### 🔐 Environment Variables
 ```bash
-SPARK_USERNAME=your_username
-SPARK_PASSWORD=your_password
-SPARK_TOKEN=your_jwt_token
-MCP_PORT=18888
-MCP_DEBUG=false
+SHS_SPARK_USERNAME=your_username
+SHS_SPARK_PASSWORD=your_password
+SHS_SPARK_TOKEN=your_jwt_token
+SHS_MCP_PORT=18888
+SHS_MCP_DEBUG=false
 ```
 
 ## 🤖 AI Agent Integration
 
 ### Quick Start Options
 
-| Integration | Transport | Entry Point | Best For |
-|-------------|-----------|-------------|----------|
-| **[Local Testing](TESTING.md)** | HTTP | `main.py` | Development, testing tools |
-| **[Claude Desktop](examples/integrations/claude-desktop/)** | STDIO | `main_stdio.py` | Interactive analysis |
-| **[Amazon Q CLI](examples/integrations/amazon-q-cli/)** | STDIO | `main_stdio.py` | Command-line automation |
-| **[LlamaIndex](examples/integrations/llamaindex.md)** | HTTP | `main.py` | Knowledge systems, RAG |
-| **[LangGraph](examples/integrations/langgraph.md)** | HTTP | `main.py` | Multi-agent workflows |
-
-**Note**: Claude Desktop and Amazon Q CLI use STDIO transport with 6 core tools. LlamaIndex/LangGraph use HTTP transport with 18 comprehensive tools.
+| Integration | Transport | Best For |
+|-------------|-----------|----------|
+| **[Local Testing](TESTING.md)** | HTTP | Development, testing tools |
+| **[Claude Desktop](examples/integrations/claude-desktop/)** | STDIO | Interactive analysis |
+| **[Amazon Q CLI](examples/integrations/amazon-q-cli/)** | STDIO | Command-line automation |
+| **[LlamaIndex](examples/integrations/llamaindex.md)** | HTTP | Knowledge systems, RAG |
+| **[LangGraph](examples/integrations/langgraph.md)** | HTTP | Multi-agent workflows |
 
 ## 🎯 Example Use Cases
 

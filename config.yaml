@@ -4,18 +4,18 @@ servers:
     url: "http://localhost:18080"
     # Optional authentication (can also use environment variables)
     # auth:
-    #   username: "your_username"  # or use SPARK_USERNAME env var
-    #   password: "your_password"  # or use SPARK_PASSWORD env var
-    #   token: "your_token"       # or use SPARK_TOKEN env var
+    #   username: "your_username"  # or use SHS_SPARK_USERNAME env var
+    #   password: "your_password"  # or use SHS_SPARK_PASSWORD env var
+    #   token: "your_token"       # or use SHS_SPARK_TOKEN env var
 
   # Production server example
   # production:
   #   url: "https://spark-history.company.com:18080"
   #   auth:
       # Use environment variables for production
-      # username: ${SPARK_USERNAME}
-      # password: ${SPARK_PASSWORD}
-      # token: ${SPARK_TOKEN}
+      # username: ${SHS_SPARK_USERNAME}
+      # password: ${SHS_SPARK_PASSWORD}
+      # token: ${SHS_SPARK_TOKEN}
 
   # Staging server example
   # staging:
@@ -31,8 +31,8 @@ mcp:
   debug: true
 
 # Environment Variables:
-# SPARK_USERNAME - Default username for authentication
-# SPARK_PASSWORD - Default password for authentication
-# SPARK_TOKEN - Default token for authentication
-# MCP_PORT - Port for MCP server (default: 18888)
-# MCP_DEBUG - Enable debug mode (default: false)
+# SHS_SPARK_USERNAME - Default username for authentication
+# SHS_SPARK_PASSWORD - Default password for authentication
+# SHS_SPARK_TOKEN - Default token for authentication
+# SHS_MCP_PORT - Port for MCP server (default: 18888)
+# SHS_MCP_DEBUG - Enable debug mode (default: false)

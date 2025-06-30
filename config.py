@@ -15,11 +15,11 @@ class AuthConfig(BaseModel):
     def __init__(self, **data):
         # Support environment variables for sensitive data
         if not data.get("username"):
-            data["username"] = os.getenv("SPARK_USERNAME")
+            data["username"] = os.getenv("SHS_SPARK_USERNAME")
         if not data.get("password"):
-            data["password"] = os.getenv("SPARK_PASSWORD")
+            data["password"] = os.getenv("SHS_SPARK_PASSWORD")
         if not data.get("token"):
-            data["token"] = os.getenv("SPARK_TOKEN")
+            data["token"] = os.getenv("SHS_SPARK_TOKEN")
         super().__init__(**data)
 
 
