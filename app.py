@@ -41,12 +41,14 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
 
     yield AppContext(clients=clients, default_client=default_client)
 
+
 def run():
     config = Config.from_file("config.yaml")
 
     mcp.settings.port = int(os.getenv("MCP_PORT", config.mcp.port))
     mcp.settings.debug = bool(os.getenv("MCP_DEBUG", config.mcp.debug))
     mcp.run(transport=config.mcp.transports[0])
+
 
 mcp = FastMCP("Spark Events", lifespan=app_lifespan)
 

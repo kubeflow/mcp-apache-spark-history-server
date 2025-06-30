@@ -1,5 +1,5 @@
 import os
-from typing import Dict, List, Optional, Literal
+from typing import Dict, List, Literal, Optional
 
 import yaml
 from pydantic import BaseModel, Field
@@ -30,15 +30,20 @@ class ServerConfig(BaseModel):
     auth: AuthConfig = Field(None, alias="auth")
     default: bool = Field(None, alias="default")
 
+
 class McpConfig(BaseModel):
     """Configuration for the MCP server."""
-    transports: List[Literal["stdio", "sse", "streamable-http"]] = Field(default_factory=list)
+
+    transports: List[Literal["stdio", "sse", "streamable-http"]] = Field(
+        default_factory=list
+    )
     port: str = Field(default="18888")
     debug: bool = Field(default=False)
 
 
 class Config(BaseModel):
     """Configuration for the Spark client."""
+
     servers: Dict[str, ServerConfig]
     mcp: Optional[McpConfig] = None
 
