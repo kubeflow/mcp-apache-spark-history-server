@@ -24,6 +24,12 @@ servers:
       # username: "staging_user"
       # token: "staging_token"
 
+mcp:
+  transports:
+    - streamable-http # streamable-http or stdio. you can only specify one right now.
+  port: "18888"
+  debug: true
+
 # Environment Variables:
 # SPARK_USERNAME - Default username for authentication
 # SPARK_PASSWORD - Default password for authentication
