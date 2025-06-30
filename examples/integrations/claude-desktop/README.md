@@ -66,6 +66,8 @@ Compare performance between these Spark applications:
 Analyze execution times, bottlenecks, and provide optimization recommendations.
 ```
 
+![claude-desktop](claude-desktop.png)
+
 ## Available Tools
 
 - `get_application` - Application details

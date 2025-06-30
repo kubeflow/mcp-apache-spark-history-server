@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "spark-history-server-mcp": {
+      "command": "/path/to/.local/bin/uv",
+      "args": [
+        "run",
+        "--project",
+        "/path/to/spark-history-server-mcp",
+        "python",
+        "main_stdio.py"
+      ],
+      "env": {},
+      "cwd": "/path/to/spark-history-server-mcp",
+      "timeout": 120000,
+      "disabled": false
+    }
+  }
+}
