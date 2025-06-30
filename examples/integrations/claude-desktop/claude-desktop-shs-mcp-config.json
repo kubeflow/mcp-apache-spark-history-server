@@ -1,0 +1,15 @@
+{
+    "mcpServers": {
+        "spark-history-server-mcp": {
+            "command": "uv",
+            "args": [
+                "run",
+                "--project",
+                "/path/to/spark-history-server-mcp",
+                "python",
+                "main_stdio.py"
+            ],
+            "cwd": "/path/to/spark-history-server-mcp"
+        }
+    }
+}
