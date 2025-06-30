@@ -2,32 +2,44 @@
 
 ## 🧪 Quick Test with MCP Inspector (5 minutes)
 
+**Use this for**: Local development, testing tools, understanding capabilities
+
 ### Prerequisites
 - Docker must be running (for Spark History Server)
 - Node.js installed (for MCP Inspector)
+- Python 3.12+ with uv package manager
 - Run commands from project root directory
 
-### Setup (2 terminals)
-
+### Setup Repository
 ```bash
-# Terminal 1: Start Spark History Server with sample data
-./start_local_spark_history.sh
+git clone https://github.com/DeepDiagnostix-AI/spark-history-server-mcp.git
+cd spark-history-server-mcp
 
-# Terminal 2: Start MCP server with Inspector
-npx @modelcontextprotocol/inspector uv run main.py
-# This will open http://localhost:6274 in your browser
+# Install Task (if not already installed)
+brew install go-task  # macOS
+# or see https://taskfile.dev/installation/ for other platforms
+
+# Setup dependencies
+task install
 ```
 
-### Alternative: Start MCP Server Separately
+### Start Testing
+
+```bash
+# One-command setup (recommended)
+task start-spark-bg && task start-mcp-bg && task start-inspector-bg
+
+# Opens http://localhost:6274 automatically in your browser
+# When done: task stop-all
+```
+
+**Alternative** (if you prefer manual control):
 ```bash
 # Terminal 1: Start Spark History Server
-./start_local_spark_history.sh
+task start-spark
 
-# Terminal 2: Start MCP Server
-uv run main.py
-
-# Terminal 3: Start MCP Inspector (connects to existing MCP server)
-DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector
+# Terminal 2: Start MCP server with Inspector
+task start-inspector
 ```
 
 #### Expected Output from Terminal 1:
@@ -43,9 +55,11 @@ DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector
 
 ### Test Applications Available
 Your 3 real Spark applications (all successful):
-- `spark-bcec39f6201b42b9925124595baad260`
-- `spark-110be3a8424d4a2789cb88134418217b`
-- `spark-cc4d115f011443d787f03a71a476a745`
+- `spark-bcec39f6201b42b9925124595baad260` - ETL job (104K events)
+- `spark-110be3a8424d4a2789cb88134418217b` - Data processing job (512K events)
+- `spark-cc4d115f011443d787f03a71a476a745` - Multi-stage analytics job (704K events)
+
+**Note**: Testing uses HTTP transport with `main.py` providing access to all 18 tools.
 
 ## 🌐 Using MCP Inspector
 
@@ -75,63 +89,6 @@ Once the MCP Inspector opens in your browser (http://localhost:6274), you can:
   - `spark_id2` = `spark-110be3a8424d4a2789cb88134418217b`
 - **Expected**: Performance comparison metrics
 
-## 🔬 Detailed Test Cases
-
-### 1. **Basic Connectivity**
-```json
-Tool: list_applications
-Expected: 3 applications returned
-```
-
-### 2. **Job Environment Comparison**
-```json
-Tool: compare_job_environments
-Parameters: {
-  "spark_id1": "spark-bcec39f6201b42b9925124595baad260",
-  "spark_id2": "spark-110be3a8424d4a2789cb88134418217b"
-}
-Expected: Configuration differences including:
-- Runtime comparison (Java/Scala versions)
-- Spark property differences
-- System property differences
-```
-
-### 3. **Performance Comparison**
-```json
-Tool: compare_job_performance
-Parameters: {
-  "spark_id1": "spark-bcec39f6201b42b9925124595baad260",
-  "spark_id2": "spark-cc4d115f011443d787f03a71a476a745"
-}
-Expected: Performance metrics including:
-- Resource allocation comparison
-- Executor metrics comparison
-- Job performance ratios
-```
-
-### 4. **Bottleneck Analysis**
-```json
-Tool: get_job_bottlenecks
-Parameters: {
-  "spark_id": "spark-cc4d115f011443d787f03a71a476a745"
-}
-Expected: Performance analysis with:
-- Slowest stages identification
-- Resource bottlenecks
-- Optimization recommendations
-```
-
-### 5. **Resource Timeline**
-```json
-Tool: get_resource_usage_timeline
-Parameters: {
-  "spark_id": "spark-bcec39f6201b42b9925124595baad260"
-}
-Expected: Timeline showing:
-- Executor addition/removal events
-- Stage execution timeline
-- Resource utilization over time
-```
 
 ## ✅ Success Criteria
 
