@@ -100,6 +100,7 @@ tasks:
 
   start-spark:
     desc: Start local Spark History Server for testing
+    interactive: true
     cmds:
       - ./start_local_spark_history.sh
       - echo "🔥 Spark History Server started!"
@@ -116,6 +117,7 @@ tasks:
 
   start-mcp:
     desc: Start MCP server
+    interactive: true
     cmds:
       - uv run main.py
 
@@ -131,6 +133,7 @@ tasks:
 
   start-inspector:
     desc: Start MCP Inspector for testing
+    interactive: true
     cmds:
       - echo "Starting MCP Inspector at http://localhost:6274"
       - echo "Press Ctrl+C to stop the inspector"
