@@ -12,6 +12,7 @@ USAGE:
 OPTIONS:
     -h, --help      Show this help message
     --dry-run       Validate prerequisites without starting the server
+    --interactive   Run Docker container in interactive mode
 
 DESCRIPTION:
     This script starts a local Spark History Server using Docker for testing
@@ -37,6 +38,7 @@ EOF
 
 # Parse command line arguments
 DRY_RUN=false
+INTERACTIVE=false
 for arg in "$@"; do
     case $arg in
         -h|--help)
@@ -45,6 +47,10 @@ for arg in "$@"; do
             ;;
         --dry-run)
             DRY_RUN=true
+            shift
+            ;;
+        --interactive)
+            INTERACTIVE=true
             shift
             ;;
         *)
@@ -141,17 +147,35 @@ fi
 
 # Start Spark History Server with proper container name and error handling
 echo "🐳 Starting Docker container..."
-docker run -it \
-  --name spark-history-server \
-  --rm \
-  -v "$(pwd)/examples/basic:/mnt/data" \
-  -p 18080:18080 \
-  docker.io/apache/spark:3.5.5 \
-  /opt/java/openjdk/bin/java \
-  -cp '/opt/spark/conf:/opt/spark/jars/*' \
-  -Xmx1g \
-  org.apache.spark.deploy.history.HistoryServer \
-  --properties-file /mnt/data/history-server.conf
+if [ "$INTERACTIVE" = true ]; then
+  docker run -it \
+    --name spark-history-server \
+    --rm \
+    -v "$(pwd)/examples/basic:/mnt/data" \
+    -p 18080:18080 \
+    docker.io/apache/spark:3.5.5 \
+    /opt/java/openjdk/bin/java \
+    -cp '/opt/spark/conf:/opt/spark/jars/*' \
+    -Xmx1g \
+    org.apache.spark.deploy.history.HistoryServer \
+    --properties-file /mnt/data/history-server.conf
+else
+  docker run \
+    --name spark-history-server \
+    --rm \
+    -v "$(pwd)/examples/basic:/mnt/data" \
+    -p 18080:18080 \
+    docker.io/apache/spark:3.5.5 \
+    /opt/java/openjdk/bin/java \
+    -cp '/opt/spark/conf:/opt/spark/jars/*' \
+    -Xmx1g \
+    org.apache.spark.deploy.history.HistoryServer \
+    --properties-file /mnt/data/history-server.conf
+
+  echo "Spark History Server started in detached mode"
+  echo "To view logs: docker logs -f spark-history-server"
+  echo "To stop: docker stop spark-history-server"
+fi
 
 echo ""
 echo "🛑 Spark History Server stopped."

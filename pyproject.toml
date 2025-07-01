@@ -64,6 +64,7 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "--cov=. --cov-report=term-missing"
 pythonpath = ["."]
+asyncio_mode = "auto"
 
 [dependency-groups]
 dev = [
@@ -73,4 +74,5 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.7.0",
     "pre-commit>=3.0.0",
+    "pytest-asyncio>=1.0.0",
 ]

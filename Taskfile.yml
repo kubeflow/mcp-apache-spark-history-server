@@ -59,9 +59,34 @@ tasks:
   test:
     desc: Run tests with pytest
     cmds:
-      - uv run pytest --cov=. -cov-report=xml --cov-report=term-missing
+      - uv run pytest --cov=. -cov-report=xml --cov-report=term-missing .
       - echo "✅ Tests completed!"
 
+  test-e2e:
+    desc: Run end-to-end tests with Spark and MCP servers
+    cmds:
+      - echo "🧪 Starting end-to-end tests..."
+      - task: start-spark-bg
+      - task: start-mcp-bg
+      - |
+        echo "Waiting for services to be available..."
+        # Wait for Spark History Server on port 18080
+        while ! curl -s http://localhost:18080 > /dev/null; do
+          echo "Waiting for Spark History Server..."
+          sleep 1
+        done
+        echo "✅ Spark History Server is available"
+
+        # Wait for MCP Server on port 18888
+        while ! curl -s http://localhost:18888 > /dev/null; do
+          echo "Waiting for MCP Server..."
+          sleep 1
+        done
+        echo "✅ MCP Server is available"
+      - |
+        echo "Running e2e tests..."
+        uv run pytest tests/e2e.py -v
+      - task: stop-all
   test-verbose:
     desc: Run tests with verbose output
     cmds:
