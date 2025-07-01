@@ -41,9 +41,21 @@ q mcp add \
   --scope workspace
 ```
 
-**⚠️ Important**:
+<details>
+<summary><strong>⚠️ Important</strong></summary>
+
+- The command above adds q configuration in this repository root. i.e. `.amazonq/mcp.json`
+- If you want to use it outside of this repository, you need to run:
+  ```bash
+  q mcp add \
+  --name spark-history-server-mcp \
+  --command /Users/username/.local/bin/uv \
+  --args "run,--project,/Users/username/spark-history-server-mcp,python,main_stdio.py" \
+  --scope workspace
+  ```
 - Replace `/Users/username/.local/bin/uv` with output of `which uv`
 - Replace `/Users/username/spark-history-server-mcp` with your actual repository path
+</details>
 
 2. **Test connection**: `q chat --trust-all-tools`
 
