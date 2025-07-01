@@ -18,17 +18,11 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v2
 
-    - name: Set up Python
-      run: uv python install 3.12
-
-    - name: Install dependencies
-      run: uv sync --group dev
-
-    - name: Install pre-commit
-      run: uv add --group dev pre-commit
+    - name: Install Task
+      uses: arduino/setup-task@v2
 
     - name: Run pre-commit
-      run: uv run pre-commit run --all-files --show-diff-on-failure
+      run: task pre-commit
 
   test:
     runs-on: ubuntu-latest
@@ -43,21 +37,21 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v2
 
+    - name: Install Task
+      uses: arduino/setup-task@v2
+
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
 
-    - name: Install dependencies
-      run: uv sync --group dev
-
     - name: Lint with ruff
-      run: uv run ruff check .
+      run: task lint
 
     # TODO: Re-enable mypy after fixing type annotations
     # - name: Type check with mypy
     #   run: uv run mypy *.py --ignore-missing-imports
 
-    - name: Test with pytest
-      run: uv run pytest --cov=. --cov-report=xml --cov-report=term-missing
+    - name: unit test
+      run: task test
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
