@@ -12,6 +12,8 @@ vars:
   KIND_VERSION: v0.29.0
   KIND_CLUSTER_NAME: spark-history-server-mcp
   KUBECONFIG_PATH: ./kubeconfig.yaml
+  SHS_HELM_VERSION: 1.5.0
+  SHS_HELM_URL: https://kubedai.github.io/spark-history-server
 
 run: once
 
@@ -300,12 +302,15 @@ tasks:
             nodeRegistration:
               kubeletExtraArgs:
                 node-labels: "ingress-ready=true"
+          extraMounts:
+          - hostPath: examples/basic/events
+            containerPath: /mnt/events
           extraPortMappings:
-          - containerPort: 80
-            hostPort: 80
+          - containerPort: 31888
+            hostPort: 18888
             protocol: TCP
-          - containerPort: 443
-            hostPort: 443
+          - containerPort: 31808
+            hostPort: 18080
             protocol: TCP
         EOF
       - echo "Kind cluster '{{.KIND_CLUSTER_NAME}}' created with kubeconfig at {{.KUBECONFIG_PATH}}"
@@ -316,7 +321,7 @@ tasks:
       - "{{.BIN_DIR}}/kind get clusters | grep -q '^{{.KIND_CLUSTER_NAME}}$'"
 
   install-chart:
-    desc: Install the local Spark History Server MCP Helm chart to local Kind cluster
+    desc: Install the local Spark History Server MCP Helm chart to local Kind cluster with locally built image.
     deps: [install-helm, create-cluster, docker-load]
     vars:
       RELEASE_NAME: spark-history-server-mcp
@@ -342,16 +347,17 @@ tasks:
       NAMESPACE: default
       VALUES_FILE: '{{.VALUES_FILE | default "tests/helm-values/local-shs.yaml"}}'
     cmds:
+      - KUBECONFIG={{.KUBECONFIG_PATH}} kubectl apply -f tests/helm-values/example-event-volume.yaml
       - |
+        KUBECONFIG={{.KUBECONFIG_PATH}} {{.BIN_DIR}}/helm repo add spark-history-server {{.SHS_HELM_URL}}
+        KUBECONFIG={{.KUBECONFIG_PATH}} {{.BIN_DIR}}/helm repo update
         KUBECONFIG={{.KUBECONFIG_PATH}} {{.BIN_DIR}}/helm upgrade --install {{.RELEASE_NAME}} \
           --namespace {{.NAMESPACE}} \
           --create-namespace \
+          --version {{.SHS_HELM_VERSION}} \
           -f {{.VALUES_FILE}} \
-          ./deploy/kubernetes/helm/spark-history-mcp/
-      - echo "⚓ Helm installation completed!"
-      - echo "📋 To connect to your cluster:"
-      - echo "   export KUBECONFIG={{.KUBECONFIG_PATH}}"
-      - echo "   kubectl get pods -n {{.NAMESPACE}}"
+          spark-history-server/spark-history-server
+      - echo "⚓ Spark History Server chart installed!"
 
   docs-serve:
     desc: Serve documentation locally (if using mkdocs)

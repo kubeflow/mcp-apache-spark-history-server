@@ -1,2 +1,33 @@
 logStore:
   type: "local"
+  local:
+    directory: "/mnt/events"
+
+historyServer:
+  store:
+    maxDiskUsage: 1g
+    hybridStore:
+      enabled: true
+
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - spark-history-server-mcp-control-plane
+
+volumes:
+  - name: example-events
+    persistentVolumeClaim:
+      claimName: example-events
+
+volumeMounts:
+  - mountPath: /mnt/events/
+    name: example-events
+
+service:
+  type: NodePort
+  nodePort: 31808 # must match kind hostPort

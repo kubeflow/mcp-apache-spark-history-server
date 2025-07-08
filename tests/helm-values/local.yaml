@@ -30,3 +30,14 @@ startupProbe:
   periodSeconds: 5
   timeoutSeconds: 3
   failureThreshold: 12
+
+service:
+  type: NodePort
+  nodePort: 31888 # must match kind hostPort
+
+# MCP server configuration
+config:
+  servers:
+    default:
+      default: true
+      url: "http://spark-history-server-0.spark-history-server.default.svc.cluster.local:18080"
