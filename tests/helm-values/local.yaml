@@ -1,0 +1,32 @@
+image:
+  repository: spark-history-server-mcp
+  pullPolicy: IfNotPresent
+  tag: latest
+replicaCount: 1
+
+livenessProbe:
+  httpGet: null
+  tcpSocket:
+    port: 18888
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet: null
+  tcpSocket:
+    port: 18888
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+startupProbe:
+  httpGet: null
+  tcpSocket:
+    port: 18888
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 12

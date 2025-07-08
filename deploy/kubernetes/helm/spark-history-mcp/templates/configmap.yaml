@@ -7,6 +7,12 @@ metadata:
     {{- include "spark-history-mcp.labels" . | nindent 4 }}
 data:
   config.yaml: |
+    mcp:
+      transports:
+        - streamable-http
+      port: "{{ .Values.config.port }}"
+      debug: {{ .Values.config.debug }}
+      address: 0.0.0.0
     servers:
       {{- range $name, $server := .Values.config.servers }}
       {{ $name }}:

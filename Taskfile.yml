@@ -5,13 +5,17 @@ output: group
 vars:
   PROJECT_NAME: spark-history-server-mcp
   PYTHON_VERSION: 3.12
+  OS: '{{OS}}'
+  ARCH: '{{ARCH}}'
+  BIN_DIR: .bin
+  HELM_VERSION: v3.18.3
+  KIND_VERSION: v0.29.0
+  KIND_CLUSTER_NAME: spark-history-server-mcp
+  KUBECONFIG_PATH: ./kubeconfig.yaml
+
+run: once
 
 tasks:
-  default:
-    desc: Show available tasks
-    cmds:
-      - task --list
-
   check-uv:
     desc: Check if uv is installed and install if needed
     cmds:
@@ -31,6 +35,37 @@ tasks:
     cmds:
       - uv sync --group dev
       - echo "✅ Dependencies installed!"
+
+  install-helm:
+    desc: Install Helm binary to local .bin directory
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-{{.HELM_VERSION}}-{{OS}}-{{ARCH}}.tar.gz
+      - tar -zxvf helm.tar.gz
+      - mv {{OS}}-{{ARCH}}/helm {{.BIN_DIR}}/
+      - rm -rf helm.tar.gz {{OS}}-{{ARCH}}
+      - echo "Helm {{.HELM_VERSION}} installed to {{.BIN_DIR}}/helm"
+    status:
+      - test -f {{.BIN_DIR}}/helm
+
+  install-kind:
+    desc: Install Kind binary to local .bin directory
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - curl -fsSL -o {{.BIN_DIR}}/kind https://kind.sigs.k8s.io/dl/{{.KIND_VERSION}}/kind-{{OS}}-{{ARCH}}
+      - chmod +x {{.BIN_DIR}}/kind
+      - echo "Kind {{.KIND_VERSION}} installed to {{.BIN_DIR}}/kind"
+    status:
+      - test -f {{.BIN_DIR}}/kind
+
+  delete-cluster:
+    desc: Delete the Kind cluster
+    deps: [install-helm]
+    cmds:
+      - "{{.BIN_DIR}}/kind delete cluster --name {{.KIND_CLUSTER_NAME}}"
+      - echo "🗑️ Kind cluster '{{.KIND_CLUSTER_NAME}}' deleted"
+    status:
+      - "! {{.BIN_DIR}}/kind get clusters 2>/dev/null | grep -q '^{{.KIND_CLUSTER_NAME}}$'"
 
   lint:
     desc: Run code linting with ruff
@@ -240,23 +275,82 @@ tasks:
       - docker run -p 18888:18888 {{.PROJECT_NAME}}:latest
       - echo "🐳 Docker container started!"
 
-  helm-install:
-    desc: Install with Helm (local)
+  docker-load:
+    desc: Load Docker image into Kind cluster
+    deps: [docker-build, create-cluster]
     cmds:
-      - helm install {{.PROJECT_NAME}} ./deploy/kubernetes/helm/{{.PROJECT_NAME}}/
+      - "{{.BIN_DIR}}/kind load docker-image {{.PROJECT_NAME}}:latest --name {{.KIND_CLUSTER_NAME}}"
+      - echo "🐳 Docker image loaded into Kind cluster '{{.KIND_CLUSTER_NAME}}'"
+
+  create-cluster:
+    desc: Create a Kind cluster for spark-history-server-mcp
+    deps: [install-kind, install-helm]
+    interactive: true
+    cmds:
+      - |
+        {{.BIN_DIR}}/kind create cluster --name {{.KIND_CLUSTER_NAME}} --kubeconfig {{.KUBECONFIG_PATH}} --config - <<EOF
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+          kubeadmConfigPatches:
+          - |
+            kind: InitConfiguration
+            nodeRegistration:
+              kubeletExtraArgs:
+                node-labels: "ingress-ready=true"
+          extraPortMappings:
+          - containerPort: 80
+            hostPort: 80
+            protocol: TCP
+          - containerPort: 443
+            hostPort: 443
+            protocol: TCP
+        EOF
+      - echo "Kind cluster '{{.KIND_CLUSTER_NAME}}' created with kubeconfig at {{.KUBECONFIG_PATH}}"
+      - echo "📋 To connect to your cluster:"
+      - echo "   export KUBECONFIG={{.KUBECONFIG_PATH}}"
+      - echo "   kubectl get pods -n {{.NAMESPACE}}"
+    status:
+      - "{{.BIN_DIR}}/kind get clusters | grep -q '^{{.KIND_CLUSTER_NAME}}$'"
+
+  install-chart:
+    desc: Install the local Spark History Server MCP Helm chart to local Kind cluster
+    deps: [install-helm, create-cluster, docker-load]
+    vars:
+      RELEASE_NAME: spark-history-server-mcp
+      NAMESPACE: default
+      VALUES_FILE: '{{.VALUES_FILE | default "tests/helm-values/local.yaml"}}'
+    cmds:
+      - |
+        KUBECONFIG={{.KUBECONFIG_PATH}} {{.BIN_DIR}}/helm upgrade --install {{.RELEASE_NAME}} \
+          --namespace {{.NAMESPACE}} \
+          --create-namespace \
+          -f {{.VALUES_FILE}} \
+          ./deploy/kubernetes/helm/spark-history-mcp/
       - echo "⚓ Helm installation completed!"
+      - echo "📋 To connect to your cluster:"
+      - echo "   export KUBECONFIG={{.KUBECONFIG_PATH}}"
+      - echo "   kubectl get pods -n {{.NAMESPACE}}"
 
-  helm-upgrade:
-    desc: Upgrade Helm release
+  install-shs-chart:
+    desc: Install the local Spark History Server MCP Helm chart to local Kind cluster
+    deps: [install-helm, create-cluster]
+    vars:
+      RELEASE_NAME: spark-history-server
+      NAMESPACE: default
+      VALUES_FILE: '{{.VALUES_FILE | default "tests/helm-values/local-shs.yaml"}}'
     cmds:
-      - helm upgrade {{.PROJECT_NAME}} ./deploy/kubernetes/helm/{{.PROJECT_NAME}}/
-      - echo "⚓ Helm upgrade completed!"
-
-  helm-uninstall:
-    desc: Uninstall Helm release
-    cmds:
-      - helm uninstall {{.PROJECT_NAME}}
-      - echo "⚓ Helm uninstallation completed!"
+      - |
+        KUBECONFIG={{.KUBECONFIG_PATH}} {{.BIN_DIR}}/helm upgrade --install {{.RELEASE_NAME}} \
+          --namespace {{.NAMESPACE}} \
+          --create-namespace \
+          -f {{.VALUES_FILE}} \
+          ./deploy/kubernetes/helm/spark-history-mcp/
+      - echo "⚓ Helm installation completed!"
+      - echo "📋 To connect to your cluster:"
+      - echo "   export KUBECONFIG={{.KUBECONFIG_PATH}}"
+      - echo "   kubectl get pods -n {{.NAMESPACE}}"
 
   docs-serve:
     desc: Serve documentation locally (if using mkdocs)
