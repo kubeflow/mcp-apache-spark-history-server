@@ -1,0 +1,63 @@
+suite: test service
+templates:
+  - service.yaml
+tests:
+  - it: should create a service with the correct name
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-spark-history-mcp
+      - equal:
+          path: metadata.namespace
+          value: NAMESPACE
+
+  - it: should set the correct service type
+    set:
+      service.type: ClusterIP
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+
+  - it: should set the correct port configuration
+    set:
+      service.port: 8080
+      service.targetPort: http
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 8080
+      - equal:
+          path: spec.ports[0].targetPort
+          value: http
+      - equal:
+          path: spec.ports[0].protocol
+          value: TCP
+      - equal:
+          path: spec.ports[0].name
+          value: http
+
+  - it: should set nodePort when service type is NodePort
+    set:
+      service.type: NodePort
+      service.nodePort: 31888
+    asserts:
+      - equal:
+          path: spec.type
+          value: NodePort
+      - equal:
+          path: spec.ports[0].nodePort
+          value: 31888
+
+  - it: should not set nodePort when service type is ClusterIP
+    set:
+      service.type: ClusterIP
+      service.nodePort: 31888
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - notExists:
+          path: spec.ports[0].nodePort
