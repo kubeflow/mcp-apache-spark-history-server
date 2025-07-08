@@ -166,6 +166,7 @@ SHS_SPARK_PASSWORD=your_password
 SHS_SPARK_TOKEN=your_jwt_token
 SHS_MCP_PORT=18888
 SHS_MCP_DEBUG=false
+HS_MCP_ADDRESS=0.0.0.0
 ```
 
 ## 🤖 AI Agent Integration
