@@ -99,10 +99,9 @@ tasks:
 
   test-e2e:
     desc: Run end-to-end tests with Spark and MCP servers
+    deps: [start-spark-bg, start-mcp-bg]
     cmds:
       - echo "🧪 Starting end-to-end tests..."
-      - task: start-spark-bg
-      - task: start-mcp-bg
       - |
         echo "Waiting for services to be available..."
         # Wait for Spark History Server on port 18080
@@ -187,9 +186,11 @@ tasks:
     cmds:
       - |
         echo "Starting MCP server in background..."
-        nohup uv run main.py > mcp-server.log 2>&1 &
+        bash -c 'nohup uv run main.py > mcp-server.log 2>&1 &'
         sleep 2
         echo "✅ MCP server started (logs: mcp-server.log)"
+    status:
+      - pgrep -f "main.py" > /dev/null
 
   start-inspector:
     desc: Start MCP Inspector for testing
