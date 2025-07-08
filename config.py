@@ -37,6 +37,7 @@ class McpConfig(BaseModel):
     transports: List[Literal["stdio", "sse", "streamable-http"]] = Field(
         default_factory=list
     )
+    address: str = Field(default="localhost")
     port: str = Field(default="18888")
     debug: bool = Field(default=False)
 
