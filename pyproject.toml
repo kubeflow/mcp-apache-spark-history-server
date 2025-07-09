@@ -20,10 +20,10 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Information Analysis",
 ]
 dependencies = [
-    "mcp[cli]>=1.9.4",
-    "pyyaml>=6.0.2",
-    "requests>=2.32.4",
-    "pydantic>=2.0.0",
+    "mcp[cli]~=1.9",
+    "pyyaml~=6.0",
+    "requests~=2.32",
+    "pydantic~=2.0",
 ]
 
 # Development dependencies moved to [dependency-groups] section below
@@ -68,11 +68,11 @@ asyncio_mode = "auto"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.4.1",
-    "pytest-cov>=4.0.0",
-    "black>=23.0.0",
-    "ruff>=0.1.0",
-    "mypy>=1.7.0",
-    "pre-commit>=3.0.0",
-    "pytest-asyncio>=1.0.0",
+    "pytest~=8.4",
+    "pytest-cov~=4.0",
+    "black~=23.0",
+    "ruff~=0.1",
+    "mypy~=1.7",
+    "pre-commit~=3.0",
+    "pytest-asyncio~=1.0",
 ]
