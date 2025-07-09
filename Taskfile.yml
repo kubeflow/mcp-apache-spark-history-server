@@ -16,6 +16,7 @@ vars:
   SHS_HELM_URL: https://kubedai.github.io/spark-history-server
 
 run: once
+silent: true
 
 tasks:
   check-uv:
@@ -168,7 +169,6 @@ tasks:
 
   start-spark-bg:
     desc: Start local Spark History Server in background
-    silent: true
     cmds:
       - |
         echo "Starting Spark History Server in background..."
@@ -184,7 +184,6 @@ tasks:
 
   start-mcp-bg:
     desc: Start MCP server in background
-    silent: true
     cmds:
       - |
         echo "Starting MCP server in background..."
@@ -204,7 +203,6 @@ tasks:
 
   start-inspector-bg:
     desc: Start MCP Inspector in background
-    silent: true
     cmds:
       - |
         echo "Starting MCP Inspector in background..."
@@ -214,7 +212,6 @@ tasks:
 
   dev-all:
     desc: Start all development services and prepare for testing
-    silent: true
     cmds:
       - task start-spark-bg
       - task start-mcp-bg
@@ -236,7 +233,6 @@ tasks:
 
   stop-all:
     desc: Stop all background services
-    silent: true
     cmds:
       - |
         echo "Stopping all services..."
@@ -312,6 +308,12 @@ tasks:
           - containerPort: 31808
             hostPort: 18080
             protocol: TCP
+          - containerPort: 31624
+            hostPort: 6274
+            protocol: TCP
+          - containerPort: 31627
+            hostPort: 6277
+            protocol: TCP
         EOF
       - echo "Kind cluster '{{.KIND_CLUSTER_NAME}}' created with kubeconfig at {{.KUBECONFIG_PATH}}"
       - echo "📋 To connect to your cluster:"
@@ -347,7 +349,7 @@ tasks:
       NAMESPACE: default
       VALUES_FILE: '{{.VALUES_FILE | default "tests/helm-values/local-shs.yaml"}}'
     cmds:
-      - KUBECONFIG={{.KUBECONFIG_PATH}} kubectl apply -f tests/helm-values/example-event-volume.yaml
+      - KUBECONFIG={{.KUBECONFIG_PATH}} kubectl apply -f tests/manifests/example-event-volume.yaml
       - |
         KUBECONFIG={{.KUBECONFIG_PATH}} {{.BIN_DIR}}/helm repo add spark-history-server {{.SHS_HELM_URL}}
         KUBECONFIG={{.KUBECONFIG_PATH}} {{.BIN_DIR}}/helm repo update
@@ -358,6 +360,16 @@ tasks:
           -f {{.VALUES_FILE}} \
           spark-history-server/spark-history-server
       - echo "⚓ Spark History Server chart installed!"
+
+  install-inspector:
+    desc: Install MCP inspector to local Kind cluster
+    deps: [install-helm, create-cluster]
+    cmds:
+      - KUBECONFIG={{.KUBECONFIG_PATH}} kubectl apply -f tests/manifests/mcp-inspector.yaml
+
+  dev-all-kubernetes:
+    desc: Start all development services and prepare for testing in a local Kubernetes cluster
+    deps: [install-chart, install-shs-chart, install-inspector]
 
   docs-serve:
     desc: Serve documentation locally (if using mkdocs)

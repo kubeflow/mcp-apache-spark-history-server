@@ -41,3 +41,17 @@ volumeMounts:
 service:
   type: NodePort
   nodePort: 31808 # must match kind hostPort
+
+livenessProbe:
+  initialDelaySeconds: 30
+  timeoutSeconds: 3
+  periodSeconds: 5
+  successThreshold: 1
+  failureThreshold: 10
+
+readinessProbe:
+  initialDelaySeconds: 30
+  timeoutSeconds: 3
+  periodSeconds: 5
+  successThreshold: 1
+  failureThreshold: 10

@@ -1,0 +1,58 @@
+# configurations in this file are for LOCAL ENVIRONMENTS ONLY. DO NOT use this for non-local environments.
+# MCP Inspector strongly recommends binding to localhost only with authentication enabled.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mcp-inspector
+  labels:
+    app: mcp-inspector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mcp-inspector
+  template:
+    metadata:
+      labels:
+        app: mcp-inspector
+    spec:
+      containers:
+      - name: mcp-inspector
+        image: ghcr.io/modelcontextprotocol/inspector:0.16.0
+        env:
+        - name: HOST
+          value: "0.0.0.0"
+        - name: DANGEROUSLY_OMIT_AUTH
+          value: "true"
+        ports:
+        - containerPort: 6274
+          name: http
+        - containerPort: 6277
+          name: http-proxy
+        resources:
+          limits:
+            cpu: "1"
+            memory: "512Mi"
+          requests:
+            cpu: "0.5"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mcp-inspector
+  labels:
+    app: mcp-inspector
+spec:
+  selector:
+    app: mcp-inspector
+  ports:
+  - port: 6274
+    nodePort: 31624 # must match kind hostPort
+    targetPort: 6274
+    name: http
+  - port: 6277
+    nodePort: 31627 # must match kind hostPort
+    targetPort: 6277
+    name: http-proxy
+  type: NodePort
