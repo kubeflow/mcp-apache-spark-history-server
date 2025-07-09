@@ -1,0 +1,157 @@
+version: '3'
+
+output: interleaved
+
+vars:
+  OS: '{{OS}}'
+  ARCH: '{{ARCH}}'
+  BIN_DIR: .bin
+  HELM_VERSION: v3.18.3
+  KIND_VERSION: v0.29.0
+  KIND_CLUSTER_NAME: spark-history-server-mcp
+  KUBECONFIG_PATH: ./kubeconfig.yaml
+  SHS_HELM_VERSION: 1.5.1
+  SHS_HELM_URL: https://kubedai.github.io/spark-history-server
+
+run: once
+silent: true
+
+tasks:
+  install-helm:
+    desc: Install Helm binary to local .bin directory
+    internal: true
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - curl -fsSL -o helm.tar.gz https://get.helm.sh/helm-{{.HELM_VERSION}}-{{OS}}-{{ARCH}}.tar.gz
+      - tar -zxvf helm.tar.gz
+      - mv {{OS}}-{{ARCH}}/helm {{.BIN_DIR}}/
+      - rm -rf helm.tar.gz {{OS}}-{{ARCH}}
+      - echo "Helm {{.HELM_VERSION}} installed to {{.BIN_DIR}}/helm"
+    status:
+      - test -f {{.BIN_DIR}}/helm
+
+  install-kind:
+    desc: Install Kind binary to local .bin directory
+    internal: true
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - curl -fsSL -o {{.BIN_DIR}}/kind https://kind.sigs.k8s.io/dl/{{.KIND_VERSION}}/kind-{{OS}}-{{ARCH}}
+      - chmod +x {{.BIN_DIR}}/kind
+      - echo "Kind {{.KIND_VERSION}} installed to {{.BIN_DIR}}/kind"
+    status:
+      - test -f {{.BIN_DIR}}/kind
+
+  delete-cluster:
+    desc: Delete the Kind cluster
+    deps: [install-kind]
+    cmds:
+      - "{{.BIN_DIR}}/kind delete cluster --name {{.KIND_CLUSTER_NAME}}"
+      - echo "🗑️ Kind cluster '{{.KIND_CLUSTER_NAME}}' deleted"
+    status:
+      - "! {{.BIN_DIR}}/kind get clusters 2>/dev/null | grep -q '^{{.KIND_CLUSTER_NAME}}$'"
+
+  create-cluster:
+    desc: Create a Kind cluster for spark-history-server-mcp
+    deps: [install-kind, install-helm]
+    interactive: true
+    cmds:
+      - |
+        {{.BIN_DIR}}/kind create cluster --name {{.KIND_CLUSTER_NAME}} --kubeconfig {{.KUBECONFIG_PATH}} --config - <<EOF
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+          kubeadmConfigPatches:
+          - |
+            kind: InitConfiguration
+            nodeRegistration:
+              kubeletExtraArgs:
+                node-labels: "ingress-ready=true"
+          extraMounts:
+          - hostPath: examples/basic/events
+            containerPath: /mnt/events
+          extraPortMappings:
+          - containerPort: 31888
+            hostPort: 18888
+            protocol: TCP
+          - containerPort: 31808
+            hostPort: 18080
+            protocol: TCP
+          - containerPort: 31624
+            hostPort: 6274
+            protocol: TCP
+          - containerPort: 31627
+            hostPort: 6277
+            protocol: TCP
+        EOF
+    status:
+      - "{{.BIN_DIR}}/kind get clusters | grep -q '^{{.KIND_CLUSTER_NAME}}$'"
+      -
+  docker-load:
+    desc: Load Docker image into Kind cluster
+    internal: true
+    deps: [docker-build, create-cluster]
+    cmds:
+      - "{{.BIN_DIR}}/kind load docker-image {{.PROJECT_NAME}}:latest --name {{.KIND_CLUSTER_NAME}}"
+      - echo "🐳 Docker image loaded into Kind cluster '{{.KIND_CLUSTER_NAME}}'"
+
+  install-chart:
+    desc: Install the local Spark History Server MCP Helm chart to local Kind cluster with locally built image.
+    deps: [install-helm, create-cluster, docker-load]
+    vars:
+      RELEASE_NAME: spark-history-server-mcp
+      NAMESPACE: default
+      VALUES_FILE: '{{.VALUES_FILE | default "tests/helm-values/local.yaml"}}'
+    cmds:
+      - |
+        KUBECONFIG={{.KUBECONFIG_PATH}} {{.BIN_DIR}}/helm upgrade --install {{.RELEASE_NAME}} \
+          --namespace {{.NAMESPACE}} \
+          --create-namespace \
+          -f {{.VALUES_FILE}} \
+          ./deploy/kubernetes/helm/spark-history-mcp/ > /dev/null
+      - echo "⚓ Spark History Server MCP chart installed!"
+
+  install-shs-chart:
+    desc: Install the local Spark History Server MCP Helm chart to local Kind cluster
+    deps: [install-helm, create-cluster]
+    vars:
+      RELEASE_NAME: spark-history-server
+      NAMESPACE: default
+      VALUES_FILE: '{{.VALUES_FILE | default "tests/helm-values/local-shs.yaml"}}'
+    cmds:
+      - KUBECONFIG={{.KUBECONFIG_PATH}} kubectl apply -f tests/manifests/example-event-volume.yaml > /dev/null
+      - |
+        KUBECONFIG={{.KUBECONFIG_PATH}} {{.BIN_DIR}}/helm repo add spark-history-server {{.SHS_HELM_URL}} > /dev/null
+        KUBECONFIG={{.KUBECONFIG_PATH}} {{.BIN_DIR}}/helm repo update > /dev/null
+        KUBECONFIG={{.KUBECONFIG_PATH}} {{.BIN_DIR}}/helm upgrade --install {{.RELEASE_NAME}} \
+          --namespace {{.NAMESPACE}} \
+          --create-namespace \
+          --version {{.SHS_HELM_VERSION}} \
+          -f {{.VALUES_FILE}} \
+          spark-history-server/spark-history-server > /dev/null
+      - echo "⚓ Spark History Server chart installed!"
+
+  install-inspector:
+    desc: Install MCP inspector to local Kind cluster
+    deps: [install-helm, create-cluster]
+    cmds:
+      - KUBECONFIG={{.KUBECONFIG_PATH}} kubectl apply -f tests/manifests/mcp-inspector.yaml
+
+  dev-all-kubernetes:
+    desc: Start all development services and prepare for testing in a local Kubernetes cluster
+    deps: [install-chart, install-shs-chart, install-inspector]
+    cmds:
+      - |
+        cat << EOF | grep -v '^$' | sed $'s/^/\033[32m/' | sed $'s/$/\033[0m/'
+        ⚓ Kubernetes installation completed!
+        📋 To connect to your cluster run:
+           export KUBECONFIG={{.KUBECONFIG_PATH}}
+           kubectl get pods
+        Open http://localhost:6274/#tools to interact with the MPC server
+        Use http://spark-history-server-mcp-spark-history-mcp:18888/mcp as the URL in MCP Inspector to get started
+        EOF
+
+  stop-all-kubernetes:
+    desc: Stop all background services by deleting local Kind cluster
+    cmds:
+      - task: delete-cluster
