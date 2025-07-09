@@ -12,7 +12,7 @@ vars:
   KIND_VERSION: v0.29.0
   KIND_CLUSTER_NAME: spark-history-server-mcp
   KUBECONFIG_PATH: ./kubeconfig.yaml
-  SHS_HELM_VERSION: 1.5.0
+  SHS_HELM_VERSION: 1.5.1
   SHS_HELM_URL: https://kubedai.github.io/spark-history-server
 
 run: once
