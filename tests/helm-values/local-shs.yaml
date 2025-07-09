@@ -9,6 +9,16 @@ historyServer:
     hybridStore:
       enabled: true
 
+sparkDaemon:
+  memory: "1g"
+
+resources:
+  limits:
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
 affinity:
   nodeAffinity:
     requiredDuringSchedulingIgnoredDuringExecution:
