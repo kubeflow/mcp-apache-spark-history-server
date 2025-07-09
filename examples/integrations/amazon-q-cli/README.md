@@ -38,32 +38,54 @@ q mcp add \
   --command uv \
   --args "run,main.py" \
   --env SHS_MCP_TRANSPORT=stdio \
-  --scope workspace
+  --scope global
+```
+
+Results should look something like this
+```
+cat ~/.aws/amazonq/mcp.json
+
+{
+  "mcpServers": {
+    "spark-history-server": {
+      "command": "uv",
+      "args": [
+        "run",
+        "main.py"
+      ],
+      "env": {
+        "SHS_MCP_TRANSPORT": "stdio"
+      },
+      "timeout": 120000,
+      "disabled": false
+    }
+  }
+}
 ```
 
 <details>
 <summary><strong>⚠️ Important</strong></summary>
 
-- The command above adds q configuration in this repository root. i.e. `.amazonq/mcp.json`
-- If you want to use it outside of this repository, you need to run:
+- In order for the MCP server to load, q cli needs to be in your local repository path.
+- If you want to use the tools outside of this repository path, you need to run:
   ```bash
   q mcp add \
   --name spark-history-server-mcp \
   --command /Users/username/.local/bin/uv \
-  --args "run,--project,/Users/username/spark-history-server-mcp,python,main_stdio.py" \
-  --scope workspace
+  --args "run,--project,/<Users/username>/spark-history-server-mcp,python,main_stdio.py" \
+  --scope global
   ```
 - Replace `/Users/username/.local/bin/uv` with output of `which uv`
 - Replace `/Users/username/spark-history-server-mcp` with your actual repository path
 </details>
 
-2. **Test connection**: `q chat --trust-all-tools`
+2. **Test connection**
 
 ## Usage
 
 Start interactive session:
 ```bash
-q chat --trust-all-tools
+q chat
 ```
 
 ![amazon-q-cli](amazon-q-cli.png)
@@ -102,5 +124,4 @@ servers:
 
 ## Troubleshooting
 - **Path errors**: Use full paths (`which uv`)
-- **Tool issues**: Always use `--trust-all-tools`
 - **Connection fails**: Check Spark History Server is running and accessible
