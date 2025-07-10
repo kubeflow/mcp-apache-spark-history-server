@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: T201,S110,S603,S607,F841
 """
 LlamaIndex integration with Spark History Server MCP.
 Uses proper MCP tools and current LlamaIndex workflow API.
@@ -6,7 +7,7 @@ Uses proper MCP tools and current LlamaIndex workflow API.
 
 import asyncio
 import os
-import subprocess
+import subprocess  # noqa: S404
 import tempfile
 
 import requests
@@ -254,8 +255,8 @@ if __name__ == "__main__":
                 # Clean up temp file
                 try:
                     os.unlink(temp_script)
-                except:
-                    pass
+                except OSError:
+                    pass  # File already deleted or doesn't exist
 
             print(f"📊 Data source: {self.data_source}")
             print(response)

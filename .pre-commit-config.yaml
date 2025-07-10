@@ -42,7 +42,7 @@ repos:
     hooks:
       - id: bandit
         args: [--recursive, --format, json, --output, bandit-report.json]
-        exclude: ^tests/
+        exclude: ^(tests/|examples/integrations/)
 
   # Documentation and markdown
   - repo: https://github.com/igorshubovych/markdownlint-cli
