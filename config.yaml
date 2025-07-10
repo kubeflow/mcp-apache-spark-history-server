@@ -11,6 +11,7 @@ servers:
   # Production server example
   # production:
   #   url: "https://spark-history.company.com:18080"
+  #   verify_ssl: true
   #   auth:
       # Use environment variables for production
       # username: ${SHS_SPARK_USERNAME}
@@ -20,6 +21,7 @@ servers:
   # Staging server example
   # staging:
   #   url: "https://staging-spark-history.company.com:18080"
+  #   verify_ssl: true
   #   auth:
       # username: "staging_user"
       # token: "staging_token"

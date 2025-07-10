@@ -11,9 +11,10 @@ USAGE:
     ./start_local_spark_history.sh [OPTIONS]
 
 OPTIONS:
-    -h, --help      Show this help message
-    --dry-run       Validate prerequisites without starting the server
-    --interactive   Run Docker container in interactive mode
+    -h, --help                Show this help message
+    --dry-run                 Validate prerequisites without starting the server
+    --interactive             Run Docker container in interactive mode
+    --spark-version VERSION   Specify Spark version (default: 3.5.5)
 
 DESCRIPTION:
     This script starts a local Spark History Server using Docker for testing
@@ -30,9 +31,10 @@ ENDPOINTS:
     - REST API: http://localhost:18080/api/v1/
 
 EXAMPLES:
-    ./start_local_spark_history.sh           # Start the server
-    ./start_local_spark_history.sh --help    # Show this help
-    ./start_local_spark_history.sh --dry-run # Validate setup only
+    ./start_local_spark_history.sh                       # Start the server with default Spark version (3.5.5)
+    ./start_local_spark_history.sh --spark-version=3.5.5 # Start with Spark 3.5.5
+    ./start_local_spark_history.sh --help                # Show this help
+    ./start_local_spark_history.sh --dry-run             # Validate setup only
 
 EOF
 }
@@ -53,6 +55,20 @@ for arg in "$@"; do
         --interactive)
             INTERACTIVE=true
             shift
+            ;;
+        --spark-version=*)
+            spark_version="${arg#*=}"
+            shift
+            ;;
+        --spark-version)
+            shift
+            if [ -n "$1" ] && [ "${1:0:1}" != "-" ]; then
+                spark_version="$1"
+                shift
+            else
+                echo "Error: Argument for $arg is missing" >&2
+                exit 1
+            fi
             ;;
         *)
             echo "Unknown option: $arg"
@@ -124,7 +140,7 @@ echo ""
 echo "📋 Configuration:"
 echo "   Log Directory: $(cat examples/basic/history-server.conf)"
 echo "   Port: 18080"
-echo "   Docker Image: apache/spark:3.5.5"
+echo "   Docker Image: apache/spark:$spark_version"
 
 echo ""
 echo "🚀 Starting Spark History Server..."
@@ -154,7 +170,7 @@ if [ "$INTERACTIVE" = true ]; then
     --rm \
     -v "$(pwd)/examples/basic:/mnt/data" \
     -p 18080:18080 \
-    docker.io/apache/spark:3.5.5 \
+    docker.io/apache/spark:$spark_version \
     /opt/java/openjdk/bin/java \
     -cp '/opt/spark/conf:/opt/spark/jars/*' \
     -Xmx1g \
@@ -166,7 +182,7 @@ else
     --rm \
     -v "$(pwd)/examples/basic:/mnt/data" \
     -p 18080:18080 \
-    docker.io/apache/spark:3.5.5 \
+    docker.io/apache/spark:$spark_version \
     /opt/java/openjdk/bin/java \
     -cp '/opt/spark/conf:/opt/spark/jars/*' \
     -Xmx1g \

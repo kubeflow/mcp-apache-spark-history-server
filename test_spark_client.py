@@ -49,6 +49,7 @@ class TestSparkClient(unittest.TestCase):
             headers={"Accept": "application/json"},
             auth=None,
             timeout=30,
+            verify=True,
         )
 
         self.assertEqual(len(apps), 1)
@@ -101,6 +102,7 @@ class TestSparkClient(unittest.TestCase):
             headers={"Accept": "application/json"},
             auth=None,
             timeout=30,
+            verify=True,
         )
 
         self.assertEqual(len(apps), 1)

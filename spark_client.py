@@ -45,6 +45,10 @@ class SparkRestClient:
         self.base_url = self.config.url.rstrip("/") + "/api/v1"
         self.auth = None
 
+        # Determine whether to verify SSL certificates
+        # Default to True, but if verify_ssl is explicitly set to False, use that value
+        self.verify_ssl = getattr(self.config, "verify_ssl", True)
+
         # Set up authentication if provided
         if self.config.auth:
             if self.config.auth.username and self.config.auth.password:
@@ -68,8 +72,16 @@ class SparkRestClient:
         if self.config.auth and self.config.auth.token:
             headers["Authorization"] = f"Bearer {self.config.auth.token}"
 
+        # Use the verify_ssl setting for HTTPS requests
+        verify = self.verify_ssl
+
         response = requests.get(
-            url, params=params, headers=headers, auth=self.auth, timeout=30
+            url,
+            params=params,
+            headers=headers,
+            auth=self.auth,
+            timeout=30,
+            verify=verify,
         )
         response.raise_for_status()
         return response.json()

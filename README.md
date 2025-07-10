@@ -55,11 +55,15 @@ brew install go-task  # macOS, see https://taskfile.dev/installation/ for others
 
 # Setup and start testing
 task install                    # Install dependencies
-task start-spark-bg            # Start Spark History Server with sample data
+task start-spark-bg            # Start Spark History Server with sample data (default Spark 3.5.5)
+# Or specify a different Spark version:
+# task start-spark-bg spark_version=3.5.2
 task start-mcp-bg             # Start MCP Server
+
+# Optional: Opens MCP Inspector on http://localhost:6274 for interactive testing
+# Requires Node.js: 22.7.5+ (Check https://github.com/modelcontextprotocol/inspector for latest requirements)
 task start-inspector-bg       # Start MCP Inspector
 
-# Opens http://localhost:6274 for interactive testing
 # When done, run `task stop-all`
 ```
 
@@ -71,7 +75,7 @@ The repository includes real Spark event logs for testing:
 
 See **[TESTING.md](TESTING.md)** for using them.
 
-### ⚙️ Configuration
+### ⚙️ Server Configuration
 Edit `config.yaml` for your Spark History Server:
 ```yaml
 servers:
@@ -98,6 +102,9 @@ mcp:
 
 
 ## 🛠️ Available Tools
+
+<summary><strong>⚠️ Disclaimer</strong></summary>
+These tools are subject to change as we scale and improve the performance of the MCP server.
 
 ### Core Analysis Tools (All Integrations)
 | 🔧 Tool | 📝 Description |
@@ -144,9 +151,9 @@ helm install spark-history-mcp ./deploy/kubernetes/helm/spark-history-mcp/ \
 
 📚 See [`deploy/kubernetes/helm/`](deploy/kubernetes/helm/) for complete deployment manifests and configuration options.
 
-## ⚙️ Configuration
+## 🌐 Multi-Spark History Server Setup
+Setup multiple Spark history servers in the config.yaml and choose which server you want the LLM to interact with for each query.
 
-### 🌐 Multi-server Setup
 ```yaml
 servers:
   production:
@@ -157,6 +164,39 @@ servers:
       password: "pass"
   staging:
     url: "http://staging-spark-history:18080"
+```
+
+💁 User Query: "Can you get application <app_id> using production server?"
+
+🤖 AI Tool Request:
+```
+{
+  "spark_id": "<app_id>",
+  "server": "production"
+}
+```
+🤖 AI Tool Response:
+```
+{
+  "id": "<app_id>>",
+  "name": "app_name",
+  "coresGranted": null,
+  "maxCores": null,
+  "coresPerExecutor": null,
+  "memoryPerExecutorMB": null,
+  "attempts": [
+    {
+      "attemptId": null,
+      "startTime": "2023-09-06T04:44:37.006000Z",
+      "endTime": "2023-09-06T04:45:40.431000Z",
+      "lastUpdated": "2023-09-06T04:45:42Z",
+      "duration": 63425,
+      "sparkUser": "spark",
+      "appSparkVersion": "3.3.0",
+      "completed": true
+    }
+  ]
+}
 ```
 
 ### 🔐 Environment Variables
@@ -214,13 +254,92 @@ SHS_MCP_ADDRESS=0.0.0.0
 ✅ Highlight configuration differences
 ```
 
+## 📔 Spark History Server Setup
+
+### Setting up Native Spark History Server with MCP
+
+Prereqs
+- 🐳 [Docker](https://docs.docker.com/desktop/setup/install/mac-install/) must be installed and running
+
+Steps
+- Run `task start-spark`
+
+*Optional: Specify a different Spark version using the `spark_version` parameter:*
+```bash
+task start-spark spark_version=3.5.2  # Use Spark 3.5.2 instead of default 3.5.5
+```
+*Although Spark UI is mostly backwards compatible, it is best to use the same Spark History Server version as the version of your Spark application that you are investigating.*
+
+Setup Issues
+```bash
+# If you get "Docker not running" error:
+./start_local_spark_history.sh --dry-run  # Check prerequisites
+
+# If you get "No containers to stop" warning:
+# This is normal - just means no previous containers are running
+
+# To get help with script options:
+./start_local_spark_history.sh --help
+```
+
+### Setting up AWS Glue Spark History Server with MCP
+
+There are two documented methods of setting up Spark history server to Glue
+
+#### Option 1: Launching the Spark history server and viewing the Spark UI using AWS CloudFormation
+
+[Public Documentation](https://docs.aws.amazon.com/glue/latest/dg/monitor-spark-ui-history.html#monitor-spark-ui-history-cfn)
+
+Prereqs
+- Ensure you follow the public documentation and setup a Spark Web UI
+- Identify the SparkUiPrivateUrl or SparkUiPublicUrl and ensure you can open it in the web browser
+
+Steps
+- Open [config.yaml](config.yaml) and add the Web UI URL to your server
+``` example
+glue_ec2:
+  url: "<SparkUiUrl>:<port>"
+  verify_ssl: true
+  auth:
+    username: "staging_user"
+    password: "your_password"
+    token: "staging_token"
+```
+
+Setup Issues
+```bash
+# If you get "CERTIFICATE_VERIFY_FAILED" error
+set verify_ssl: false
+```
+
+⚠️ **WARNING**: If verify_ssl is set to False, SSL certificate verification will be disabled.
+  This is insecure and should only be used in development environments
+
+#### Option 2: Launching the Spark history server and viewing the Spark UI using Docker
+
+[Public Documentation](https://docs.aws.amazon.com/glue/latest/dg/monitor-spark-ui-history.html#monitor-spark-ui-history-local)
+
+Prereqs
+- 🐳 [Docker](https://docs.docker.com/desktop/setup/install/mac-install/) must be installed and running
+
+Steps:
+- Follow steps in public doc to get Docker running http://localhost:18080 in your browser
+- Ensure [config.yaml](config.yaml) local server has correct url:
+```
+local:
+    default: true  # if server name is not provided in tool calls, this Spark History Server is used
+    url: "http://localhost:18080"
+    verify_ssl: true
+    # Optional authentication (can also use environment variables)
+    # auth:
+    #   username: "your_username"  # or use SHS_SPARK_USERNAME env var
+    #   password: "your_password"  # or use SHS_SPARK_PASSWORD env var
+    #   token: "your_token"       # or use SHS_SPARK_TOKEN env var
+```
+
 ## 🤝 Contributing
 
-1. 🍴 Fork the repository
-2. 🌿 Create feature branch: `git checkout -b feature/new-tool`
-3. 🧪 Add tests for new functionality
-4. ✅ Run tests: `task test`
-5. 📤 Submit pull request
+Check [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines on contributions
 
 ## 📄 License
 

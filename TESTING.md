@@ -35,10 +35,13 @@ task start-spark-bg && task start-mcp-bg && task start-inspector-bg
 
 **Alternative** (if you prefer manual control):
 ```bash
-# Terminal 1: Start Spark History Server
+# Terminal 1: Start Local Spark History Server
 task start-spark
 
-# Terminal 2: Start MCP server with Inspector
+# Terminal 2: Start MCP server
+task start-mcp
+
+# Terminal 3: Start MCP Inspector
 task start-inspector
 ```
 

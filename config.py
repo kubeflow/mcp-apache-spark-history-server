@@ -29,6 +29,7 @@ class ServerConfig(BaseModel):
     url: str
     auth: AuthConfig = Field(None, alias="auth")
     default: bool = Field(None, alias="default")
+    verify_ssl: bool = Field(True, alias="verify_ssl")
 
 
 class McpConfig(BaseModel):

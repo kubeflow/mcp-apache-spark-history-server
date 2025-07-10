@@ -134,16 +134,20 @@ tasks:
   start-spark:
     desc: Start local Spark History Server for testing
     interactive: true
+    vars:
+      SPARK_VERSION: '{{.spark_version | default "3.5.5"}}'
     cmds:
-      - ./start_local_spark_history.sh
+      - ./start_local_spark_history.sh --spark-version={{.SPARK_VERSION}}
       - echo "🔥 Spark History Server started!"
 
   start-spark-bg:
     desc: Start local Spark History Server in background
+    vars:
+      SPARK_VERSION: '{{.spark_version | default "3.5.5"}}'
     cmds:
       - |
         echo "Starting Spark History Server in background..."
-        nohup ./start_local_spark_history.sh > spark-history.log 2>&1 &
+        nohup ./start_local_spark_history.sh --spark-version={{.SPARK_VERSION}} > spark-history.log 2>&1 &
         sleep 3
         echo "✅ Spark History Server started (logs: spark-history.log)"
 
