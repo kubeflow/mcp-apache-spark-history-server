@@ -10,7 +10,9 @@ This example demonstrates how to integrate Spark History Server MCP with LangGra
 
 ```bash
 # Install required packages for this example
-pip install langgraph langchain-ollama requests
+uv venv
+source .venv/bin/activate
+uv pip install langgraph langchain-ollama requests
 ```
 
 ### 2. Install and Setup Ollama (Local LLM)
