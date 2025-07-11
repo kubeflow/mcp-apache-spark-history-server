@@ -19,6 +19,11 @@ Transform your Spark infrastructure monitoring with AI! This Model Context Proto
 - 🚨 **Investigate failures** with detailed error analysis
 - 📈 **Generate insights** from historical execution data
 
+📺 **See it in action:**
+
+[![Watch the demo video](https://img.shields.io/badge/YouTube-Watch%20Demo-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=e3P_2_RiUHw)
+
+
 ## 🏗️ Architecture
 
 ```mermaid
