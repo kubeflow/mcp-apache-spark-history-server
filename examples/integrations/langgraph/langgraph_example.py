@@ -6,11 +6,22 @@ Uses modern LangGraph workflow patterns and local Ollama models.
 """
 
 import asyncio
+import re
 from typing import List, TypedDict
 
 import requests
 from langchain_ollama import ChatOllama
 from langgraph.graph import END, StateGraph
+
+
+def clean_empty_thinking_blocks(text: str) -> str:
+    """Remove empty thinking blocks that 0.6b model may still output despite /no_think."""
+    # Remove empty or whitespace-only <think>...</think> blocks
+    cleaned = re.sub(r"<think>\s*</think>", "", text, flags=re.DOTALL)
+    # Clean up any extra whitespace
+    cleaned = re.sub(r"\n\s*\n\s*\n", "\n\n", cleaned)
+    return cleaned.strip()
+
 
 # Sample application IDs for testing
 SAMPLE_APPS = [
@@ -163,7 +174,7 @@ class SparkAnalysisWorkflow:
             print("❌ Analysis failed due to data collection errors")
             return state
 
-        # Create analysis prompt
+        # Create analysis prompt with /no_think to avoid thinking blocks
         analysis_prompt = f"""
         Analyze this Spark application performance in 2-3 sentences:
 
@@ -173,7 +184,7 @@ class SparkAnalysisWorkflow:
         Total jobs: {jobs_info.get("total_jobs", 0)}
         Failed jobs: {jobs_info.get("failed_jobs", 0)}
 
-        Identify main performance issues and provide a brief assessment.
+        Identify main performance issues and provide a brief assessment. /no_think
         """
 
         try:
@@ -181,6 +192,8 @@ class SparkAnalysisWorkflow:
             analysis = (
                 response.content if hasattr(response, "content") else str(response)
             )
+            # Clean up any empty thinking blocks (0.6b model limitation)
+            analysis = clean_empty_thinking_blocks(analysis)
             state["performance_analysis"] = analysis
             state["current_step"] = "performance_analyzed"
             print("✅ Performance analysis completed")
@@ -207,7 +220,7 @@ class SparkAnalysisWorkflow:
             print("❌ Recommendations failed")
             return state
 
-        # Create recommendations prompt
+        # Create recommendations prompt with /no_think to avoid thinking blocks
         recommendations_prompt = f"""
         Based on this Spark analysis, provide 2-3 specific optimization recommendations:
 
@@ -218,7 +231,7 @@ class SparkAnalysisWorkflow:
         Analysis: {performance_analysis}
 
         Provide practical recommendations like configuration changes or optimizations.
-        Format as numbered list.
+        Format as numbered list. /no_think
         """
 
         try:
@@ -226,6 +239,8 @@ class SparkAnalysisWorkflow:
             recommendations_text = (
                 response.content if hasattr(response, "content") else str(response)
             )
+            # Clean up any empty thinking blocks (0.6b model limitation)
+            recommendations_text = clean_empty_thinking_blocks(recommendations_text)
 
             # Parse recommendations (simplified)
             lines = recommendations_text.split("\n")
@@ -249,8 +264,14 @@ class SparkAnalysisWorkflow:
 
         return state
 
-    def analyze(self, app_id: str) -> dict:
-        """Run complete analysis workflow for an application."""
+    def analyze(self, app_id: str, return_data: bool = False) -> dict:
+        """Run complete analysis workflow for an application.
+
+        Args:
+            app_id: Spark application ID to analyze
+            return_data: If True, return the full result dict. If False (default),
+                        return None to avoid JSON output in interactive mode.
+        """
         print(f"\n🎯 Analyzing Spark application: {app_id}")
         print("=" * 60)
 
@@ -292,7 +313,8 @@ class SparkAnalysisWorkflow:
                 print(f"  {i}. {rec}")
 
             print("\n✅ Analysis completed!\n")
-            return result
+            # Return data only if requested (for programmatic use)
+            return result if return_data else None
 
         except Exception as e:
             error_msg = f"Workflow execution failed: {e}"
