@@ -36,7 +36,7 @@ tasks:
     desc: Install project dependencies
     deps: [check-uv]
     cmds:
-      - uv sync --group dev
+      - uv sync --group dev --frozen
       - echo "✅ Dependencies installed!"
 
   lint:
@@ -75,24 +75,10 @@ tasks:
     cmds:
       - echo "🧪 Starting end-to-end tests..."
       - |
-        echo "Waiting for services to be available..."
-        # Wait for Spark History Server on port 18080
-        while ! curl -s http://localhost:18080 > /dev/null; do
-          echo "Waiting for Spark History Server..."
-          sleep 1
-        done
-        echo "✅ Spark History Server is available"
-
-        # Wait for MCP Server on port 18888
-        while ! curl -s http://localhost:18888 > /dev/null; do
-          echo "Waiting for MCP Server..."
-          sleep 1
-        done
-        echo "✅ MCP Server is available"
-      - |
         echo "Running e2e tests..."
         uv run pytest tests/e2e.py -v
       - task: stop-all
+
   test-verbose:
     desc: Run tests with verbose output
     cmds:
@@ -138,6 +124,7 @@ tasks:
       SPARK_VERSION: '{{.spark_version | default "3.5.5"}}'
     cmds:
       - ./start_local_spark_history.sh --spark-version={{.SPARK_VERSION}}
+      - task: wait-for-spark
       - echo "🔥 Spark History Server started!"
 
   start-spark-bg:
@@ -148,14 +135,14 @@ tasks:
       - |
         echo "Starting Spark History Server in background..."
         nohup ./start_local_spark_history.sh --spark-version={{.SPARK_VERSION}} > spark-history.log 2>&1 &
-        sleep 3
-        echo "✅ Spark History Server started (logs: spark-history.log)"
+      - task: wait-for-spark
 
   start-mcp:
     desc: Start MCP server
     interactive: true
     cmds:
-      - uv run main.py
+      - uv run main.py --frozen
+      - task: wait-for-mcp
 
   start-mcp-bg:
     desc: Start MCP server in background
@@ -163,8 +150,8 @@ tasks:
       - |
         echo "Starting MCP server in background..."
         bash -c 'nohup uv run main.py > mcp-server.log 2>&1 &'
-        sleep 2
-        echo "✅ MCP server started (logs: mcp-server.log)"
+
+      - task: wait-for-mcp
     status:
       - pgrep -f "main.py" > /dev/null
 
@@ -188,8 +175,8 @@ tasks:
   dev-all:
     desc: Start all development services and prepare for testing
     cmds:
-      - task start-spark-bg
-      - task start-mcp-bg
+      - task: start-spark-bg
+      - task: start-mcp-bg
       - sleep 1
       - |
         echo ""
@@ -248,6 +235,46 @@ tasks:
     cmds:
       - docker run -p 18888:18888 {{.PROJECT_NAME}}:latest
       - echo "🐳 Docker container started!"
+
+  wait-for-spark:
+    desc: Checks if Spark History Server is running
+    internal: true
+    cmds:
+      - |
+        echo "Checking if Spark History Server is running..."
+        max_attempts=60
+        attempt=1
+        while [ $attempt -le $max_attempts ]; do
+          if curl -s --connect-timeout 1 http://localhost:18080 > /dev/null; then
+            echo "✅ Spark History Server is available on port 18080"
+            exit 0
+          fi
+          echo "Waiting for Spark History Server... ($attempt/$max_attempts)"
+          sleep 1
+          attempt=$((attempt + 1))
+        done
+        echo "❌ Timed out waiting for Spark History Server after 60 seconds"
+        exit 1
+
+  wait-for-mcp:
+    desc: Checks if MCP Server is running
+    internal: true
+    cmds:
+      - |
+        echo "Checking if MCP Server is running..."
+        max_attempts=60
+        attempt=1
+        while [ $attempt -le $max_attempts ]; do
+          if curl -s --connect-timeout 1 http://localhost:18888 > /dev/null; then
+            echo "✅ MCP Server is available on port 18888"
+            exit 0
+          fi
+          echo "Waiting for MCP Server... ($attempt/$max_attempts)"
+          sleep 1
+          attempt=$((attempt + 1))
+        done
+        echo "❌ Timed out waiting for MCP Server after 60 seconds"
+        exit 1
 
 # Not implemented yet
 #  docs-serve:
