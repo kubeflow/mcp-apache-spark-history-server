@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Help function
 show_help() {

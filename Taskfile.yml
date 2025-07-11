@@ -236,7 +236,7 @@ tasks:
   docker-build:
     desc: Build Docker image
     cmds:
-      - docker build -t {{.PROJECT_NAME}}:latest .
+      - docker build -t {{.PROJECT_NAME}}:latest --load  .
       - echo "🐳 Docker image built!"
 
   docker-run:
