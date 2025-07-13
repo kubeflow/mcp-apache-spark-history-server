@@ -264,7 +264,7 @@ SHS_MCP_ADDRESS=0.0.0.0
 | **[Local Testing](TESTING.md)** | HTTP | Development, testing tools |
 | **[Claude Desktop](examples/integrations/claude-desktop/)** | STDIO | Interactive analysis |
 | **[Amazon Q CLI](examples/integrations/amazon-q-cli/)** | STDIO | Command-line automation |
-| **[LangGraph](examples/integrations/langgraph.md)** | HTTP | Multi-agent workflows |
+| **[LangGraph](examples/integrations/langgraph/)** | HTTP | Multi-agent workflows |
 
 ## 🎯 Example Use Cases
 
