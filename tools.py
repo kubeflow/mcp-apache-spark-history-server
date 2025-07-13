@@ -315,6 +315,20 @@ def get_environment(spark_id: str, server: Optional[str] = None):
 def get_executors(
     spark_id: str, server: Optional[str] = None, include_inactive: bool = False
 ):
+    """
+    Get executor information for a Spark application.
+
+    Retrieves a list of executors (active by default) for the specified Spark application
+    with their resource allocation, task statistics, and performance metrics.
+
+    Args:
+        spark_id: The Spark application ID
+        server: Optional server name to use (uses default if not specified)
+        include_inactive: Whether to include inactive executors (default: False)
+
+    Returns:
+        List of ExecutorSummary objects containing executor information
+    """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server)
 

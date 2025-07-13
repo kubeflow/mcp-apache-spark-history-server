@@ -108,34 +108,75 @@ mcp:
 
 ## 🛠️ Available Tools
 
-<summary><strong>⚠️ Disclaimer</strong></summary>
-These tools are subject to change as we scale and improve the performance of the MCP server.
+> **⚠️ Disclaimer**: These tools are subject to change as we scale and improve the performance of the MCP server.
 
-### Core Analysis Tools (All Integrations)
+The MCP server provides **17 specialized tools** organized by analysis patterns. LLMs can intelligently select and combine these tools based on user queries:
+
+### 📊 Application Information
+*Basic application metadata and overview*
 | 🔧 Tool | 📝 Description |
 |---------|----------------|
-| `get_application` | 📊 Get detailed application information |
-| `get_jobs` | 🔗 List jobs within an application |
-| `compare_job_performance` | 📈 Compare performance between applications |
-| `compare_sql_execution_plans` | 🔎 Compare SQL execution plans |
-| `get_job_bottlenecks` | 🚨 Identify performance bottlenecks |
-| `get_slowest_jobs` | ⏱️ Find slowest jobs in application |
+| `get_application` | 📊 Get detailed information about a specific Spark application including status, resource usage, duration, and attempt details |
 
-### Additional Tools (LlamaIndex/LangGraph HTTP Mode)
+### 🔗 Job Analysis
+*Job-level performance analysis and identification*
 | 🔧 Tool | 📝 Description |
 |---------|----------------|
-| `list_applications` | 📋 List Spark applications with filtering |
-| `get_application_details` | 📊 Get comprehensive application info |
-| `get_stage_details` | ⚡ Analyze stage-level metrics |
-| `get_task_details` | 🎯 Examine individual task performance |
-| `get_executor_summary` | 🖥️ Review executor utilization |
-| `get_application_environment` | ⚙️ Review Spark configuration |
-| `get_storage_info` | 💾 Analyze RDD storage usage |
-| `get_sql_execution_details` | 🔎 Deep dive into SQL queries |
-| `get_resource_usage_timeline` | 📈 Resource allocation over time |
-| `compare_job_environments` | ⚙️ Compare Spark configurations |
-| `get_slowest_stages` | ⏱️ Find slowest stages |
-| `get_task_metrics` | 📊 Detailed task performance metrics |
+| `get_jobs` | 🔗 Get a list of all jobs for a Spark application with optional status filtering |
+| `get_slowest_jobs` | ⏱️ Get the N slowest jobs for a Spark application (excludes running jobs by default) |
+
+### ⚡ Stage Analysis
+*Stage-level performance deep dive and task metrics*
+| 🔧 Tool | 📝 Description |
+|---------|----------------|
+| `get_stages` | ⚡ Get a list of all stages for a Spark application with optional status filtering and summaries |
+| `get_slowest_stages` | 🐌 Get the N slowest stages for a Spark application (excludes running stages by default) |
+| `get_stage` | 🎯 Get information about a specific stage with optional attempt ID and summary metrics |
+| `get_stage_task_summary` | 📊 Get statistical distributions of task metrics for a specific stage (execution times, memory usage, I/O metrics) |
+
+### 🖥️ Executor & Resource Analysis
+*Resource utilization, executor performance, and allocation tracking*
+| 🔧 Tool | 📝 Description |
+|---------|----------------|
+| `get_executors` | 🖥️ Get executor information with optional inactive executor inclusion |
+| `get_executor` | 🔍 Get information about a specific executor including resource allocation, task statistics, and performance metrics |
+| `get_executor_summary` | 📈 Aggregates metrics across all executors (memory usage, disk usage, task counts, performance metrics) |
+| `get_resource_usage_timeline` | 📅 Get chronological view of resource allocation and usage patterns including executor additions/removals |
+
+### ⚙️ Configuration & Environment
+*Spark configuration, environment variables, and runtime settings*
+| 🔧 Tool | 📝 Description |
+|---------|----------------|
+| `get_environment` | ⚙️ Get comprehensive Spark runtime configuration including JVM info, Spark properties, system properties, and classpath |
+
+### 🔎 SQL & Query Analysis
+*SQL performance analysis and execution plan comparison*
+| 🔧 Tool | 📝 Description |
+|---------|----------------|
+| `get_slowest_sql_queries` | 🐌 Get the top N slowest SQL queries for an application with detailed execution metrics |
+| `compare_sql_execution_plans` | 🔍 Compare SQL execution plans between two Spark jobs, analyzing logical/physical plans and execution metrics |
+
+### 🚨 Performance & Bottleneck Analysis
+*Intelligent bottleneck identification and performance recommendations*
+| 🔧 Tool | 📝 Description |
+|---------|----------------|
+| `get_job_bottlenecks` | 🚨 Identify performance bottlenecks by analyzing stages, tasks, and executors with actionable recommendations |
+
+### 🔄 Comparative Analysis
+*Cross-application comparison for regression detection and optimization*
+| 🔧 Tool | 📝 Description |
+|---------|----------------|
+| `compare_job_environments` | ⚙️ Compare Spark environment configurations between two jobs to identify differences in properties and settings |
+| `compare_job_performance` | 📈 Compare performance metrics between two Spark jobs including execution times, resource usage, and task distribution |
+
+### 🤖 How LLMs Use These Tools
+
+**Query Pattern Examples:**
+- *"Why is my job slow?"* → `get_job_bottlenecks` + `get_slowest_stages` + `get_executor_summary`
+- *"Compare today vs yesterday"* → `compare_job_performance` + `compare_job_environments`
+- *"What's wrong with stage 5?"* → `get_stage` + `get_stage_task_summary`
+- *"Show me resource usage over time"* → `get_resource_usage_timeline` + `get_executor_summary`
+- *"Find my slowest SQL queries"* → `get_slowest_sql_queries` + `compare_sql_execution_plans`
 
 ## 🚀 Production Deployment
 
@@ -223,7 +264,6 @@ SHS_MCP_ADDRESS=0.0.0.0
 | **[Local Testing](TESTING.md)** | HTTP | Development, testing tools |
 | **[Claude Desktop](examples/integrations/claude-desktop/)** | STDIO | Interactive analysis |
 | **[Amazon Q CLI](examples/integrations/amazon-q-cli/)** | STDIO | Command-line automation |
-| **[LlamaIndex](examples/integrations/llamaindex.md)** | HTTP | Knowledge systems, RAG |
 | **[LangGraph](examples/integrations/langgraph.md)** | HTTP | Multi-agent workflows |
 
 ## 🎯 Example Use Cases
