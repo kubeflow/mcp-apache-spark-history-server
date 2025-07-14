@@ -37,13 +37,12 @@ class SparkRestClient:
         Initialize the Spark REST client.
 
         Args:
-            config: Configuration object
-            config_path: Path to configuration file
+            server_config: Configuration object
         """
-
         self.config = server_config
         self.base_url = self.config.url.rstrip("/") + "/api/v1"
         self.auth = None
+        self.session = None
 
         # Determine whether to verify SSL certificates
         # Default to True, but if verify_ssl is explicitly set to False, use that value
@@ -75,14 +74,28 @@ class SparkRestClient:
         # Use the verify_ssl setting for HTTPS requests
         verify = self.verify_ssl
 
-        response = requests.get(
-            url,
-            params=params,
-            headers=headers,
-            auth=self.auth,
-            timeout=30,
-            verify=verify,
-        )
+        # Use the session if available, otherwise use requests directly
+        if self.session:
+            # Add headers to the session
+            for key, value in headers.items():
+                self.session.headers[key] = value
+
+            response = self.session.get(
+                url,
+                params=params,
+                timeout=30,
+                verify=verify,
+            )
+        else:
+            response = requests.get(
+                url,
+                params=params,
+                headers=headers,
+                auth=self.auth,
+                timeout=30,
+                verify=verify,
+            )
+
         response.raise_for_status()
         return response.json()
 
@@ -519,7 +532,12 @@ class SparkRestClient:
         url = urljoin(
             self.base_url.replace("/api/v1", "/metrics/executors"), "prometheus"
         )
-        response = requests.get(url, timeout=30)
+
+        if self.session:
+            response = self.session.get(url, timeout=30)
+        else:
+            response = requests.get(url, timeout=30)
+
         response.raise_for_status()
         return response.text
 

@@ -108,7 +108,7 @@ mcp:
 
 ## 🛠️ Available Tools
 
-> **⚠️ Disclaimer**: These tools are subject to change as we scale and improve the performance of the MCP server.
+> **Note**: These tools are subject to change as we scale and improve the performance of the MCP server.
 
 The MCP server provides **17 specialized tools** organized by analysis patterns. LLMs can intelligently select and combine these tools based on user queries:
 
@@ -178,6 +178,89 @@ The MCP server provides **17 specialized tools** organized by analysis patterns.
 - *"Show me resource usage over time"* → `get_resource_usage_timeline` + `get_executor_summary`
 - *"Find my slowest SQL queries"* → `get_slowest_sql_queries` + `compare_sql_execution_plans`
 
+## 📔 Spark History Server and MCP setup for AWS Glue and Amazon EMR users
+
+If you are an existing AWS Glue or Amazon EMR user looking to analyze your Spark Applications, then you can follow the steps below to start using the Spark History Server MCP in 5 simple steps.
+
+### Step 1: Setup project on your laptop
+
+Follow the Quick Setup instructions above to git clone the Spark History Server MCP project on your laptop
+
+```bash
+git clone https://github.com/DeepDiagnostix-AI/spark-history-server-mcp.git
+cd spark-history-server-mcp
+
+# Install Task (if not already installed)
+brew install go-task  # macOS, see https://taskfile.dev/installation/ for others
+# Setup and start testing
+task install                    # Install dependencies
+```
+### Step 2: Install a new Spark History Server or use an existing Spark History Server
+
+#### AWS Glue users
+
+You can follow the AWS Glue [public documentation](https://docs.aws.amazon.com/glue/latest/dg/monitor-spark-ui-history.html) to setup a new self-managed Spark History Server for your AWS Glue Jobs. If you already have a Spark History Server setup, then simply use it and identify its Spark UI URL and port for Step 3.
+
+#### Amazon EMR-EC2 users
+
+Amazon EMR-EC2 users can use a service-managed [Persistent UI](https://docs.aws.amazon.com/emr/latest/ManagementGuide/app-history-spark-UI.html) which automatically creates the Spark History Server for Spark applications on a given EMR Cluster. You can directly go to Step 3 and configure the MCP server with an EMR Cluster Id to analyze the Spark applications on that cluster.
+
+### Step 3: Configure the MCP Server to use the Spark History Server and start the MCP Server
+
+Edit the MCP Server config to specify SparkUI URL/Port
+
+#### AWS Glue users
+
+**Option 1**: Spark History Server on EC2
+
+- Identify the SparkUiPrivateUrl or SparkUiPublicUrl (based on your subnet being private or public) from Step 2 and ensure you can open it in a web browser
+- Edit SHS MCP Config: [config.yaml](config.yaml) and add the Spark UI URL and port
+
+```yaml
+glue_ec2:
+  url: "<SparkUiUrl>:<port>"
+  verify_ssl: false
+```
+
+**Note**: Since the URL is self-signed, the MCP server does not need to verify the SSL connection.
+
+**Option 2**: Spark History Server on Local Docker Container
+
+- Identify and open the Spark UI in your web browser at: http://localhost:18080
+- Edit SHS MCP Config: [config.yaml](config.yaml) to specify the local server information
+
+```yaml
+local:
+    default: true
+    url: "http://localhost:18080"
+```
+
+#### Amazon EMR-EC2 users
+
+##### Persistent UI (Managed Spark History Server)
+
+- Identify the Amazon EMR Cluster Id for which you want the MCP server to analyze the Spark applications
+- Edit SHS MCP Config: [config.yaml](config.yaml) to add the EMR Cluster Id
+
+```yaml
+emr_persistent_ui:
+  emr_cluster_arn: "<emr_cluster_arn>"
+```
+
+**Note**: The MCP Server manages the creation of the Persistent UI and its authentication using tokens with Persistent UI. You do not need to open the Persistent UI URL in a Web Browser. Please ensure the user running the MCP has access to create and view the Persistent UI for that cluster by following the [EMR Documentation](https://docs.aws.amazon.com/emr/latest/ManagementGuide/app-history-spark-UI.html#app-history-spark-UI-permissions).
+
+### Step 4: Start the MCP Server
+
+```bash
+task start-mcp-bg
+```
+
+**Note**: When configuring an EMR cluster ARN, the MCP server will automatically check for an existing Persistent UI. If one does not exist, it will create a new Persistent UI for the specified cluster. If a Persistent UI already exists, the server will use the existing one. This creation happens automatically during server initialization to enable Spark History Server access.
+
+### Step 5: Interact with the MCP Server using an AI Agent
+
+You can use an AI Agent to start interacting with the Spark History MCP server following the steps for [Amazon Q CLI](examples/integrations/amazon-q-cli/README.md) or [Claude Desktop](examples/integrations/claude-desktop/README.md). For more instructions on other Agents, please refer [here](#-ai-agent-integration).
+
 ## 🚀 Production Deployment
 
 Deploy using Kubernetes with Helm:
@@ -215,14 +298,14 @@ servers:
 💁 User Query: "Can you get application <app_id> using production server?"
 
 🤖 AI Tool Request:
-```
+```json
 {
   "spark_id": "<app_id>",
   "server": "production"
 }
 ```
 🤖 AI Tool Response:
-```
+```json
 {
   "id": "<app_id>>",
   "name": "app_name",
@@ -298,89 +381,6 @@ SHS_MCP_ADDRESS=0.0.0.0
 ✅ Compare execution times and resource usage
 ✅ Identify performance deltas
 ✅ Highlight configuration differences
-```
-
-## 📔 Spark History Server Setup
-
-### Setting up Native Spark History Server with MCP
-
-Prereqs
-- 🐳 [Docker](https://docs.docker.com/desktop/setup/install/mac-install/) must be installed and running
-
-Steps
-- Run `task start-spark`
-
-*Optional: Specify a different Spark version using the `spark_version` parameter:*
-```bash
-task start-spark spark_version=3.5.2  # Use Spark 3.5.2 instead of default 3.5.5
-```
-*Although Spark UI is mostly backwards compatible, it is best to use the same Spark History Server version as the version of your Spark application that you are investigating.*
-
-Setup Issues
-```bash
-# If you get "Docker not running" error:
-./start_local_spark_history.sh --dry-run  # Check prerequisites
-
-# If you get "No containers to stop" warning:
-# This is normal - just means no previous containers are running
-
-# To get help with script options:
-./start_local_spark_history.sh --help
-```
-
-### Setting up AWS Glue Spark History Server with MCP
-
-There are two documented methods of setting up Spark history server to Glue
-
-#### Option 1: Launching the Spark history server and viewing the Spark UI using AWS CloudFormation
-
-[Public Documentation](https://docs.aws.amazon.com/glue/latest/dg/monitor-spark-ui-history.html#monitor-spark-ui-history-cfn)
-
-Prereqs
-- Ensure you follow the public documentation and setup a Spark Web UI
-- Identify the SparkUiPrivateUrl or SparkUiPublicUrl and ensure you can open it in the web browser
-
-Steps
-- Open [config.yaml](config.yaml) and add the Web UI URL to your server
-``` example
-glue_ec2:
-  url: "<SparkUiUrl>:<port>"
-  verify_ssl: true
-  auth:
-    username: "staging_user"
-    password: "your_password"
-    token: "staging_token"
-```
-
-Setup Issues
-```bash
-# If you get "CERTIFICATE_VERIFY_FAILED" error
-set verify_ssl: false
-```
-
-⚠️ **WARNING**: If verify_ssl is set to False, SSL certificate verification will be disabled.
-  This is insecure and should only be used in development environments
-
-#### Option 2: Launching the Spark history server and viewing the Spark UI using Docker
-
-[Public Documentation](https://docs.aws.amazon.com/glue/latest/dg/monitor-spark-ui-history.html#monitor-spark-ui-history-local)
-
-Prereqs
-- 🐳 [Docker](https://docs.docker.com/desktop/setup/install/mac-install/) must be installed and running
-
-Steps:
-- Follow steps in public doc to get Docker running http://localhost:18080 in your browser
-- Ensure [config.yaml](config.yaml) local server has correct url:
-```
-local:
-    default: true  # if server name is not provided in tool calls, this Spark History Server is used
-    url: "http://localhost:18080"
-    verify_ssl: true
-    # Optional authentication (can also use environment variables)
-    # auth:
-    #   username: "your_username"  # or use SHS_SPARK_USERNAME env var
-    #   password: "your_password"  # or use SHS_SPARK_PASSWORD env var
-    #   token: "your_token"       # or use SHS_SPARK_TOKEN env var
 ```
 
 ## 🤝 Contributing

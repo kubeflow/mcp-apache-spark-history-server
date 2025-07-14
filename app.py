@@ -9,6 +9,7 @@ from typing import Optional
 from mcp.server.fastmcp import FastMCP
 
 from config import Config
+from emr_persistent_ui_client import EMRPersistentUIClient
 from spark_client import SparkRestClient
 
 
@@ -35,7 +36,29 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
     default_client = None
 
     for name, server_config in config.servers.items():
-        clients[name] = SparkRestClient(server_config)
+        # Check if this is an EMR server configuration
+        if server_config.emr_cluster_arn:
+            # Create EMR client
+            emr_client = EMRPersistentUIClient(
+                emr_cluster_arn=server_config.emr_cluster_arn
+            )
+
+            # Initialize EMR client (create persistent UI, get presigned URL, setup session)
+            base_url, session = emr_client.initialize()
+
+            # Create a modified server config with the base URL
+            emr_server_config = server_config.model_copy()
+            emr_server_config.url = base_url
+
+            # Create SparkRestClient with the session
+            spark_client = SparkRestClient(emr_server_config)
+            spark_client.session = session  # Use the authenticated session
+
+            clients[name] = spark_client
+        else:
+            # Regular Spark REST client
+            clients[name] = SparkRestClient(server_config)
+
         if server_config.default:
             default_client = clients[name]
 

@@ -26,10 +26,11 @@ class AuthConfig(BaseModel):
 class ServerConfig(BaseModel):
     """Server configuration for the Spark server."""
 
-    url: str
+    url: Optional[str] = None
     auth: AuthConfig = Field(None, alias="auth")
-    default: bool = Field(None, alias="default")
+    default: bool = Field(False, alias="default")
     verify_ssl: bool = Field(True, alias="verify_ssl")
+    emr_cluster_arn: Optional[str] = None  # EMR specific field
 
 
 class McpConfig(BaseModel):
