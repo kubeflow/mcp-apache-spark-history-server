@@ -22,8 +22,8 @@ classifiers = [
 dependencies = [
     "mcp[cli]~=1.9",
     "pyyaml~=6.0",
-    "requests~=2.32",
-    "pydantic~=2.0",
+    "requests~=2.32.4",
+    "pydantic~=2.4",
     "boto3~=1.34",
 ]
 

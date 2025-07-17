@@ -188,7 +188,7 @@ class TestEMRPersistentUIClient(unittest.TestCase):
         # Check that the response was processed correctly
         self.assertEqual(url, "https://example.com/presigned-url")
         self.assertEqual(self.client.presigned_url, "https://example.com/presigned-url")
-        self.assertEqual(self.client.base_url, "https://example.com")
+        self.assertEqual(self.client.base_url, "https://example.com/shs")
 
     def test_get_presigned_url_no_id(self):
         """Test get_presigned_url with no persistent UI ID."""

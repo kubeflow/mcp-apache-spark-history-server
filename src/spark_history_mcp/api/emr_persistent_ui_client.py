@@ -152,7 +152,7 @@ class EMRPersistentUIClient:
 
             # Extract base URL from presigned URL
             parsed_url = urlparse(self.presigned_url)
-            self.base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
+            self.base_url = f"{parsed_url.scheme}://{parsed_url.netloc}/shs"
 
             logger.info("✅ Presigned URL obtained successfully")
             logger.info(f"   URL: {self.presigned_url}")
