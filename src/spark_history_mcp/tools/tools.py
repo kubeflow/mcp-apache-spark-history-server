@@ -44,7 +44,7 @@ def get_client_or_default(ctx, server_name: Optional[str] = None):
 
 
 @mcp.tool()
-def get_application(spark_id: str, server: Optional[str] = None) -> ApplicationInfo:
+def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInfo:
     """
     Get detailed information about a specific Spark application.
 
@@ -52,7 +52,7 @@ def get_application(spark_id: str, server: Optional[str] = None) -> ApplicationI
     status, resource usage, duration, and attempt details.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
 
     Returns:
@@ -61,18 +61,18 @@ def get_application(spark_id: str, server: Optional[str] = None) -> ApplicationI
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server)
 
-    return client.get_application(spark_id)
+    return client.get_application(app_id)
 
 
 @mcp.tool()
 def get_jobs(
-    spark_id: str, server: Optional[str] = None, status: Optional[list[str]] = None
+    app_id: str, server: Optional[str] = None, status: Optional[list[str]] = None
 ) -> list:
     """
     Get a list of all jobs for a Spark application.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         status: Optional list of job status values to filter by
 
@@ -87,12 +87,12 @@ def get_jobs(
     if status:
         job_statuses = [JobExecutionStatus.from_string(s) for s in status]
 
-    return client.get_jobs(app_id=spark_id, status=job_statuses)
+    return client.get_jobs(app_id=app_id, status=job_statuses)
 
 
 @mcp.tool()
 def get_slowest_jobs(
-    spark_id: str,
+    app_id: str,
     server: Optional[str] = None,
     include_running: bool = False,
     n: int = 5,
@@ -103,7 +103,7 @@ def get_slowest_jobs(
     Retrieves all jobs for the application and returns the ones with the longest duration.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         include_running: Whether to include running jobs in the search
         n: Number of slowest jobs to return (default: 5)
@@ -115,7 +115,7 @@ def get_slowest_jobs(
     client = get_client_or_default(ctx, server)
 
     # Get all jobs
-    jobs = client.get_jobs(app_id=spark_id)
+    jobs = client.get_jobs(app_id=app_id)
 
     if not jobs:
         return []
@@ -140,7 +140,7 @@ def get_slowest_jobs(
 
 @mcp.tool()
 def get_stages(
-    spark_id: str,
+    app_id: str,
     server: Optional[str] = None,
     status: Optional[list[str]] = None,
     with_summaries: bool = False,
@@ -152,7 +152,7 @@ def get_stages(
     by status and include additional details and summary metrics.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         status: Optional list of stage status values to filter by
         with_summaries: Whether to include summary metrics in the response
@@ -169,7 +169,7 @@ def get_stages(
         stage_statuses = [StageStatus.from_string(s) for s in status]
 
     return client.get_stages(
-        app_id=spark_id,
+        app_id=app_id,
         status=stage_statuses,
         with_summaries=with_summaries,
     )
@@ -177,7 +177,7 @@ def get_stages(
 
 @mcp.tool()
 def get_slowest_stages(
-    spark_id: str,
+    app_id: str,
     server: Optional[str] = None,
     include_running: bool = False,
     n: int = 5,
@@ -188,7 +188,7 @@ def get_slowest_stages(
     Retrieves all stages for the application and returns the ones with the longest duration.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         include_running: Whether to include running stages in the search
         n: Number of slowest stages to return (default: 5)
@@ -200,7 +200,7 @@ def get_slowest_stages(
     client = get_client_or_default(ctx, server)
 
     # Get all stages with details
-    stages = client.get_stages(app_id=spark_id, details=True)
+    stages = client.get_stages(app_id=app_id, details=True)
 
     if not stages:
         return []
@@ -226,7 +226,7 @@ def get_slowest_stages(
 
 @mcp.tool()
 def get_stage(
-    spark_id: str,
+    app_id: str,
     stage_id: int,
     attempt_id: Optional[int] = None,
     server: Optional[str] = None,
@@ -236,7 +236,7 @@ def get_stage(
     Get information about a specific stage.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         stage_id: The stage ID
         attempt_id: Optional stage attempt ID (if not provided, returns the latest attempt)
         server: Optional server name to use (uses default if not specified)
@@ -251,7 +251,7 @@ def get_stage(
     if attempt_id is not None:
         # Get specific attempt
         stage_data = client.get_stage_attempt(
-            app_id=spark_id,
+            app_id=app_id,
             stage_id=stage_id,
             attempt_id=attempt_id,
             details=False,
@@ -260,7 +260,7 @@ def get_stage(
     else:
         # Get all attempts and use the latest one
         stages = client.get_stage(
-            app_id=spark_id,
+            app_id=app_id,
             stage_id=stage_id,
             details=False,
             with_summaries=with_summaries,
@@ -281,7 +281,7 @@ def get_stage(
         or stage_data.task_metrics_distributions is None
     ):
         task_summary = client.get_stage_task_summary(
-            app_id=spark_id,
+            app_id=app_id,
             stage_id=stage_id,
             attempt_id=stage_data.attempt_id,
         )
@@ -291,7 +291,7 @@ def get_stage(
 
 
 @mcp.tool()
-def get_environment(spark_id: str, server: Optional[str] = None):
+def get_environment(app_id: str, server: Optional[str] = None):
     """
     Get the comprehensive Spark runtime configuration for a Spark application.
 
@@ -299,7 +299,7 @@ def get_environment(spark_id: str, server: Optional[str] = None):
     classpath entries, and environment variables.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
 
     Returns:
@@ -308,12 +308,12 @@ def get_environment(spark_id: str, server: Optional[str] = None):
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server)
 
-    return client.get_environment(app_id=spark_id)
+    return client.get_environment(app_id=app_id)
 
 
 @mcp.tool()
 def get_executors(
-    spark_id: str, server: Optional[str] = None, include_inactive: bool = False
+    app_id: str, server: Optional[str] = None, include_inactive: bool = False
 ):
     """
     Get executor information for a Spark application.
@@ -322,7 +322,7 @@ def get_executors(
     with their resource allocation, task statistics, and performance metrics.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         include_inactive: Whether to include inactive executors (default: False)
 
@@ -333,13 +333,13 @@ def get_executors(
     client = get_client_or_default(ctx, server)
 
     if include_inactive:
-        return client.get_all_executors(app_id=spark_id)
+        return client.get_all_executors(app_id=app_id)
     else:
-        return client.get_executors(app_id=spark_id)
+        return client.get_executors(app_id=app_id)
 
 
 @mcp.tool()
-def get_executor(spark_id: str, executor_id: str, server: Optional[str] = None):
+def get_executor(app_id: str, executor_id: str, server: Optional[str] = None):
     """
     Get information about a specific executor.
 
@@ -347,7 +347,7 @@ def get_executor(spark_id: str, executor_id: str, server: Optional[str] = None):
     task statistics, memory usage, and performance metrics.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         executor_id: The executor ID
         server: Optional server name to use (uses default if not specified)
 
@@ -358,7 +358,7 @@ def get_executor(spark_id: str, executor_id: str, server: Optional[str] = None):
     client = get_client_or_default(ctx, server)
 
     # Get all executors and find the one with matching ID
-    executors = client.get_all_executors(app_id=spark_id)
+    executors = client.get_all_executors(app_id=app_id)
 
     for executor in executors:
         if executor.id == executor_id:
@@ -368,7 +368,7 @@ def get_executor(spark_id: str, executor_id: str, server: Optional[str] = None):
 
 
 @mcp.tool()
-def get_executor_summary(spark_id: str, server: Optional[str] = None):
+def get_executor_summary(app_id: str, server: Optional[str] = None):
     """
     Aggregates metrics across all executors for a Spark application.
 
@@ -376,7 +376,7 @@ def get_executor_summary(spark_id: str, server: Optional[str] = None):
     including memory usage, disk usage, task counts, and performance metrics.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
 
     Returns:
@@ -385,7 +385,7 @@ def get_executor_summary(spark_id: str, server: Optional[str] = None):
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server)
 
-    executors = client.get_all_executors(app_id=spark_id)
+    executors = client.get_all_executors(app_id=app_id)
 
     summary = {
         "total_executors": len(executors),
@@ -421,7 +421,7 @@ def get_executor_summary(spark_id: str, server: Optional[str] = None):
 
 @mcp.tool()
 def compare_job_environments(
-    spark_id1: str, spark_id2: str, server: Optional[str] = None
+    app_id1: str, app_id2: str, server: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Compare Spark environment configurations between two jobs.
@@ -430,8 +430,8 @@ def compare_job_environments(
     and other configuration parameters between two Spark applications.
 
     Args:
-        spark_id1: First Spark application ID
-        spark_id2: Second Spark application ID
+        app_id1: First Spark application ID
+        app_id2: Second Spark application ID
         server: Optional server name to use (uses default if not specified)
 
     Returns:
@@ -440,8 +440,8 @@ def compare_job_environments(
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server)
 
-    env1 = client.get_environment(app_id=spark_id1)
-    env2 = client.get_environment(app_id=spark_id2)
+    env1 = client.get_environment(app_id=app_id1)
+    env2 = client.get_environment(app_id=app_id2)
 
     def props_to_dict(props):
         return {k: v for k, v in props} if props else {}
@@ -453,7 +453,7 @@ def compare_job_environments(
     system_props2 = props_to_dict(env2.system_properties)
 
     comparison = {
-        "applications": {"app1": spark_id1, "app2": spark_id2},
+        "applications": {"app1": app_id1, "app2": app_id2},
         "runtime_comparison": {
             "app1": {
                 "java_version": env1.runtime.java_version,
@@ -508,7 +508,7 @@ def compare_job_environments(
 
 @mcp.tool()
 def compare_job_performance(
-    spark_id1: str, spark_id2: str, server: Optional[str] = None
+    app_id1: str, app_id2: str, server: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Compare performance metrics between two Spark jobs.
@@ -517,8 +517,8 @@ def compare_job_performance(
     performance indicators to identify differences between jobs.
 
     Args:
-        spark_id1: First Spark application ID
-        spark_id2: Second Spark application ID
+        app_id1: First Spark application ID
+        app_id2: Second Spark application ID
         server: Optional server name to use (uses default if not specified)
 
     Returns:
@@ -528,16 +528,16 @@ def compare_job_performance(
     client = get_client_or_default(ctx, server)
 
     # Get application info
-    app1 = client.get_application(spark_id1)
-    app2 = client.get_application(spark_id2)
+    app1 = client.get_application(app_id1)
+    app2 = client.get_application(app_id2)
 
     # Get executor summaries
-    exec_summary1 = get_executor_summary(spark_id1, server)
-    exec_summary2 = get_executor_summary(spark_id2, server)
+    exec_summary1 = get_executor_summary(app_id1, server)
+    exec_summary2 = get_executor_summary(app_id2, server)
 
     # Get job data
-    jobs1 = client.get_jobs(app_id=spark_id1)
-    jobs2 = client.get_jobs(app_id=spark_id2)
+    jobs1 = client.get_jobs(app_id=app_id1)
+    jobs2 = client.get_jobs(app_id=app_id2)
 
     # Calculate job duration statistics
     def calc_job_stats(jobs):
@@ -567,8 +567,8 @@ def compare_job_performance(
 
     comparison = {
         "applications": {
-            "app1": {"id": spark_id1, "name": app1.name},
-            "app2": {"id": spark_id2, "name": app2.name},
+            "app1": {"id": app_id1, "name": app1.name},
+            "app2": {"id": app_id2, "name": app2.name},
         },
         "resource_allocation": {
             "app1": {
@@ -620,8 +620,8 @@ def compare_job_performance(
 
 @mcp.tool()
 def compare_sql_execution_plans(
-    spark_id1: str,
-    spark_id2: str,
+    app_id1: str,
+    app_id2: str,
     execution_id1: Optional[int] = None,
     execution_id2: Optional[int] = None,
     server: Optional[str] = None,
@@ -633,8 +633,8 @@ def compare_sql_execution_plans(
     and compares execution metrics between SQL queries.
 
     Args:
-        spark_id1: First Spark application ID
-        spark_id2: Second Spark application ID
+        app_id1: First Spark application ID
+        app_id2: Second Spark application ID
         execution_id1: Optional specific execution ID for first app (uses longest if not specified)
         execution_id2: Optional specific execution ID for second app (uses longest if not specified)
         server: Optional server name to use (uses default if not specified)
@@ -647,10 +647,10 @@ def compare_sql_execution_plans(
 
     # Get SQL executions for both applications
     sql_execs1 = client.get_sql_list(
-        app_id=spark_id1, details=True, plan_description=True
+        app_id=app_id1, details=True, plan_description=True
     )
     sql_execs2 = client.get_sql_list(
-        app_id=spark_id2, details=True, plan_description=True
+        app_id=app_id2, details=True, plan_description=True
     )
 
     # If specific execution IDs not provided, use the longest running ones
@@ -668,10 +668,10 @@ def compare_sql_execution_plans(
 
     # Get specific execution details
     exec1 = client.get_sql_execution(
-        spark_id1, execution_id1, details=True, plan_description=True
+        app_id1, execution_id1, details=True, plan_description=True
     )
     exec2 = client.get_sql_execution(
-        spark_id2, execution_id2, details=True, plan_description=True
+        app_id2, execution_id2, details=True, plan_description=True
     )
 
     # Analyze nodes and operations
@@ -690,7 +690,7 @@ def compare_sql_execution_plans(
     all_node_types = set(nodes1.keys()) | set(nodes2.keys())
 
     comparison = {
-        "applications": {"app1": spark_id1, "app2": spark_id2},
+        "applications": {"app1": app_id1, "app2": app_id2},
         "executions": {
             "app1": {
                 "execution_id": execution_id1,
@@ -740,7 +740,7 @@ def compare_sql_execution_plans(
 
 @mcp.tool()
 def get_stage_task_summary(
-    spark_id: str,
+    app_id: str,
     stage_id: int,
     attempt_id: int = 0,
     server: Optional[str] = None,
@@ -753,7 +753,7 @@ def get_stage_task_summary(
     execution times, memory usage, I/O metrics, and shuffle metrics.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         stage_id: The stage ID
         attempt_id: The stage attempt ID (default: 0)
         server: Optional server name to use (uses default if not specified)
@@ -766,13 +766,13 @@ def get_stage_task_summary(
     client = get_client_or_default(ctx, server)
 
     return client.get_stage_task_summary(
-        app_id=spark_id, stage_id=stage_id, attempt_id=attempt_id, quantiles=quantiles
+        app_id=app_id, stage_id=stage_id, attempt_id=attempt_id, quantiles=quantiles
     )
 
 
 @mcp.tool()
 def get_slowest_sql_queries(
-    spark_id: str,
+    app_id: str,
     server: Optional[str] = None,
     attempt_id: Optional[str] = None,
     top_n: int = 1,
@@ -783,7 +783,7 @@ def get_slowest_sql_queries(
     Get a summary of the top N slowest SQL queries for an application.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         attempt_id: Optional attempt ID
         top_n: Number of slowest queries to return
@@ -804,7 +804,7 @@ def get_slowest_sql_queries(
     # Fetch all pages of SQL executions
     while True:
         executions: List[ExecutionData] = client.get_sql_list(
-            app_id=spark_id,
+            app_id=app_id,
             attempt_id=attempt_id,
             details=True,
             plan_description=False,
@@ -835,7 +835,7 @@ def get_slowest_sql_queries(
 
 @mcp.tool()
 def get_job_bottlenecks(
-    spark_id: str, server: Optional[str] = None, top_n: int = 5
+    app_id: str, server: Optional[str] = None, top_n: int = 5
 ) -> Dict[str, Any]:
     """
     Identify performance bottlenecks in a Spark job.
@@ -844,7 +844,7 @@ def get_job_bottlenecks(
     operations and resource-intensive components.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         top_n: Number of top bottlenecks to return
 
@@ -855,16 +855,16 @@ def get_job_bottlenecks(
     client = get_client_or_default(ctx, server)
 
     # Get slowest stages
-    slowest_stages = get_slowest_stages(spark_id, server, False, top_n)
+    slowest_stages = get_slowest_stages(app_id, server, False, top_n)
 
     # Get slowest jobs
-    slowest_jobs = get_slowest_jobs(spark_id, server, False, top_n)
+    slowest_jobs = get_slowest_jobs(app_id, server, False, top_n)
 
     # Get executor summary
-    exec_summary = get_executor_summary(spark_id, server)
+    exec_summary = get_executor_summary(app_id, server)
 
     # Get all stages for detailed analysis
-    all_stages = client.get_stages(app_id=spark_id, details=True)
+    all_stages = client.get_stages(app_id=app_id, details=True)
 
     # Identify stages with high spill
     high_spill_stages = []
@@ -896,7 +896,7 @@ def get_job_bottlenecks(
     )
 
     bottlenecks = {
-        "application_id": spark_id,
+        "application_id": app_id,
         "performance_bottlenecks": {
             "slowest_stages": [
                 {
@@ -977,7 +977,7 @@ def get_job_bottlenecks(
 
 @mcp.tool()
 def get_resource_usage_timeline(
-    spark_id: str, server: Optional[str] = None
+    app_id: str, server: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Get resource usage timeline for a Spark application.
@@ -986,7 +986,7 @@ def get_resource_usage_timeline(
     including executor additions/removals and stage execution overlap.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
 
     Returns:
@@ -996,13 +996,13 @@ def get_resource_usage_timeline(
     client = get_client_or_default(ctx, server)
 
     # Get application info
-    app = client.get_application(spark_id)
+    app = client.get_application(app_id)
 
     # Get all executors
-    executors = client.get_all_executors(app_id=spark_id)
+    executors = client.get_all_executors(app_id=app_id)
 
     # Get stages
-    stages = client.get_stages(app_id=spark_id, details=True)
+    stages = client.get_stages(app_id=app_id, details=True)
 
     # Create timeline events
     timeline_events = []
@@ -1092,7 +1092,7 @@ def get_resource_usage_timeline(
         )
 
     return {
-        "application_id": spark_id,
+        "application_id": app_id,
         "application_name": app.name,
         "timeline": resource_timeline,
         "summary": {

@@ -83,7 +83,7 @@ class TerminalFormatter:
             "key_values": re.compile(r"^([A-Za-z][\w\s\-\/]*?):", re.MULTILINE),
             "durations": re.compile(r"(\d+\s*(seconds?|minutes?|hours?|ms))"),
             "percentages": re.compile(r"(\d+\s*(%|MB|GB|TB))"),
-            "spark_ids": re.compile(r"(spark-[a-f0-9]+)"),
+            "app_ids": re.compile(r"(spark-[a-f0-9]+)"),
             "job_stage_ids": re.compile(r"(Job\s+\d+|Stage\s+\w+)"),
             "bullets": re.compile(r"^\s*[-•]\s*", re.MULTILINE),
         }
@@ -104,7 +104,7 @@ class TerminalFormatter:
         text = self._patterns["key_values"].sub(r"\033[1m\1:\033[0m", text)
         text = self._patterns["durations"].sub(r"\033[93m\1\033[0m", text)
         text = self._patterns["percentages"].sub(r"\033[93m\1\033[0m", text)
-        text = self._patterns["spark_ids"].sub(r"\033[96m\1\033[0m", text)
+        text = self._patterns["app_ids"].sub(r"\033[96m\1\033[0m", text)
         text = self._patterns["job_stage_ids"].sub(r"\033[92m\1\033[0m", text)
         text = self._patterns["bullets"].sub("", text)
 

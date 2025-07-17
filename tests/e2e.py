@@ -10,7 +10,7 @@ from mcp.types import TextContent
 from spark_history_mcp.models.spark_types import ApplicationInfo, JobData
 
 mcp_endpoint = "http://localhost:18888/mcp/"
-test_spark_id = "spark-cc4d115f011443d787f03a71a476a745"
+test_app_id = "spark-cc4d115f011443d787f03a71a476a745"
 
 
 class McpClient:
@@ -74,9 +74,7 @@ async def test_tools_not_empty():
 @pytest.mark.asyncio
 async def test_get_application():
     async with McpClient() as client:
-        app_result = await client.call_tool(
-            "get_application", {"spark_id": test_spark_id}
-        )
+        app_result = await client.call_tool("get_application", {"app_id": test_app_id})
         assert not app_result.isError
         assert isinstance(app_result.content[0], TextContent), (
             "get_application should return a TextContent object"
@@ -86,7 +84,7 @@ async def test_get_application():
         app_info = ApplicationInfo.model_validate(app_data)
 
         # Validate specific fields
-        assert app_info.id == test_spark_id
+        assert app_info.id == test_app_id
         assert app_info.name == "NewYorkTaxiData_2025_06_27_03_56_52"
 
 
@@ -94,7 +92,7 @@ async def test_get_application():
 async def test_get_jobs_no_filter():
     async with McpClient() as client:
         # Test with status filter
-        jobs_result = await client.call_tool("get_jobs", {"spark_id": test_spark_id})
+        jobs_result = await client.call_tool("get_jobs", {"app_id": test_app_id})
         assert not jobs_result.isError
         assert len(jobs_result.content) == 6
         for content in jobs_result.content:
@@ -110,7 +108,7 @@ async def test_get_jobs_with_status_filter():
     async with McpClient() as client:
         # Test with status filter
         jobs_result = await client.call_tool(
-            "get_jobs", {"spark_id": test_spark_id, "status": ["SUCCEEDED"]}
+            "get_jobs", {"app_id": test_app_id, "status": ["SUCCEEDED"]}
         )
         assert not jobs_result.isError
         assert len(jobs_result.content) > 0

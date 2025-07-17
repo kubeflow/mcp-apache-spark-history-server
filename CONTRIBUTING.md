@@ -139,7 +139,7 @@ When adding new tools, follow this pattern:
 ```python
 @mcp.tool()
 def your_new_tool(
-    spark_id: str,
+    app_id: str,
     server: Optional[str] = None,
     # other parameters
 ) -> YourReturnType:
@@ -147,7 +147,7 @@ def your_new_tool(
     Brief description of what this tool does.
 
     Args:
-        spark_id: The Spark application ID
+        app_id: The Spark application ID
         server: Optional server name to use
 
     Returns:
@@ -157,7 +157,7 @@ def your_new_tool(
     client = get_client_or_default(ctx, server)
 
     # Your implementation here
-    return client.your_method(spark_id)
+    return client.your_method(app_id)
 ```
 
 **Don't forget to add tests:**

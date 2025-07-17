@@ -226,7 +226,7 @@ servers:
 🤖 AI Tool Request:
 ```json
 {
-  "spark_id": "<app_id>",
+  "app_id": "<app_id>",
   "server": "production"
 }
 ```

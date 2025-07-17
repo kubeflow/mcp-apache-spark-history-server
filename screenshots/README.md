@@ -27,8 +27,8 @@ This directory contains screenshots for the README.md file.
 **What to capture**:
 1. In MCP Inspector, click on `compare_job_performance` tool
 2. Fill in parameters:
-   - `spark_id1`: `spark-bcec39f6201b42b9925124595baad260`
-   - `spark_id2`: `spark-110be3a8424d4a2789cb88134418217b`
+   - `app_id1`: `spark-bcec39f6201b42b9925124595baad260`
+   - `app_id2`: `spark-110be3a8424d4a2789cb88134418217b`
 3. Click "Call Tool" button
 4. Capture the comparison results
 

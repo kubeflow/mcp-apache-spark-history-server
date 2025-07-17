@@ -77,7 +77,7 @@ Once the MCP Inspector opens in your browser (http://localhost:6274), you can:
 
 #### Get Application Details
 - **Tool**: `get_application`
-- **Parameter**: `spark_id` = `spark-cc4d115f011443d787f03a71a476a745`
+- **Parameter**: `app_id` = `spark-cc4d115f011443d787f03a71a476a745`
 - **Expected**: Application info including name, duration, status
 
 #### List All Applications
@@ -88,8 +88,8 @@ Once the MCP Inspector opens in your browser (http://localhost:6274), you can:
 #### Compare Job Performance
 - **Tool**: `compare_job_performance`
 - **Parameters**:
-  - `spark_id1` = `spark-bcec39f6201b42b9925124595baad260`
-  - `spark_id2` = `spark-110be3a8424d4a2789cb88134418217b`
+  - `app_id1` = `spark-bcec39f6201b42b9925124595baad260`
+  - `app_id2` = `spark-110be3a8424d4a2789cb88134418217b`
 - **Expected**: Performance comparison metrics
 
 
