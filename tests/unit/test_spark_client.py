@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from config import ServerConfig
-from spark_client import SparkRestClient
+from spark_history_mcp.api.spark_client import SparkRestClient
+from spark_history_mcp.config.config import ServerConfig
 
 
 class TestSparkClient(unittest.TestCase):
@@ -10,7 +10,7 @@ class TestSparkClient(unittest.TestCase):
         self.server_config = ServerConfig(url="http://spark-history-server:18080")
         self.client = SparkRestClient(self.server_config)
 
-    @patch("spark_client.requests.get")
+    @patch("spark_history_mcp.api.spark_client.requests.get")
     def test_get_applications(self, mock_get):
         # Setup mock response
         mock_response = MagicMock()
@@ -61,7 +61,7 @@ class TestSparkClient(unittest.TestCase):
         self.assertEqual(apps[0].attempts[0].spark_user, "spark")
         self.assertTrue(apps[0].attempts[0].completed)
 
-    @patch("spark_client.requests.get")
+    @patch("spark_history_mcp.api.spark_client.requests.get")
     def test_get_applications_with_filters(self, mock_get):
         # Setup mock response
         mock_response = MagicMock()
@@ -107,7 +107,7 @@ class TestSparkClient(unittest.TestCase):
 
         self.assertEqual(len(apps), 1)
 
-    @patch("spark_client.requests.get")
+    @patch("spark_history_mcp.api.spark_client.requests.get")
     def test_get_applications_empty_response(self, mock_get):
         # Setup mock response with empty list
         mock_response = MagicMock()

@@ -1,7 +1,7 @@
 repos:
   # Pre-commit hooks for general file hygiene
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+    rev: v5.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -18,7 +18,7 @@ repos:
 
   # Python linting and formatting with Ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.12.0
+    rev: v0.12.3
     hooks:
       # Run the linter
       - id: ruff-check
@@ -38,7 +38,7 @@ repos:
 
   # Security scanning
   - repo: https://github.com/PyCQA/bandit
-    rev: 1.7.10
+    rev: 1.8.6
     hooks:
       - id: bandit
         args: [--recursive, --format, json, --output, bandit-report.json]
@@ -46,7 +46,7 @@ repos:
 
   # Documentation and markdown
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.42.0
+    rev: v0.45.0
     hooks:
       - id: markdownlint
         args: [--disable, MD013, MD033, MD041]  # Disable line length, HTML, first line rules

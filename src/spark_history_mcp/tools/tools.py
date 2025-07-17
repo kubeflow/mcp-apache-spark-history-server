@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional
 
-from app import mcp
-from spark_types import (
+from spark_history_mcp.core.app import mcp
+from spark_history_mcp.models.spark_types import (
     ApplicationInfo,
     ExecutionData,
     JobData,

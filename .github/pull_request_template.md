@@ -23,7 +23,7 @@ Brief description of changes and motivation.
 ```bash
 # Example:
 # task test
-# npx @modelcontextprotocol/inspector uv run main.py
+# npx @modelcontextprotocol/inspector uv run -m spark_history_mcp.core.main
 ```
 
 ## 🛠️ New Tools Added (if applicable)

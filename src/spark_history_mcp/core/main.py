@@ -3,7 +3,7 @@
 import logging
 import sys
 
-import app
+from spark_history_mcp.core import app
 
 # Configure logging
 logging.basicConfig(

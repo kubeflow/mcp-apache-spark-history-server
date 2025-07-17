@@ -36,7 +36,7 @@ curl http://localhost:18080/api/v1/applications
 q mcp add \
   --name spark-history-server-mcp \
   --command uv \
-  --args "run,main.py" \
+  --args "run,-m,spark_history_mcp.core.main" \
   --env SHS_MCP_TRANSPORT=stdio \
   --scope global
 ```
@@ -51,7 +51,8 @@ cat ~/.aws/amazonq/mcp.json
       "command": "uv",
       "args": [
         "run",
-        "main.py"
+        "-m",
+        "spark_history_mcp.core.main"
       ],
       "env": {
         "SHS_MCP_TRANSPORT": "stdio"
@@ -72,7 +73,7 @@ cat ~/.aws/amazonq/mcp.json
   q mcp add \
   --name spark-history-server-mcp \
   --command /Users/username/.local/bin/uv \
-  --args "run,--project,/<Users/username>/spark-history-server-mcp,python,main_stdio.py" \
+  --args "run,--project,/<Users/username>/spark-history-server-mcp,-m,spark_history_mcp.core.main" \
   --scope global
   ```
 - Replace `/Users/username/.local/bin/uv` with output of `which uv`

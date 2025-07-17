@@ -38,7 +38,7 @@ curl http://localhost:18080/api/v1/applications
     "mcpServers": {
         "spark-history-server-mcp": {
             "command": "uv",
-            "args": ["run", "main.py"]
+            "args": ["run", "-m", "spark_history_mcp.core.main"]
         }
     }
 }

@@ -25,4 +25,4 @@ WORKDIR /app
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-CMD ["python", "main.py"]
+CMD ["python", "-m", "spark_history_mcp.core.main"]

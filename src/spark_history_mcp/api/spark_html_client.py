@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 
 from playwright.async_api import async_playwright
 
-from config import ServerConfig
+from spark_history_mcp.config.config import ServerConfig
 
 # HTML client for Spark History Server web interface
 

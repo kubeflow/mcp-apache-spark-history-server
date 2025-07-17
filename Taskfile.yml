@@ -141,7 +141,7 @@ tasks:
     desc: Start MCP server
     interactive: true
     cmds:
-      - uv run main.py --frozen
+      - uv run -m spark_history_mcp.core.main --frozen
       - task: wait-for-mcp
 
   start-mcp-bg:
@@ -149,11 +149,11 @@ tasks:
     cmds:
       - |
         echo "Starting MCP server in background..."
-        bash -c 'nohup uv run main.py > mcp-server.log 2>&1 &'
+        bash -c 'nohup uv run -m spark_history_mcp.core.main > mcp-server.log 2>&1 &'
 
       - task: wait-for-mcp
     status:
-      - pgrep -f "main.py" > /dev/null
+      - pgrep -f "spark_history_mcp.core.main" > /dev/null
 
   start-inspector:
     desc: Start MCP Inspector for testing
@@ -199,7 +199,7 @@ tasks:
       - |
         echo "Stopping all services..."
         pkill -f "start_local_spark_history.sh" || true
-        pkill -f "main.py" || true
+        pkill -f "spark_history_mcp.core.main" || true
         pkill -f "inspector" || true
         docker stop spark-history-server 2>/dev/null || true
         sleep 1

@@ -41,7 +41,7 @@ uv run pytest
 ./start_local_spark_history.sh
 
 # Terminal 2: Test your changes
-npx @modelcontextprotocol/inspector uv run main.py
+npx @modelcontextprotocol/inspector uv run -m spark_history_mcp.core.main
 # Opens browser at http://localhost:6274 for interactive testing
 ```
 
@@ -112,7 +112,7 @@ git checkout -b docs/improve-readme
 uv run pytest
 
 # Test with MCP Inspector
-npx @modelcontextprotocol/inspector uv run main.py
+npx @modelcontextprotocol/inspector uv run -m spark_history_mcp.core.main
 
 # Test with real Spark data if possible
 ```

@@ -10,7 +10,7 @@ from botocore.exceptions import ClientError
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 
-from emr_persistent_ui_client import EMRPersistentUIClient
+from spark_history_mcp.api.emr_persistent_ui_client import EMRPersistentUIClient
 
 
 class TestEMRPersistentUIClient(unittest.TestCase):
