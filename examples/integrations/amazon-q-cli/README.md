@@ -34,9 +34,9 @@ curl http://localhost:18080/api/v1/applications
 1. **Add MCP server**:
 ```bash
 q mcp add \
-  --name spark-history-server-mcp \
-  --command uv \
-  --args "run,-m,spark_history_mcp.core.main" \
+  --name spark-history-server \
+  --command /<Local Path to Repo>/spark-history-server-mcp/spark_history_server_mcp_launcher.sh \
+  --args "-p", "q_cli" \
   --env SHS_MCP_TRANSPORT=stdio \
   --scope global
 ```
@@ -48,11 +48,10 @@ cat ~/.aws/amazonq/mcp.json
 {
   "mcpServers": {
     "spark-history-server": {
-      "command": "uv",
+      "command": "/<Local Path to Repo>/spark-history-server-mcp/spark_history_server_mcp_launcher.sh",
       "args": [
-        "run",
-        "-m",
-        "spark_history_mcp.core.main"
+        "-p",
+        "q_cli" # pre-appends to mcp_server_output.log
       ],
       "env": {
         "SHS_MCP_TRANSPORT": "stdio"
@@ -60,25 +59,8 @@ cat ~/.aws/amazonq/mcp.json
       "timeout": 120000,
       "disabled": false
     }
-  }
 }
 ```
-
-<details>
-<summary><strong>⚠️ Important</strong></summary>
-
-- In order for the MCP server to load, q cli needs to be in your local repository path.
-- If you want to use the tools outside of this repository path, you need to run:
-  ```bash
-  q mcp add \
-  --name spark-history-server-mcp \
-  --command /Users/username/.local/bin/uv \
-  --args "run,--project,/<Users/username>/spark-history-server-mcp,-m,spark_history_mcp.core.main" \
-  --scope global
-  ```
-- Replace `/Users/username/.local/bin/uv` with output of `which uv`
-- Replace `/Users/username/spark-history-server-mcp` with your actual repository path
-</details>
 
 2. **Test connection**
 
@@ -98,7 +80,7 @@ Compare performance between spark-cc4d115f011443d787f03a71a476a745 and spark-110
 
 ## Batch Analysis
 ```bash
-echo "What are the bottlenecks in spark-cc4d115f011443d787f03a71a476a745?" | q chat --trust-all-tools
+echo "What are the bottlenecks in spark-cc4d115f011443d787f03a71a476a745?"
 ```
 
 ## Management
