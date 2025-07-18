@@ -329,9 +329,85 @@ class TestEMRPersistentUIClient(unittest.TestCase):
             self.client.initialize()
 
         self.assertIn(
-            "EMR Persistent UI status is PENDING, expected ATTACHED",
+            "EMR Persistent UI status is PENDING, expected ATTACHED or STARTING",
             str(context.exception),
         )
+
+    @patch.object(EMRPersistentUIClient, "create_persistent_app_ui")
+    @patch.object(EMRPersistentUIClient, "describe_persistent_app_ui")
+    @patch.object(EMRPersistentUIClient, "get_presigned_url")
+    @patch.object(EMRPersistentUIClient, "setup_http_session")
+    @patch("time.sleep")  # Mock sleep to avoid waiting in tests
+    def test_initialize_with_starting_status(
+        self, mock_sleep, mock_setup_session, mock_get_url, mock_describe, mock_create
+    ):
+        """Test initialization with STARTING status that changes to ATTACHED."""
+        # Mock the responses
+        mock_create.return_value = {"PersistentAppUIId": "test-ui-id"}
+
+        # First call returns STARTING, second call returns ATTACHED
+        mock_describe.side_effect = [
+            {"PersistentAppUI": {"PersistentAppUIStatus": "STARTING"}},
+            {"PersistentAppUI": {"PersistentAppUIStatus": "ATTACHED"}},
+        ]
+
+        mock_get_url.return_value = "https://example.com/presigned-url"
+        self.client.base_url = "https://example.com/shs"
+        mock_setup_session.return_value = self.mock_session
+
+        # Call the method
+        base_url, session = self.client.initialize()
+
+        # Check that describe was called twice (once for STARTING, once for ATTACHED)
+        self.assertEqual(mock_describe.call_count, 2)
+
+        # Check that sleep was called once (after the STARTING status)
+        mock_sleep.assert_called_once()
+
+        # Check that the other methods were called
+        mock_create.assert_called_once()
+        mock_get_url.assert_called_once()
+        mock_setup_session.assert_called_once()
+
+        # Check that the return values are correct
+        self.assertEqual(base_url, "https://example.com/shs")
+        self.assertEqual(session, self.mock_session)
+
+    @patch.object(EMRPersistentUIClient, "create_persistent_app_ui")
+    @patch.object(EMRPersistentUIClient, "describe_persistent_app_ui")
+    @patch.object(EMRPersistentUIClient, "get_presigned_url")
+    @patch.object(EMRPersistentUIClient, "setup_http_session")
+    @patch("time.sleep")  # Mock sleep to avoid waiting in tests
+    def test_initialize_timeout_with_starting_status(
+        self, mock_sleep, mock_setup_session, mock_get_url, mock_describe, mock_create
+    ):
+        """Test initialization with STARTING status that doesn't change to ATTACHED within timeout."""
+        # Mock the responses
+        mock_create.return_value = {"PersistentAppUIId": "test-ui-id"}
+
+        # Always return STARTING status
+        mock_describe.return_value = {
+            "PersistentAppUI": {"PersistentAppUIStatus": "STARTING"}
+        }
+
+        # Set a small max_wait_time to make the test run faster
+        with patch.dict(self.client.__dict__, {"_max_wait_time_for_testing": 0}):
+            # Call the method and expect ValueError
+            with self.assertRaises(ValueError) as context:
+                self.client.initialize()
+
+            # Verify the error message
+            self.assertIn(
+                "EMR Persistent UI status is still STARTING after waiting",
+                str(context.exception),
+            )
+            self.assertIn("expected ATTACHED", str(context.exception))
+
+        # Verify that describe_persistent_app_ui was called at least once
+        mock_describe.assert_called()
+
+        # Verify that sleep was called at least once
+        mock_sleep.assert_called()
 
 
 if __name__ == "__main__":

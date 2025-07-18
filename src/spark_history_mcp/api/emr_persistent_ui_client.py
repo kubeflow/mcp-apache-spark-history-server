@@ -7,6 +7,7 @@ and establish an HTTP session with proper cookie management for Spark History Se
 """
 
 import logging
+import time
 from typing import Dict, Optional, Tuple
 from urllib.parse import urlparse
 
@@ -155,7 +156,6 @@ class EMRPersistentUIClient:
             self.base_url = f"{parsed_url.scheme}://{parsed_url.netloc}/shs"
 
             logger.info("✅ Presigned URL obtained successfully")
-            logger.info(f"   URL: {self.presigned_url}")
             logger.info(f"   Base URL: {self.base_url}")
 
             return self.presigned_url
@@ -200,7 +200,7 @@ class EMRPersistentUIClient:
 
         try:
             # Make initial request to establish session and get cookies
-            logger.info(f"Making initial request to: {self.presigned_url}")
+            logger.info("Making initial request")
             response = self.session.get(
                 self.presigned_url, timeout=30, allow_redirects=True
             )
@@ -228,24 +228,51 @@ class EMRPersistentUIClient:
         Initialize the EMR Persistent UI client by creating a persistent app UI,
         verifying its status, getting a presigned URL, and setting up an HTTP session.
 
+        If the status is STARTING, it will wait for the status
+        to change to ATTACHED before proceeding.
+
         Returns:
             Tuple containing the base URL and configured session
 
         Raises:
-            ValueError: If the persistent UI status is not ATTACHED
+            ValueError: If the persistent UI status is not ATTACHED after waiting
         """
         # Step 1: Create persistent app UI
         self.create_persistent_app_ui()
 
         # Step 2: Describe persistent app UI and verify status
-        describe_response = self.describe_persistent_app_ui()
-        ui_status = describe_response.get("PersistentAppUI", {}).get(
-            "PersistentAppUIStatus"
-        )
+        # Wait for up to 3 minutes if status is STARTING
+        max_wait_time = 180  # 3 minutes in seconds
+        wait_interval = 10  # Check every 10 seconds
+        total_waited = 0
+        ui_status = ""
 
+        while total_waited < max_wait_time:
+            describe_response = self.describe_persistent_app_ui()
+            ui_status = describe_response.get("PersistentAppUI", {}).get(
+                "PersistentAppUIStatus"
+            )
+
+            if ui_status == "ATTACHED":
+                # Status is good, proceed
+                break
+            elif ui_status == "STARTING":
+                # Status is starting, wait and check again
+                logger.info(
+                    f"EMR Persistent UI status is {ui_status}, waiting for ATTACHED status..."
+                )
+                time.sleep(wait_interval)
+                total_waited += wait_interval
+            else:
+                # Status is something else (not STARTING or ATTACHED), raise error
+                raise ValueError(
+                    f"EMR Persistent UI status is {ui_status}, expected ATTACHED or STARTING"
+                )
+
+        # After waiting, check if we have the correct status
         if ui_status != "ATTACHED":
             raise ValueError(
-                f"EMR Persistent UI status is {ui_status}, expected ATTACHED"
+                f"EMR Persistent UI status is still {ui_status} after waiting {total_waited} seconds, expected ATTACHED"
             )
 
         # Step 3: Get presigned URL
