@@ -122,15 +122,15 @@ The MCP server provides **17 specialized tools** organized by analysis patterns.
 *Job-level performance analysis and identification*
 | 🔧 Tool | 📝 Description |
 |---------|----------------|
-| `get_jobs` | 🔗 Get a list of all jobs for a Spark application with optional status filtering |
-| `get_slowest_jobs` | ⏱️ Get the N slowest jobs for a Spark application (excludes running jobs by default) |
+| `list_jobs` | 🔗 Get a list of all jobs for a Spark application with optional status filtering |
+| `list_slowest_jobs` | ⏱️ Get the N slowest jobs for a Spark application (excludes running jobs by default) |
 
 ### ⚡ Stage Analysis
 *Stage-level performance deep dive and task metrics*
 | 🔧 Tool | 📝 Description |
 |---------|----------------|
-| `get_stages` | ⚡ Get a list of all stages for a Spark application with optional status filtering and summaries |
-| `get_slowest_stages` | 🐌 Get the N slowest stages for a Spark application (excludes running stages by default) |
+| `list_stages` | ⚡ Get a list of all stages for a Spark application with optional status filtering and summaries |
+| `list_slowest_stages` | 🐌 Get the N slowest stages for a Spark application (excludes running stages by default) |
 | `get_stage` | 🎯 Get information about a specific stage with optional attempt ID and summary metrics |
 | `get_stage_task_summary` | 📊 Get statistical distributions of task metrics for a specific stage (execution times, memory usage, I/O metrics) |
 
@@ -138,7 +138,7 @@ The MCP server provides **17 specialized tools** organized by analysis patterns.
 *Resource utilization, executor performance, and allocation tracking*
 | 🔧 Tool | 📝 Description |
 |---------|----------------|
-| `get_executors` | 🖥️ Get executor information with optional inactive executor inclusion |
+| `list_executors` | 🖥️ Get executor information with optional inactive executor inclusion |
 | `get_executor` | 🔍 Get information about a specific executor including resource allocation, task statistics, and performance metrics |
 | `get_executor_summary` | 📈 Aggregates metrics across all executors (memory usage, disk usage, task counts, performance metrics) |
 | `get_resource_usage_timeline` | 📅 Get chronological view of resource allocation and usage patterns including executor additions/removals |
@@ -153,7 +153,7 @@ The MCP server provides **17 specialized tools** organized by analysis patterns.
 *SQL performance analysis and execution plan comparison*
 | 🔧 Tool | 📝 Description |
 |---------|----------------|
-| `get_slowest_sql_queries` | 🐌 Get the top N slowest SQL queries for an application with detailed execution metrics |
+| `list_slowest_sql_queries` | 🐌 Get the top N slowest SQL queries for an application with detailed execution metrics |
 | `compare_sql_execution_plans` | 🔍 Compare SQL execution plans between two Spark jobs, analyzing logical/physical plans and execution metrics |
 
 ### 🚨 Performance & Bottleneck Analysis
@@ -172,11 +172,11 @@ The MCP server provides **17 specialized tools** organized by analysis patterns.
 ### 🤖 How LLMs Use These Tools
 
 **Query Pattern Examples:**
-- *"Why is my job slow?"* → `get_job_bottlenecks` + `get_slowest_stages` + `get_executor_summary`
+- *"Why is my job slow?"* → `get_job_bottlenecks` + `list_slowest_stages` + `get_executor_summary`
 - *"Compare today vs yesterday"* → `compare_job_performance` + `compare_job_environments`
 - *"What's wrong with stage 5?"* → `get_stage` + `get_stage_task_summary`
 - *"Show me resource usage over time"* → `get_resource_usage_timeline` + `get_executor_summary`
-- *"Find my slowest SQL queries"* → `get_slowest_sql_queries` + `compare_sql_execution_plans`
+- *"Find my slowest SQL queries"* → `list_slowest_sql_queries` + `compare_sql_execution_plans`
 
 ## 📔 AWS Integration Guides
 

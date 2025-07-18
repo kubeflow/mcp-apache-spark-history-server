@@ -89,32 +89,32 @@ async def test_get_application():
 
 
 @pytest.mark.asyncio
-async def test_get_jobs_no_filter():
+async def test_list_jobs_no_filter():
     async with McpClient() as client:
         # Test with status filter
-        jobs_result = await client.call_tool("get_jobs", {"app_id": test_app_id})
+        jobs_result = await client.call_tool("list_jobs", {"app_id": test_app_id})
         assert not jobs_result.isError
         assert len(jobs_result.content) == 6
         for content in jobs_result.content:
             assert isinstance(content, TextContent), (
-                "get_jobs should return a TextContent object"
+                "list_jobs should return a TextContent object"
             )
             stage = JobData.model_validate_json(content.text)
             assert stage.status == "SUCCEEDED", "All jobs should have SUCCEEDED status"
 
 
 @pytest.mark.asyncio
-async def test_get_jobs_with_status_filter():
+async def test_list_jobs_with_status_filter():
     async with McpClient() as client:
         # Test with status filter
         jobs_result = await client.call_tool(
-            "get_jobs", {"app_id": test_app_id, "status": ["SUCCEEDED"]}
+            "list_jobs", {"app_id": test_app_id, "status": ["SUCCEEDED"]}
         )
         assert not jobs_result.isError
         assert len(jobs_result.content) > 0
         for content in jobs_result.content:
             assert isinstance(content, TextContent), (
-                "get_jobs should return a TextContent object"
+                "list_jobs should return a TextContent object"
             )
             stage = JobData.model_validate_json(content.text)
             assert stage.status == "SUCCEEDED", "All jobs should have SUCCEEDED status"

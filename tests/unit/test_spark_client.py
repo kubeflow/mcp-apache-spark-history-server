@@ -11,7 +11,7 @@ class TestSparkClient(unittest.TestCase):
         self.client = SparkRestClient(self.server_config)
 
     @patch("spark_history_mcp.api.spark_client.requests.get")
-    def test_get_applications(self, mock_get):
+    def test_list_applications(self, mock_get):
         # Setup mock response
         mock_response = MagicMock()
         mock_response.json.return_value = [
@@ -40,7 +40,7 @@ class TestSparkClient(unittest.TestCase):
         mock_get.return_value = mock_response
 
         # Call the method
-        apps = self.client.get_applications(status=["COMPLETED"], limit=10)
+        apps = self.client.list_applications(status=["COMPLETED"], limit=10)
 
         # Assertions
         mock_get.assert_called_once_with(
@@ -62,7 +62,7 @@ class TestSparkClient(unittest.TestCase):
         self.assertTrue(apps[0].attempts[0].completed)
 
     @patch("spark_history_mcp.api.spark_client.requests.get")
-    def test_get_applications_with_filters(self, mock_get):
+    def test_list_applications_with_filters(self, mock_get):
         # Setup mock response
         mock_response = MagicMock()
         mock_response.json.return_value = [
@@ -86,7 +86,7 @@ class TestSparkClient(unittest.TestCase):
         mock_get.return_value = mock_response
 
         # Call the method with various filters
-        apps = self.client.get_applications(
+        apps = self.client.list_applications(
             status=["COMPLETED"], min_date="2023-01-01", max_date="2023-01-02", limit=5
         )
 
@@ -108,7 +108,7 @@ class TestSparkClient(unittest.TestCase):
         self.assertEqual(len(apps), 1)
 
     @patch("spark_history_mcp.api.spark_client.requests.get")
-    def test_get_applications_empty_response(self, mock_get):
+    def test_list_applications_empty_response(self, mock_get):
         # Setup mock response with empty list
         mock_response = MagicMock()
         mock_response.json.return_value = []
@@ -116,7 +116,7 @@ class TestSparkClient(unittest.TestCase):
         mock_get.return_value = mock_response
 
         # Call the method
-        apps = self.client.get_applications()
+        apps = self.client.list_applications()
 
         # Assertions
         mock_get.assert_called_once()

@@ -52,9 +52,6 @@ curl http://localhost:18080/api/v1/applications
 
 Ask Claude: "Are you connected to the Spark History Server? What tools are available?"
 
-You should see 6 core tools for Spark analysis:
-- get_application, get_jobs, compare_job_performance, compare_sql_execution_plans, get_job_bottlenecks, get_slowest_jobs
-
 ## Example Usage
 
 ```
@@ -66,15 +63,6 @@ Analyze execution times, bottlenecks, and provide optimization recommendations.
 ```
 
 ![claude-desktop](claude-desktop.png)
-
-## Available Tools
-
-- `get_application` - Application details
-- `get_jobs` - Job information
-- `compare_job_performance` - Performance comparison
-- `compare_sql_execution_plans` - SQL plan analysis
-- `get_job_bottlenecks` - Identify issues
-- `get_slowest_jobs` - Find slow jobs
 
 ## Remote Spark History Server
 

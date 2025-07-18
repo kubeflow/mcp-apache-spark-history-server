@@ -132,7 +132,7 @@ class SparkRestClient:
         data = self._get("version")
         return self._parse_model(data, VersionInfo)
 
-    def get_applications(
+    def list_applications(
         self,
         status: Optional[List[str]] = None,
         min_date: Optional[str] = None,
@@ -201,7 +201,7 @@ class SparkRestClient:
         data = self._get(f"applications/{app_id}/{attempt_id}")
         return self._parse_model(data, ApplicationAttemptInfo)
 
-    def get_jobs(
+    def list_jobs(
         self, app_id: str, status: Optional[List[JobExecutionStatus]] = None
     ) -> List[JobData]:
         """
@@ -235,7 +235,7 @@ class SparkRestClient:
         data = self._get(f"applications/{app_id}/jobs/{job_id}")
         return self._parse_model(data, JobData)
 
-    def get_stages(
+    def list_stages(
         self,
         app_id: str,
         status: Optional[List[StageStatus]] = None,
@@ -272,7 +272,7 @@ class SparkRestClient:
         data = self._get(f"applications/{app_id}/stages", params)
         return self._parse_model_list(data, StageData)
 
-    def get_stage(
+    def list_stage_attempts(
         self,
         app_id: str,
         stage_id: int,
@@ -371,7 +371,7 @@ class SparkRestClient:
         )
         return self._parse_model(data, TaskMetricDistributions)
 
-    def get_stage_tasks(
+    def list_stage_tasks(
         self,
         app_id: str,
         stage_id: int,
@@ -406,7 +406,7 @@ class SparkRestClient:
         )
         return self._parse_model_list(data, TaskData)
 
-    def get_executors(self, app_id: str) -> List[ExecutorSummary]:
+    def list_executors(self, app_id: str) -> List[ExecutorSummary]:
         """
         Get a list of all executors for an application.
 
@@ -419,7 +419,7 @@ class SparkRestClient:
         data = self._get(f"applications/{app_id}/executors")
         return self._parse_model_list(data, ExecutorSummary)
 
-    def get_all_executors(self, app_id: str) -> List[ExecutorSummary]:
+    def list_all_executors(self, app_id: str) -> List[ExecutorSummary]:
         """
         Get a list of all executors (active and inactive) for an application.
 
@@ -432,7 +432,7 @@ class SparkRestClient:
         data = self._get(f"applications/{app_id}/allexecutors")
         return self._parse_model_list(data, ExecutorSummary)
 
-    def get_executor_thread_dump(
+    def list_executor_thread_dump(
         self, app_id: str, executor_id: str
     ) -> List[ThreadStackTrace]:
         """
@@ -466,7 +466,7 @@ class SparkRestClient:
         data = self._get(f"applications/{app_id}/threads", params)
         return self._parse_model(data, ThreadStackTrace)
 
-    def get_all_processes(self, app_id: str) -> List[ProcessSummary]:
+    def list_all_processes(self, app_id: str) -> List[ProcessSummary]:
         """
         Get a list of all processes for an application.
 
@@ -479,7 +479,7 @@ class SparkRestClient:
         data = self._get(f"applications/{app_id}/allmiscellaneousprocess")
         return self._parse_model_list(data, ProcessSummary)
 
-    def get_rdds(self, app_id: str) -> List[RDDStorageInfo]:
+    def list_rdds(self, app_id: str) -> List[RDDStorageInfo]:
         """
         Get a list of all RDDs for an application.
 

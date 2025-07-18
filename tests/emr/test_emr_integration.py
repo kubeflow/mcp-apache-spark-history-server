@@ -49,14 +49,14 @@ class TestEMRIntegration(unittest.TestCase):
         self.assertEqual(spark_client.base_url, "https://example.com/api/v1")
         self.assertEqual(spark_client.session, mock_session)
 
-        # Mock a response for get_applications
+        # Mock a response for list_applications
         mock_response = MagicMock()
         mock_response.json.return_value = []
         mock_response.raise_for_status.return_value = None
         mock_session.get.return_value = mock_response
 
         # Call a method on the SparkRestClient
-        apps = spark_client.get_applications()
+        apps = spark_client.list_applications()
 
         # Verify the session was used for the request
         mock_session.get.assert_called_once()

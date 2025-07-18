@@ -65,7 +65,7 @@ def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInf
 
 
 @mcp.tool()
-def get_jobs(
+def list_jobs(
     app_id: str, server: Optional[str] = None, status: Optional[list[str]] = None
 ) -> list:
     """
@@ -87,11 +87,11 @@ def get_jobs(
     if status:
         job_statuses = [JobExecutionStatus.from_string(s) for s in status]
 
-    return client.get_jobs(app_id=app_id, status=job_statuses)
+    return client.list_jobs(app_id=app_id, status=job_statuses)
 
 
 @mcp.tool()
-def get_slowest_jobs(
+def list_slowest_jobs(
     app_id: str,
     server: Optional[str] = None,
     include_running: bool = False,
@@ -115,7 +115,7 @@ def get_slowest_jobs(
     client = get_client_or_default(ctx, server)
 
     # Get all jobs
-    jobs = client.get_jobs(app_id=app_id)
+    jobs = client.list_jobs(app_id=app_id)
 
     if not jobs:
         return []
@@ -139,7 +139,7 @@ def get_slowest_jobs(
 
 
 @mcp.tool()
-def get_stages(
+def list_stages(
     app_id: str,
     server: Optional[str] = None,
     status: Optional[list[str]] = None,
@@ -168,7 +168,7 @@ def get_stages(
     if status:
         stage_statuses = [StageStatus.from_string(s) for s in status]
 
-    return client.get_stages(
+    return client.list_stages(
         app_id=app_id,
         status=stage_statuses,
         with_summaries=with_summaries,
@@ -176,7 +176,7 @@ def get_stages(
 
 
 @mcp.tool()
-def get_slowest_stages(
+def list_slowest_stages(
     app_id: str,
     server: Optional[str] = None,
     include_running: bool = False,
@@ -200,7 +200,7 @@ def get_slowest_stages(
     client = get_client_or_default(ctx, server)
 
     # Get all stages with details
-    stages = client.get_stages(app_id=app_id, details=True)
+    stages = client.list_stages(app_id=app_id, details=True)
 
     if not stages:
         return []
@@ -259,7 +259,7 @@ def get_stage(
         )
     else:
         # Get all attempts and use the latest one
-        stages = client.get_stage(
+        stages = client.list_stage_attempts(
             app_id=app_id,
             stage_id=stage_id,
             details=False,
@@ -312,7 +312,7 @@ def get_environment(app_id: str, server: Optional[str] = None):
 
 
 @mcp.tool()
-def get_executors(
+def list_executors(
     app_id: str, server: Optional[str] = None, include_inactive: bool = False
 ):
     """
@@ -333,9 +333,9 @@ def get_executors(
     client = get_client_or_default(ctx, server)
 
     if include_inactive:
-        return client.get_all_executors(app_id=app_id)
+        return client.list_all_executors(app_id=app_id)
     else:
-        return client.get_executors(app_id=app_id)
+        return client.list_executors(app_id=app_id)
 
 
 @mcp.tool()
@@ -358,7 +358,7 @@ def get_executor(app_id: str, executor_id: str, server: Optional[str] = None):
     client = get_client_or_default(ctx, server)
 
     # Get all executors and find the one with matching ID
-    executors = client.get_all_executors(app_id=app_id)
+    executors = client.list_all_executors(app_id=app_id)
 
     for executor in executors:
         if executor.id == executor_id:
@@ -385,7 +385,7 @@ def get_executor_summary(app_id: str, server: Optional[str] = None):
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server)
 
-    executors = client.get_all_executors(app_id=app_id)
+    executors = client.list_all_executors(app_id=app_id)
 
     summary = {
         "total_executors": len(executors),
@@ -536,8 +536,8 @@ def compare_job_performance(
     exec_summary2 = get_executor_summary(app_id2, server)
 
     # Get job data
-    jobs1 = client.get_jobs(app_id=app_id1)
-    jobs2 = client.get_jobs(app_id=app_id2)
+    jobs1 = client.list_jobs(app_id=app_id1)
+    jobs2 = client.list_jobs(app_id=app_id2)
 
     # Calculate job duration statistics
     def calc_job_stats(jobs):
@@ -771,7 +771,7 @@ def get_stage_task_summary(
 
 
 @mcp.tool()
-def get_slowest_sql_queries(
+def list_slowest_sql_queries(
     app_id: str,
     server: Optional[str] = None,
     attempt_id: Optional[str] = None,
@@ -855,16 +855,16 @@ def get_job_bottlenecks(
     client = get_client_or_default(ctx, server)
 
     # Get slowest stages
-    slowest_stages = get_slowest_stages(app_id, server, False, top_n)
+    slowest_stages = list_slowest_stages(app_id, server, False, top_n)
 
     # Get slowest jobs
-    slowest_jobs = get_slowest_jobs(app_id, server, False, top_n)
+    slowest_jobs = list_slowest_jobs(app_id, server, False, top_n)
 
     # Get executor summary
     exec_summary = get_executor_summary(app_id, server)
 
     # Get all stages for detailed analysis
-    all_stages = client.get_stages(app_id=app_id, details=True)
+    all_stages = client.list_stages(app_id=app_id, details=True)
 
     # Identify stages with high spill
     high_spill_stages = []
@@ -1002,7 +1002,7 @@ def get_resource_usage_timeline(
     executors = client.get_all_executors(app_id=app_id)
 
     # Get stages
-    stages = client.get_stages(app_id=app_id, details=True)
+    stages = client.list_stages(app_id=app_id, details=True)
 
     # Create timeline events
     timeline_events = []
