@@ -1,11 +1,11 @@
-# Helm Chart for Spark History Server MCP
+# Helm Chart for MCP Server for Apache Spark History Server
 
-This Helm chart provides a production-ready deployment of the Spark History Server MCP on Kubernetes.
+This Helm chart provides a production-ready deployment of the MCP Server for Apache Spark History Server on Kubernetes.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Kubernetes 1.20+
+- Kubernetes 1.30+
 - Helm 3.8+
 - Spark History Server running in cluster or accessible via network
 
@@ -13,22 +13,12 @@ This Helm chart provides a production-ready deployment of the Spark History Serv
 
 ```bash
 # Install with default values
-helm install spark-history-mcp ./deploy/kubernetes/helm/spark-history-mcp/
+helm install mcp-apache-spark-history-server ./deploy/kubernetes/helm/mcp-apache-spark-history-server/
 
 # Install with custom release name and namespace
-helm install my-spark-mcp ./deploy/kubernetes/helm/spark-history-mcp/ \
+helm install my-spark-mcp ./deploy/kubernetes/helm/mcp-apache-spark-history-server/ \
   --namespace spark-history-mcp \
   --create-namespace
-```
-
-### Install from Repository (Future Release)
-
-```bash
-# Add the helm chart repository (when published)
-helm repo add spark-history-mcp https://deepdiagnostix-ai.github.io/spark-history-server-mcp
-
-# Install the chart
-helm install my-spark-mcp spark-history-mcp/spark-history-mcp
 ```
 
 ### Install with Custom Values
@@ -71,7 +61,7 @@ autoscaling:
 EOF
 
 # Install with custom values
-helm install my-spark-mcp ./deploy/kubernetes/helm/spark-history-mcp/ -f my-values.yaml
+helm install my-spark-mcp ./deploy/kubernetes/helm/mcp-apache-spark-history-server/ -f my-values.yaml
 ```
 
 ## ⚙️ Configuration
@@ -124,7 +114,7 @@ affinity:
         - key: app.kubernetes.io/name
           operator: In
           values:
-          - spark-history-mcp
+          - mcp-apache-spark-history-server
       topologyKey: kubernetes.io/hostname
 ```
 
@@ -295,7 +285,7 @@ When monitoring is enabled, the chart creates:
 
 ```bash
 # Install with monitoring
-helm install my-spark-mcp ./spark-history-mcp/ \
+helm install my-spark-mcp ./mcp-apache-spark-history-server/ \
   --set monitoring.enabled=true \
   --set monitoring.serviceMonitor.enabled=true
 ```
@@ -319,26 +309,26 @@ env:
 #### 1. Pod Not Starting
 ```bash
 # Check pod status
-kubectl describe pod -l app.kubernetes.io/name=spark-history-mcp
+kubectl describe pod -l app.kubernetes.io/name=mcp-apache-spark-history-server
 
 # Check logs
-kubectl logs -l app.kubernetes.io/name=spark-history-mcp
+kubectl logs -l app.kubernetes.io/name=mcp-apache-spark-history-server
 ```
 
 #### 2. Configuration Issues
 ```bash
 # Check rendered templates
-helm template my-spark-mcp ./spark-history-mcp/ -f my-values.yaml
+helm template my-spark-mcp ./mcp-apache-spark-history-server/ -f my-values.yaml
 
 # Verify ConfigMap
-kubectl get configmap -l app.kubernetes.io/name=spark-history-mcp -o yaml
+kubectl get configmap -l app.kubernetes.io/name=mcp-apache-spark-history-server -o yaml
 ```
 
 #### 3. Connectivity Issues
 ```bash
 # Test service connectivity
 kubectl run test-pod --rm -i --tty --image=curlimages/curl -- sh
-curl http://spark-history-mcp:18888/health
+curl http://mcp-apache-spark-history-server:18888/health
 ```
 
 ### Debug Mode
@@ -362,7 +352,7 @@ sidecars:
 
 ```bash
 # Upgrade to new version
-helm upgrade my-spark-mcp ./spark-history-mcp/ -f my-values.yaml
+helm upgrade my-spark-mcp ./mcp-apache-spark-history-server/ -f my-values.yaml
 
 # Rollback if needed
 helm rollback my-spark-mcp 1
@@ -374,13 +364,13 @@ When upgrading from v0.0.x to v0.1.x:
 
 1. **Backup configuration**:
 ```bash
-kubectl get configmap -l app.kubernetes.io/name=spark-history-mcp -o yaml > backup-config.yaml
+kubectl get configmap -l app.kubernetes.io/name=mcp-apache-spark-history-server -o yaml > backup-config.yaml
 ```
 
 2. **Update values file** according to new schema
 3. **Perform rolling upgrade**:
 ```bash
-helm upgrade my-spark-mcp ./spark-history-mcp/ -f updated-values.yaml
+helm upgrade my-spark-mcp ./mcp-apache-spark-history-server/ -f updated-values.yaml
 ```
 
 ## 🧪 Testing
@@ -393,7 +383,7 @@ helm test my-spark-mcp
 
 # Manual validation
 kubectl run test-mcp --rm -i --tty --image=curlimages/curl -- sh
-curl -X POST http://spark-history-mcp:18888/tools \
+curl -X POST http://mcp-apache-spark-history-server:18888/tools \
   -H "Content-Type: application/json" \
   -d '{"tool": "list_applications", "parameters": {}}'
 ```

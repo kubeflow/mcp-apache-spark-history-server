@@ -108,7 +108,7 @@ tasks:
           --namespace {{.NAMESPACE}} \
           --create-namespace \
           -f {{.VALUES_FILE}} \
-          ./deploy/kubernetes/helm/spark-history-mcp/ > /dev/null
+          ./deploy/kubernetes/helm/mcp-apache-spark-history-server/ > /dev/null
       - echo "⚓ Spark History Server MCP chart installed!"
 
   install-shs-chart:
@@ -141,6 +141,8 @@ tasks:
     desc: Start all development services and prepare for testing in a local Kubernetes cluster
     deps: [install-chart, install-shs-chart, install-inspector]
     cmds:
+      - task: wait-for-mcp
+      - task: wait-for-spark
       - |
         cat << EOF | grep -v '^$' | sed $'s/^/\033[32m/' | sed $'s/$/\033[0m/'
         ⚓ Kubernetes installation completed!
@@ -148,7 +150,7 @@ tasks:
            export KUBECONFIG={{.KUBECONFIG_PATH}}
            kubectl get pods
         Open http://localhost:6274/#tools to interact with the MPC server
-        Use http://mcp-apache-spark-history-server-spark-history-mcp:18888/mcp as the URL in MCP Inspector to get started
+        Use http://mcp-apache-spark-history-server:18888/mcp as the URL in MCP Inspector to get started
         EOF
 
   stop-all-kubernetes:

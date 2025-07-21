@@ -2,10 +2,10 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
-  name: {{ include "spark-history-mcp.fullname" . }}
+  name: {{ include "mcp-apache-spark-history-server.fullname" . }}
   namespace: {{ .Values.monitoring.serviceMonitor.namespace | default .Release.Namespace }}
   labels:
-    {{- include "spark-history-mcp.labels" . | nindent 4 }}
+    {{- include "mcp-apache-spark-history-server.labels" . | nindent 4 }}
     {{- with .Values.monitoring.serviceMonitor.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
@@ -16,7 +16,7 @@ metadata:
 spec:
   selector:
     matchLabels:
-      {{- include "spark-history-mcp.selectorLabels" . | nindent 6 }}
+      {{- include "mcp-apache-spark-history-server.selectorLabels" . | nindent 6 }}
   namespaceSelector:
     matchNames:
       - {{ .Release.Namespace }}

@@ -2,10 +2,10 @@
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
-  name: {{ include "spark-history-mcp.fullname" . }}
+  name: {{ include "mcp-apache-spark-history-server.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "spark-history-mcp.labels" . | nindent 4 }}
+    {{- include "mcp-apache-spark-history-server.labels" . | nindent 4 }}
 spec:
   {{- if .Values.podDisruptionBudget.minAvailable }}
   minAvailable: {{ .Values.podDisruptionBudget.minAvailable }}
@@ -15,5 +15,5 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "spark-history-mcp.selectorLabels" . | nindent 6 }}
+      {{- include "mcp-apache-spark-history-server.selectorLabels" . | nindent 6 }}
 {{- end }}

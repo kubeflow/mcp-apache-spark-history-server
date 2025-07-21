@@ -2,15 +2,15 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "spark-history-mcp.fullname" . }}
+  name: {{ include "mcp-apache-spark-history-server.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "spark-history-mcp.labels" . | nindent 4 }}
+    {{- include "mcp-apache-spark-history-server.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "spark-history-mcp.fullname" . }}
+    name: {{ include "mcp-apache-spark-history-server.fullname" . }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:

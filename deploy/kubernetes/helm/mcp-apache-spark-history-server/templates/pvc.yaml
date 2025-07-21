@@ -2,10 +2,10 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "spark-history-mcp.fullname" . }}
+  name: {{ include "mcp-apache-spark-history-server.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "spark-history-mcp.labels" . | nindent 4 }}
+    {{- include "mcp-apache-spark-history-server.labels" . | nindent 4 }}
 spec:
   accessModes:
     - {{ .Values.persistence.accessMode }}

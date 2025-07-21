@@ -1,5 +1,5 @@
 apiVersion: v2
-name: spark-history-mcp
+name: mcp-apache-spark-history-server
 description: A Helm chart for Spark History Server MCP
 type: application
 version: 0.1.0
@@ -10,9 +10,9 @@ keywords:
   - analytics
   - performance
   - history-server
-home: https://github.com/DeepDiagnostix-AI/spark-history-server-mcp
+home: https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server
 sources:
-  - https://github.com/DeepDiagnostix-AI/spark-history-server-mcp
+  - https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server
 maintainers:
   - name: Manabu McCloskey
     email: Manabu.McCloskey@gmail.com

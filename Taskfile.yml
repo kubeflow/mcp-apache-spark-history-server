@@ -242,7 +242,7 @@ tasks:
     cmds:
       - |
         echo "Checking if Spark History Server is running..."
-        max_attempts=60
+        max_attempts=30
         attempt=1
         while [ $attempt -le $max_attempts ]; do
           if curl -s --connect-timeout 1 http://localhost:18080 > /dev/null; then
@@ -250,7 +250,7 @@ tasks:
             exit 0
           fi
           echo "Waiting for Spark History Server... ($attempt/$max_attempts)"
-          sleep 1
+          sleep 5
           attempt=$((attempt + 1))
         done
         echo "❌ Timed out waiting for Spark History Server after 60 seconds"
@@ -262,7 +262,7 @@ tasks:
     cmds:
       - |
         echo "Checking if MCP Server is running..."
-        max_attempts=60
+        max_attempts=30
         attempt=1
         while [ $attempt -le $max_attempts ]; do
           if curl -s --connect-timeout 1 http://localhost:18888 > /dev/null; then
@@ -270,7 +270,7 @@ tasks:
             exit 0
           fi
           echo "Waiting for MCP Server... ($attempt/$max_attempts)"
-          sleep 1
+          sleep 5
           attempt=$((attempt + 1))
         done
         echo "❌ Timed out waiting for MCP Server after 60 seconds"

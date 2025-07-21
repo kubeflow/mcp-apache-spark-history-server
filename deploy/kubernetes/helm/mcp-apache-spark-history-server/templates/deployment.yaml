@@ -1,17 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "spark-history-mcp.fullname" . }}
+  name: {{ include "mcp-apache-spark-history-server.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "spark-history-mcp.labels" . | nindent 4 }}
+    {{- include "mcp-apache-spark-history-server.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "spark-history-mcp.selectorLabels" . | nindent 6 }}
+      {{- include "mcp-apache-spark-history-server.selectorLabels" . | nindent 6 }}
   {{- with .Values.strategy }}
   strategy:
     {{- toYaml . | nindent 4 }}
@@ -27,7 +27,7 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "spark-history-mcp.labels" . | nindent 8 }}
+        {{- include "mcp-apache-spark-history-server.labels" . | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -36,7 +36,7 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "spark-history-mcp.serviceAccountName" . }}
+      serviceAccountName: {{ include "mcp-apache-spark-history-server.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- with .Values.initContainers }}
@@ -47,14 +47,14 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: {{ include "spark-history-mcp.image" . }}
+          image: {{ include "mcp-apache-spark-history-server.image" . }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
               containerPort: {{ .Values.config.port }}
               protocol: TCP
           env:
-            {{- include "spark-history-mcp.env" . | nindent 12 }}
+            {{- include "mcp-apache-spark-history-server.env" . | nindent 12 }}
           {{- with .Values.envFrom }}
           envFrom:
             {{- toYaml . | nindent 12 }}
@@ -91,12 +91,12 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "spark-history-mcp.configMapName" . }}
+            name: {{ include "mcp-apache-spark-history-server.configMapName" . }}
             defaultMode: 0644
         {{- if .Values.persistence.enabled }}
         - name: data
           persistentVolumeClaim:
-            claimName: {{ include "spark-history-mcp.fullname" . }}
+            claimName: {{ include "mcp-apache-spark-history-server.fullname" . }}
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
