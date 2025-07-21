@@ -1,5 +1,5 @@
 image:
-  repository: spark-history-server-mcp
+  repository: mcp-apache-spark-history-server
   pullPolicy: IfNotPresent
   tag: latest
 replicaCount: 1

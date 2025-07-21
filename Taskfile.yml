@@ -8,7 +8,7 @@ includes:
     flatten: true
 
 vars:
-  PROJECT_NAME: spark-history-server-mcp
+  PROJECT_NAME: mcp-apache-spark-history-server
   PYTHON_VERSION: 3.12
   OS: '{{OS}}'
   ARCH: '{{ARCH}}'

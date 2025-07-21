@@ -6,8 +6,8 @@ Connect Claude Desktop to Spark History Server for AI-powered job analysis.
 
 1. **Clone and setup repository**:
 ```bash
-git clone https://github.com/DeepDiagnostix-AI/spark-history-server-mcp.git
-cd spark-history-server-mcp
+git clone https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server.git
+cd mcp-apache-spark-history-server
 
 # Install Task (if not already installed)
 brew install go-task  # macOS
@@ -36,7 +36,7 @@ curl http://localhost:18080/api/v1/applications
 ```json
 {
     "mcpServers": {
-        "spark-history-server-mcp": {
+        "mcp-apache-spark-history-server": {
             "command": "uv",
             "args": ["run", "-m", "spark_history_mcp.core.main"]
         }
@@ -44,7 +44,7 @@ curl http://localhost:18080/api/v1/applications
 }
 ```
 
-**⚠️ Important**: Replace `/Users/username/spark-history-server-mcp` with your actual repository path.
+**⚠️ Important**: Replace `/Users/username/mcp-apache-spark-history-server` with your actual repository path.
 
 2. **Restart Claude Desktop**
 

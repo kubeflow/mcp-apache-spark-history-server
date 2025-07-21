@@ -27,7 +27,7 @@ affinity:
             - key: kubernetes.io/hostname
               operator: In
               values:
-                - spark-history-server-mcp-control-plane
+                - mcp-apache-spark-history-server-control-plane
 
 volumes:
   - name: example-events

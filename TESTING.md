@@ -12,8 +12,8 @@
 
 ### Setup Repository
 ```bash
-git clone https://github.com/DeepDiagnostix-AI/spark-history-server-mcp.git
-cd spark-history-server-mcp
+git clone https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server.git
+cd mcp-apache-spark-history-server
 
 # Install Task (if not already installed)
 brew install go-task  # macOS

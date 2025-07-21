@@ -84,7 +84,7 @@ Before starting, ensure you have:
 
 ```bash
 # Navigate to project root first
-cd spark-history-server-mcp
+cd mcp-apache-spark-history-server
 
 # Start Spark History Server with sample data
 task start-spark-bg

@@ -7,8 +7,8 @@ If you are an existing Amazon EMR user looking to analyze your Spark Application
 Follow the Quick Setup instructions to git clone the Spark History Server MCP project on your laptop:
 
 ```bash
-git clone https://github.com/DeepDiagnostix-AI/spark-history-server-mcp.git
-cd spark-history-server-mcp
+git clone https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server.git
+cd mcp-apache-spark-history-server
 
 # Install Task (if not already installed)
 brew install go-task  # macOS, see https://taskfile.dev/installation/ for others

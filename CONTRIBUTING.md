@@ -14,8 +14,8 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 1. **🍴 Fork and clone the repository**
 ```bash
-git clone https://github.com/YOUR_USERNAME/spark-history-server-mcp.git
-cd spark-history-server-mcp
+git clone https://github.com/YOUR_USERNAME/mcp-apache-spark-history-server.git
+cd mcp-apache-spark-history-server
 ```
 
 2. **📦 Install dependencies**
@@ -219,8 +219,8 @@ Contributors are recognized in:
 
 ## 📞 Getting Help
 
-- **💬 Discussions**: [GitHub Discussions](https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/discussions)
-- **🐛 Issues**: [GitHub Issues](https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server/discussions)
+- **🐛 Issues**: [GitHub Issues](https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server/issues)
 - **📚 Documentation**: Check existing docs first
 
 ## 📜 Code of Conduct

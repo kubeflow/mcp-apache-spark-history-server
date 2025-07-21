@@ -8,7 +8,7 @@ vars:
   BIN_DIR: .bin
   HELM_VERSION: v3.18.3
   KIND_VERSION: v0.29.0
-  KIND_CLUSTER_NAME: spark-history-server-mcp
+  KIND_CLUSTER_NAME: mcp-apache-spark-history-server
   KUBECONFIG_PATH: ./kubeconfig.yaml
   SHS_HELM_VERSION: 1.5.1
   SHS_HELM_URL: https://kubedai.github.io/spark-history-server
@@ -51,7 +51,7 @@ tasks:
       - "! {{.BIN_DIR}}/kind get clusters 2>/dev/null | grep -q '^{{.KIND_CLUSTER_NAME}}$'"
 
   create-cluster:
-    desc: Create a Kind cluster for spark-history-server-mcp
+    desc: Create a Kind cluster for mcp-apache-spark-history-server
     deps: [install-kind, install-helm]
     interactive: true
     cmds:
@@ -99,7 +99,7 @@ tasks:
     desc: Install the local Spark History Server MCP Helm chart to local Kind cluster with locally built image.
     deps: [install-helm, create-cluster, docker-load]
     vars:
-      RELEASE_NAME: spark-history-server-mcp
+      RELEASE_NAME: mcp-apache-spark-history-server
       NAMESPACE: default
       VALUES_FILE: '{{.VALUES_FILE | default "tests/helm-values/local.yaml"}}'
     cmds:
@@ -148,7 +148,7 @@ tasks:
            export KUBECONFIG={{.KUBECONFIG_PATH}}
            kubectl get pods
         Open http://localhost:6274/#tools to interact with the MPC server
-        Use http://spark-history-server-mcp-spark-history-mcp:18888/mcp as the URL in MCP Inspector to get started
+        Use http://mcp-apache-spark-history-server-spark-history-mcp:18888/mcp as the URL in MCP Inspector to get started
         EOF
 
   stop-all-kubernetes:
