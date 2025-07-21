@@ -1,6 +1,6 @@
 # 🔥 Spark History Server MCP
 
-[![CI](https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/actions)
+[![CI](https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server/actions)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -52,8 +52,8 @@ graph TB
 
 ### 🚀 Setup & Testing
 ```bash
-git clone https://github.com/DeepDiagnostix-AI/spark-history-server-mcp.git
-cd spark-history-server-mcp
+git clone https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server.git
+cd mcp-apache-spark-history-server
 
 # Install Task (if not already installed)
 brew install go-task  # macOS, see https://taskfile.dev/installation/ for others
@@ -187,7 +187,7 @@ If you are an existing AWS user looking to analyze your Spark Applications, we p
 
 These guides provide step-by-step instructions for setting up the Spark History Server MCP with your AWS services.
 
-## 🚀 Production Deployment
+## 🚀 Kubernetes Deployment
 
 Deploy using Kubernetes with Helm:
 
