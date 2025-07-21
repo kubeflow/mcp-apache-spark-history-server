@@ -1,4 +1,4 @@
-# 🔥 Spark History Server MCP
+# MCP Server for Apache Spark History Server
 
 [![CI](https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/actions)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
@@ -317,6 +317,10 @@ Check [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines on contributions
 
 Apache License 2.0 - see [LICENSE](LICENSE) file for details.
 
+
+## 📝 Trademark Notice
+
+*This project is built for use with Apache Spark™ History Server. Not affiliated with or endorsed by the Apache Software Foundation.*
 
 ---
 
