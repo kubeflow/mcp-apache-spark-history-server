@@ -1,5 +1,9 @@
 # Spark History Server MCP for AWS Glue
 
+📺 **See it in action:**
+
+[![Watch the demo video](https://img.shields.io/badge/YouTube-Watch%20Demo-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=FaduuvMdGxI)
+
 If you are an existing AWS Glue user looking to analyze your Spark Applications, then you can follow the steps below to start using the Spark History Server MCP in 5 simple steps.
 
 ## Step 1: Setup project on your laptop

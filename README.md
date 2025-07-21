@@ -28,14 +28,21 @@ Transform your Spark infrastructure monitoring with AI! This Model Context Proto
 
 ```mermaid
 graph TB
-    A[🤖 AI Agent/LLM] --> B[📡 MCP Client]
-    B --> C[⚡ Spark History MCP Server]
-    C --> D[🔥 Your Spark History Server]
-    D --> E[📄 Spark Event Logs]
+    A[🤖 AI Agent/LLM] --> F[📡 MCP Client]
+    B[🦙 LlamaIndex Agent] --> F
+    C[🌐 LangGraph] --> F
+    D[�️ Claudep Desktop] --> F
+    E[🛠️ Amazon Q CLI] --> F
 
-    F[🔧 LangChain Agent] --> B
-    G[📱 Custom AI App] --> B
-    H[🔬 MCP Inspector] --> B
+    F --> G[⚡ Spark History MCP Server]
+
+    G --> H[🔥 Prod Spark History Server]
+    G --> I[🔥 Staging Spark History Server]
+    G --> J[🔥 Dev Spark History Server]
+
+    H --> K[📄 Prod Event Logs]
+    I --> L[📄 Staging Event Logs]
+    J --> M[📄 Dev Event Logs]
 ```
 
 **🔗 Components:**
