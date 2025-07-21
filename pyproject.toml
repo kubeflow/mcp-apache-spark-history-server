@@ -1,5 +1,5 @@
 [project]
-name = "spark-history-server-mcp"
+name = "mcp-apache-spark-history-server"
 version = "0.1.0"
 description = "Model Context Protocol (MCP) server for Apache Spark History Server with job comparison and analytics"
 readme = "README.md"
