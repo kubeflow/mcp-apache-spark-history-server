@@ -35,8 +35,8 @@ curl http://localhost:18080/api/v1/applications
 ```bash
 q mcp add \
   --name spark-history-server \
-  --command /<LOCAL_PATH_TO_REPO>/mcp-apache-spark-history-server/spark_history_server_mcp_launcher.sh \
-  --args "-p", "q_cli" \
+  --command $(git rev-parse --show-toplevel)/spark_history_server_mcp_launcher.sh \
+  --args "-p,q_cli" \
   --env SHS_MCP_TRANSPORT=stdio \
   --scope global
 ```
@@ -48,7 +48,7 @@ cat ~/.aws/amazonq/mcp.json
 {
   "mcpServers": {
     "spark-history-server": {
-      "command": "/<Local Path to Repo>/mcp-apache-spark-history-server/spark_history_server_mcp_launcher.sh",
+      "command": "/Users/name/mcp-apache-spark-history-server/spark_history_server_mcp_launcher.sh",
       "args": [
         "-p",
         "q_cli" # pre-appends to mcp_server_output.log

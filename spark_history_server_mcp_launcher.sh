@@ -9,21 +9,21 @@ if [[ "$1" == "-p" || "$1" == "--prefix" ]] && [[ -n "$2" ]]; then
   shift 2  # Remove these two arguments
 fi
 
-# Get the directory where the script is located
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Get the root directory of the git repository
+ROOT_DIR="$(git rev-parse --show-toplevel)"
 
 # Set log file name with optional prefix
 if [[ -n "$LOG_PREFIX" ]]; then
-  LOG_FILE="$SCRIPT_DIR/${LOG_PREFIX}_mcp_server_output.log"
+  LOG_FILE="$ROOT_DIR/${LOG_PREFIX}_mcp_server_output.log"
 else
-  LOG_FILE="$SCRIPT_DIR/mcp_server_output.log"
+  LOG_FILE="$ROOT_DIR/mcp_server_output.log"
 fi
 
 echo "Starting Spark History Server wrapper" > $LOG_FILE
 echo "Args: $@" >> $LOG_FILE
 
 # Change to the project directory
-cd "$SCRIPT_DIR" || { echo "Failed to change directory" >> $LOG_FILE; exit 1; }
+cd "$ROOT_DIR" || { echo "Failed to change directory" >> $LOG_FILE; exit 1; }
 
 # Log the current directory
 echo "Current directory: $(pwd)" >> $LOG_FILE
