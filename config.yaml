@@ -1,12 +1,13 @@
+# WARNING: Do not commit your sensitive credentials
 servers:
   local:
     default: true  # if server name is not provided in tool calls, this Spark History Server is used
     url: "http://localhost:18080"
-    # Optional authentication (can also use environment variables)
+    # Optional authentication (can also use environment variables).
     # auth:
-    #   username: "your_username"  # or use SHS_SPARK_USERNAME env var
-    #   password: "your_password"  # or use SHS_SPARK_PASSWORD env var
-    #   token: "your_token"       # or use SHS_SPARK_TOKEN env var
+    #   username: ${SHS_SPARK_USERNAME}
+    #   password: ${SHS_SPARK_PASSWORD}
+    #   token: ${SHS_SPARK_TOKEN}
 
   # Production server example
   # production:
@@ -23,8 +24,8 @@ servers:
   #   url: "https://staging-spark-history.company.com:18080"
   #   verify_ssl: true
   #   auth:
-      # username: "staging_user"
-      # token: "staging_token"
+      # username: ${SHS_SPARK_USERNAME}
+      # token: ${SHS_SPARK_TOKEN}
 
   # AWS Glue Spark History Server example
   # glue_ec2:

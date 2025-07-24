@@ -44,6 +44,16 @@ repos:
         args: [--recursive, --format, json, --output, bandit-report.json]
         exclude: ^tests/
 
+  # Custom security check for config files
+  - repo: local
+    hooks:
+      - id: check-config-security
+        name: Check for hardcoded credentials in config files
+        entry: python pre-commit-scripts/check-config-security.py
+        language: system
+        files: ^config.*\.ya?ml$
+        pass_filenames: false
+
   # Documentation and markdown
   - repo: https://github.com/igorshubovych/markdownlint-cli
     rev: v0.45.0
