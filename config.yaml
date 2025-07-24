@@ -5,8 +5,8 @@ servers:
     url: "http://localhost:18080"
     # Optional authentication (can also use environment variables).
     # auth:
-    #   username: ${SHS_SPARK_USERNAME}
-    #   password: ${SHS_SPARK_PASSWORD}
+    #   username: ${SHS_SERVERS_LOCAL_AUTH_USERNAME}
+    #   password: ${SHS_SERVERS_LOCAL_AUTH_PASSWORD}
     #   token: ${SHS_SPARK_TOKEN}
 
   # Production server example
@@ -15,8 +15,8 @@ servers:
   #   verify_ssl: true
   #   auth:
       # Use environment variables for production
-      # username: ${SHS_SPARK_USERNAME}
-      # password: ${SHS_SPARK_PASSWORD}
+      # username: ${SHS_SERVERS_PRODUCTION_AUTH_USERNAME}
+      # password: ${SHS_SERVERS_PRODUCTION_AUTH_PASSWORD}
       # token: ${SHS_SPARK_TOKEN}
 
   # Staging server example
@@ -24,8 +24,8 @@ servers:
   #   url: "https://staging-spark-history.company.com:18080"
   #   verify_ssl: true
   #   auth:
-      # username: ${SHS_SPARK_USERNAME}
-      # token: ${SHS_SPARK_TOKEN}
+      # username: ${SHS_SERVERS_STAGING_AUTH_USERNAME}
+      # token: ${SHS_SERVERS_STAGING_AUTH_PASSWORD}
 
   # AWS Glue Spark History Server example
   # glue_ec2:
@@ -43,9 +43,15 @@ mcp:
   debug: true
   address: localhost
 
-# Environment Variables:
-# SHS_SPARK_USERNAME - Default username for authentication
-# SHS_SPARK_PASSWORD - Default password for authentication
-# SHS_SPARK_TOKEN - Default token for authentication
+
+# Available Environment Variables:
 # SHS_MCP_PORT - Port for MCP server (default: 18888)
 # SHS_MCP_DEBUG - Enable debug mode (default: false)
+# SHS_MCP_ADDRESS - Address for MCP server (default: localhost)
+# SHS_MCP_TRANSPORT - MCP transport mode (default: streamable-http)
+# SHS_SERVERS_*_URL - URL for a specific server
+# SHS_SERVERS_*_AUTH_USERNAME - Username for a specific server
+# SHS_SERVERS_*_AUTH_PASSWORD - Password for a specific server
+# SHS_SERVERS_*_AUTH_TOKEN - Token for a specific server
+# SHS_SERVERS_*_VERIFY_SSL - Whether to verify SSL for a specific server (true/false)
+# SHS_SERVERS_*_EMR_CLUSTER_ARN - EMR cluster ARN for a specific server

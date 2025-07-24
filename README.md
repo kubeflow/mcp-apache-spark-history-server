@@ -262,13 +262,17 @@ servers:
 ```
 
 ### 🔐 Environment Variables
-```bash
-SHS_SPARK_USERNAME=your_username
-SHS_SPARK_PASSWORD=your_password
-SHS_SPARK_TOKEN=your_jwt_token
-SHS_MCP_PORT=18888
-SHS_MCP_DEBUG=false
-SHS_MCP_ADDRESS=0.0.0.0
+```
+SHS_MCP_PORT - Port for MCP server (default: 18888)
+SHS_MCP_DEBUG - Enable debug mode (default: false)
+SHS_MCP_ADDRESS - Address for MCP server (default: localhost)
+SHS_MCP_TRANSPORT - MCP transport mode (default: streamable-http)
+SHS_SERVERS_*_URL - URL for a specific server
+SHS_SERVERS_*_AUTH_USERNAME - Username for a specific server
+SHS_SERVERS_*_AUTH_PASSWORD - Password for a specific server
+SHS_SERVERS_*_AUTH_TOKEN - Token for a specific server
+SHS_SERVERS_*_VERIFY_SSL - Whether to verify SSL for a specific server (true/false)
+SHS_SERVERS_*_EMR_CLUSTER_ARN - EMR cluster ARN for a specific server
 ```
 
 ## 🤖 AI Agent Integration

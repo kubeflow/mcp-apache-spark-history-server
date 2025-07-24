@@ -2,53 +2,55 @@ import os
 from typing import Dict, List, Literal, Optional
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import Field
+from pydantic_settings import (
+    BaseSettings,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
 
 
-class AuthConfig(BaseModel):
+class AuthConfig(BaseSettings):
     """Authentication configuration for the Spark server."""
 
-    username: str = Field(None, alias="username")
-    password: str = Field(None, alias="password")
-    token: str = Field(None, alias="token")
-
-    def __init__(self, **data):
-        # Support environment variables for sensitive data
-        if not data.get("username"):
-            data["username"] = os.getenv("SHS_SPARK_USERNAME")
-        if not data.get("password"):
-            data["password"] = os.getenv("SHS_SPARK_PASSWORD")
-        if not data.get("token"):
-            data["token"] = os.getenv("SHS_SPARK_TOKEN")
-        super().__init__(**data)
+    username: Optional[str] = Field(None)
+    password: Optional[str] = Field(None)
+    token: Optional[str] = Field(None)
 
 
-class ServerConfig(BaseModel):
+class ServerConfig(BaseSettings):
     """Server configuration for the Spark server."""
 
     url: Optional[str] = None
-    auth: AuthConfig = Field(None, alias="auth")
-    default: bool = Field(False, alias="default")
-    verify_ssl: bool = Field(True, alias="verify_ssl")
+    auth: AuthConfig = Field(default_factory=AuthConfig, exclude=True)
+    default: bool = False
+    verify_ssl: bool = True
     emr_cluster_arn: Optional[str] = None  # EMR specific field
 
 
-class McpConfig(BaseModel):
+class McpConfig(BaseSettings):
     """Configuration for the MCP server."""
 
     transports: List[Literal["stdio", "sse", "streamable-http"]] = Field(
         default_factory=list
     )
-    address: str = Field(default="localhost")
-    port: str = Field(default="18888")
-    debug: bool = Field(default=False)
+    address: Optional[str] = "localhost"
+    port: Optional[int | str] = "18888"
+    debug: Optional[bool] = False
+    model_config = SettingsConfigDict(extra="ignore")
 
 
-class Config(BaseModel):
+class Config(BaseSettings):
     """Configuration for the Spark client."""
 
     servers: Dict[str, ServerConfig]
     mcp: Optional[McpConfig] = None
+    model_config = SettingsConfigDict(
+        env_prefix="SHS_",
+        env_nested_delimiter="_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
 
     @classmethod
     def from_file(cls, file_path: str) -> "Config":
@@ -60,3 +62,14 @@ class Config(BaseModel):
             config_data = yaml.safe_load(f)
 
         return cls.model_validate(config_data)
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        return env_settings, dotenv_settings, init_settings, file_secret_settings

@@ -65,12 +65,10 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
     yield AppContext(clients=clients, default_client=default_client)
 
 
-def run():
-    config = Config.from_file("config.yaml")
-
-    mcp.settings.host = os.getenv("SHS_MCP_ADDRESS", config.mcp.address)
-    mcp.settings.port = int(os.getenv("SHS_MCP_PORT", config.mcp.port))
-    mcp.settings.debug = bool(os.getenv("SHS_MCP_DEBUG", config.mcp.debug))
+def run(config: Config):
+    mcp.settings.host = config.mcp.address
+    mcp.settings.port = int(config.mcp.port)
+    mcp.settings.debug = bool(config.mcp.debug)
     mcp.run(transport=os.getenv("SHS_MCP_TRANSPORT", config.mcp.transports[0]))
 
 
