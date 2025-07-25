@@ -270,3 +270,7 @@ temp_events/
 
 # Aider (AI coding assistant)
 .aider*
+
+# Project specific
+.bin/
+kubeconfig.yaml
