@@ -58,6 +58,7 @@ graph TB
 - ⚡ [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
 
 ### 🚀 Setup & Testing
+
 ```bash
 git clone https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server.git
 cd mcp-apache-spark-history-server
@@ -66,7 +67,6 @@ cd mcp-apache-spark-history-server
 brew install go-task  # macOS, see https://taskfile.dev/installation/ for others
 
 # Setup and start testing
-task install                    # Install dependencies
 task start-spark-bg            # Start Spark History Server with sample data (default Spark 3.5.5)
 # Or specify a different Spark version:
 # task start-spark-bg spark_version=3.5.2
@@ -78,6 +78,21 @@ task start-inspector-bg       # Start MCP Inspector
 
 # When done, run `task stop-all`
 ```
+
+If you just want to run the MCP server without cloning the repository:
+
+```bash
+# Run with uv without installing the module
+uvx --from mcp-apache-spark-history-server  spark-mcp
+
+# OR run with pip and python. Use of venv is highly encouraged.
+python3 -m venv spark-mcp && source spark-mcp/bin/activate
+pip install mcp-apache-spark-history-server
+python3 -m spark_history_mcp.core.main
+# Deactivate venv
+deactivate
+```
+
 
 ### 📊 Sample Data
 The repository includes real Spark event logs for testing:
