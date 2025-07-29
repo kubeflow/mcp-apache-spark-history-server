@@ -43,8 +43,10 @@ class McpConfig(BaseSettings):
 class Config(BaseSettings):
     """Configuration for the Spark client."""
 
-    servers: Dict[str, ServerConfig]
-    mcp: Optional[McpConfig] = None
+    servers: Dict[str, ServerConfig] = {
+        "local": ServerConfig(url="http://localhost:18080", default=True),
+    }
+    mcp: Optional[McpConfig] = McpConfig(transports=["streamable-http"])
     model_config = SettingsConfigDict(
         env_prefix="SHS_",
         env_nested_delimiter="_",
@@ -56,7 +58,7 @@ class Config(BaseSettings):
     def from_file(cls, file_path: str) -> "Config":
         """Load configuration from a YAML file."""
         if not os.path.exists(file_path):
-            raise FileNotFoundError(f"Config file not found: {file_path}")
+            return Config()
 
         with open(file_path, "r") as f:
             config_data = yaml.safe_load(f)
