@@ -32,7 +32,7 @@ class TestEMRIntegration(unittest.TestCase):
         mock_initialize.return_value = ("https://example.com", mock_session)
 
         # Create EMR client
-        emr_client = EMRPersistentUIClient(emr_cluster_arn=self.emr_cluster_arn)
+        emr_client = EMRPersistentUIClient(self.server_config)
 
         # Initialize EMR client
         base_url, session = emr_client.initialize()
@@ -104,7 +104,7 @@ class TestEMRIntegration(unittest.TestCase):
             async with app_lifespan(mock_server) as context:
                 # Verify EMR client was created and initialized
                 mock_emr_client_class.assert_called_once_with(
-                    emr_cluster_arn=self.emr_cluster_arn
+                    mock_config.servers["emr"]
                 )
                 mock_emr_client.initialize.assert_called_once()
 

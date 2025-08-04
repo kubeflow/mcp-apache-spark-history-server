@@ -55,9 +55,10 @@ class SparkRestClient:
         )
         self.pattern = re.compile(r"(.*?/applications/[^/]+/)(.+)")
 
-        # Determine whether to verify SSL certificates
-        # Default to True, but if verify_ssl is explicitly set to False, use that value
-        self.verify_ssl = getattr(self.config, "verify_ssl", True)
+        # Determine whether to verify SSL certificates and timeout
+        # Default to True for verify_ssl and 30 seconds for timeout if not specified
+        self.verify_ssl = self.config.verify_ssl
+        self.timeout = self.config.timeout
 
         # Set up authentication if provided
         if self.config.auth:
@@ -95,7 +96,7 @@ class SparkRestClient:
             response = self.session.get(
                 request_url,
                 params=params,
-                timeout=30,
+                timeout=self.timeout,
                 verify=verify,
                 proxies=self.proxies,
             )
@@ -105,7 +106,7 @@ class SparkRestClient:
                 params=params,
                 headers=headers,
                 auth=self.auth,
-                timeout=30,
+                timeout=self.timeout,
                 verify=verify,
                 proxies=self.proxies,
             )
@@ -588,9 +589,9 @@ class SparkRestClient:
         )
 
         if self.session:
-            response = self.session.get(url, timeout=30, proxies=self.proxies)
+            response = self.session.get(url, timeout=self.timeout, proxies=self.proxies)
         else:
-            response = requests.get(url, timeout=30, proxies=self.proxies)
+            response = requests.get(url, timeout=self.timeout, proxies=self.proxies)
 
         response.raise_for_status()
         return response.text

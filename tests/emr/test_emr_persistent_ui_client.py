@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 
 from spark_history_mcp.api.emr_persistent_ui_client import EMRPersistentUIClient
+from spark_history_mcp.config.config import ServerConfig
 
 
 class TestEMRPersistentUIClient(unittest.TestCase):
@@ -19,7 +20,10 @@ class TestEMRPersistentUIClient(unittest.TestCase):
         self.emr_cluster_arn = (
             "arn:aws:elasticmapreduce:us-east-1:123456789012:cluster/j-2AXXXXXXGAPLF"
         )
-        self.client = EMRPersistentUIClient(emr_cluster_arn=self.emr_cluster_arn)
+        self.server_config = ServerConfig(
+            emr_cluster_arn=self.emr_cluster_arn, timeout=30
+        )
+        self.client = EMRPersistentUIClient(self.server_config)
 
         # Mock the boto3 client
         self.mock_emr_client = MagicMock()
@@ -33,11 +37,13 @@ class TestEMRPersistentUIClient(unittest.TestCase):
 
     def test_init(self):
         """Test initialization of the EMR Persistent UI client."""
-        client = EMRPersistentUIClient(emr_cluster_arn=self.emr_cluster_arn)
+        server_config = ServerConfig(emr_cluster_arn=self.emr_cluster_arn)
+        client = EMRPersistentUIClient(server_config)
 
         # Check that the client was initialized correctly
         self.assertEqual(client.emr_cluster_arn, self.emr_cluster_arn)
         self.assertEqual(client.region, "us-east-1")
+        self.assertEqual(client.timeout, 30)  # Default timeout
         self.assertIsNone(client.persistent_ui_id)
         self.assertIsNone(client.presigned_url)
         self.assertIsNone(client.base_url)
@@ -51,7 +57,8 @@ class TestEMRPersistentUIClient(unittest.TestCase):
         mock_boto3_client.return_value = mock_client
 
         # Create a new client instance (don't use self.client which is already set up)
-        client = EMRPersistentUIClient(emr_cluster_arn=self.emr_cluster_arn)
+        server_config = ServerConfig(emr_cluster_arn=self.emr_cluster_arn)
+        client = EMRPersistentUIClient(server_config)
 
         # Check that boto3 client was created with correct region
         mock_boto3_client.assert_called_once_with("emr", region_name="us-east-1")
@@ -246,7 +253,9 @@ class TestEMRPersistentUIClient(unittest.TestCase):
         # Check that the session was configured correctly
         self.assertEqual(session, self.mock_session)
         self.mock_session.get.assert_called_once_with(
-            "https://example.com/presigned-url", timeout=30, allow_redirects=True
+            "https://example.com/presigned-url",
+            timeout=self.client.timeout,
+            allow_redirects=True,
         )
 
         # Check that headers were set correctly

@@ -39,9 +39,7 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
         # Check if this is an EMR server configuration
         if server_config.emr_cluster_arn:
             # Create EMR client
-            emr_client = EMRPersistentUIClient(
-                emr_cluster_arn=server_config.emr_cluster_arn
-            )
+            emr_client = EMRPersistentUIClient(server_config)
 
             # Initialize EMR client (create persistent UI, get presigned URL, setup session)
             base_url, session = emr_client.initialize()
