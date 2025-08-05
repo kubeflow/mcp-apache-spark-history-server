@@ -180,3 +180,71 @@ class TestConfig(unittest.TestCase):
         # Test with explicit exclude
         server_dict = server.model_dump(exclude={"auth"})
         self.assertNotIn("auth", server_dict)
+
+    def test_dynamic_emr_clusters_mode_default(self):
+        """Test that dynamic_emr_clusters_mode defaults to False."""
+        minimal_config = {"servers": {"minimal": {"url": "http://minimal:18080"}}}
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            yaml.dump(minimal_config, temp_file)
+            temp_file_path = temp_file.name
+
+        try:
+            config = Config.from_file(temp_file_path)
+            self.assertFalse(config.dynamic_emr_clusters_mode)
+        finally:
+            os.unlink(temp_file_path)
+
+    def test_dynamic_emr_clusters_mode_enabled(self):
+        """Test that dynamic_emr_clusters_mode can be enabled."""
+        config_data = {"dynamic_emr_clusters_mode": True}
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            yaml.dump(config_data, temp_file)
+            temp_file_path = temp_file.name
+
+        try:
+            config = Config.from_file(temp_file_path)
+            self.assertTrue(config.dynamic_emr_clusters_mode)
+            self.assertIsNone(config.servers)
+        finally:
+            os.unlink(temp_file_path)
+
+    def test_dynamic_emr_clusters_mode_mutually_exclusive_with_servers(self):
+        """Test that dynamic_emr_clusters_mode and servers are mutually exclusive."""
+        config_data = {
+            "dynamic_emr_clusters_mode": True,
+            "servers": {"test": {"url": "http://test:18080"}},
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            yaml.dump(config_data, temp_file)
+            temp_file_path = temp_file.name
+
+        try:
+            with self.assertRaises(ValueError) as context:
+                Config.from_file(temp_file_path)
+            self.assertIn(
+                "dynamic_emr_clusters_mode cannot be True when servers is not empty",
+                str(context.exception),
+            )
+        finally:
+            os.unlink(temp_file_path)
+
+    def test_default_servers_when_dynamic_mode_disabled(self):
+        """Test that default servers are set when dynamic_emr_clusters_mode is False."""
+        minimal_config = {}  # Empty config
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            yaml.dump(minimal_config, temp_file)
+            temp_file_path = temp_file.name
+
+        try:
+            config = Config.from_file(temp_file_path)
+            self.assertFalse(config.dynamic_emr_clusters_mode)
+            self.assertIsNotNone(config.servers)
+            self.assertIn("local", config.servers)
+            self.assertEqual(config.servers["local"].url, "http://localhost:18080")
+            self.assertTrue(config.servers["local"].default)
+        finally:
+            os.unlink(temp_file_path)

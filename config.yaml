@@ -36,6 +36,8 @@ servers:
   # emr_persistent_ui:
   #   emr_cluster_arn: "<EMR Cluster ARN>"
 
+# dynamic_emr_clusters_mode: true # To be able to add cluster id or name to the prompt
+
 mcp:
   transports:
     - streamable-http # streamable-http or stdio. you can only specify one right now.
@@ -55,3 +57,4 @@ mcp:
 # SHS_SERVERS_*_AUTH_TOKEN - Token for a specific server
 # SHS_SERVERS_*_VERIFY_SSL - Whether to verify SSL for a specific server (true/false)
 # SHS_SERVERS_*_EMR_CLUSTER_ARN - EMR cluster ARN for a specific server
+# SHS_DYNAMIC_EMR_CLUSTERS_MODE - Enable dynamic EMR clusters mode (default: false)
