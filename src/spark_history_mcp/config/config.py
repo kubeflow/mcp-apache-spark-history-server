@@ -2,7 +2,7 @@ import os
 from typing import Dict, List, Literal, Optional
 
 import yaml
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -44,9 +44,8 @@ class McpConfig(BaseSettings):
 class Config(BaseSettings):
     """Configuration for the Spark client."""
 
-    servers: Dict[str, ServerConfig] = {
-        "local": ServerConfig(url="http://localhost:18080", default=True),
-    }
+    dynamic_emr_clusters_mode: bool = False
+    servers: Optional[Dict[str, ServerConfig]] = None
     mcp: Optional[McpConfig] = McpConfig(transports=["streamable-http"])
     model_config = SettingsConfigDict(
         env_prefix="SHS_",
@@ -54,6 +53,22 @@ class Config(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
     )
+
+    @model_validator(mode="after")
+    def validate_and_set_default_values(self) -> "Config":
+        """Set default servers and validate that dynamic_emr_clusters_mode and servers are mutually exclusive."""
+        if self.servers is None and not self.dynamic_emr_clusters_mode:
+            self.servers = {
+                "local": ServerConfig(url="http://localhost:18080", default=True),
+            }
+
+        # Validate mutual exclusivity
+        if self.dynamic_emr_clusters_mode and self.servers:
+            raise ValueError(
+                "dynamic_emr_clusters_mode cannot be True when servers is not empty. "
+                "These modes are mutually exclusive."
+            )
+        return self
 
     @classmethod
     def from_file(cls, file_path: str) -> "Config":

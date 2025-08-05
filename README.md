@@ -112,6 +112,10 @@ servers:
     auth:  # optional
       username: "user"
       password: "pass"
+
+# Enable dynamic EMR clusters mode to specify EMR clusters directly in tool calls
+dynamic_emr_clusters_mode: true
+
 mcp:
   transports:
     - streamable-http # streamable-http or stdio.
@@ -243,13 +247,35 @@ servers:
     url: "http://staging-spark-history:18080"
 ```
 
+With static configuration:
+
 💁 User Query: "Can you get application <app_id> using production server?"
 
 🤖 AI Tool Request:
 ```json
 {
   "app_id": "<app_id>",
-  "server": "production"
+  "server_spec": {
+    "static_server_spec": {
+      "server_name": "production"
+    }
+  }
+}
+```
+
+With dynamic EMR configuration:
+
+💁 User Query: "Can you get application <app_id> using cluster j-I4VIWMNGOIP7"
+
+🤖 AI Tool Request:
+```json
+{
+  "app_id": "<app_id>",
+  "server_spec": {
+    "dynamic_emr_server_spec": {
+      "emr_cluster_id": "j-I4VIWMNGOIP7"
+    }
+  }
 }
 ```
 🤖 AI Tool Response:
@@ -288,6 +314,7 @@ SHS_SERVERS_*_AUTH_PASSWORD - Password for a specific server
 SHS_SERVERS_*_AUTH_TOKEN - Token for a specific server
 SHS_SERVERS_*_VERIFY_SSL - Whether to verify SSL for a specific server (true/false)
 SHS_SERVERS_*_EMR_CLUSTER_ARN - EMR cluster ARN for a specific server
+SHS_DYNAMIC_EMR_CLUSTERS_MODE - Enable dynamic EMR clusters mode (default: false)
 ```
 
 ## 🤖 AI Agent Integration
