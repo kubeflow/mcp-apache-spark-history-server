@@ -140,7 +140,7 @@ When adding new tools, follow this pattern:
 @mcp.tool()
 def your_new_tool(
     app_id: str,
-    server: Optional[str] = None,
+    server_spec: ServerSpec,
     # other parameters
 ) -> YourReturnType:
     """
@@ -148,13 +148,13 @@ def your_new_tool(
 
     Args:
         app_id: The Spark application ID
-        server: Optional server name to use
+        server_spec: ServerSpec
 
     Returns:
         Description of return value
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     # Your implementation here
     return client.your_method(app_id)
@@ -163,7 +163,7 @@ def your_new_tool(
 **Don't forget to add tests:**
 
 ```python
-@patch("tools.get_client_or_default")
+@patch("tools.get_client")
 def test_your_new_tool(self, mock_get_client):
     """Test your new tool functionality"""
     # Setup mocks
@@ -172,7 +172,7 @@ def test_your_new_tool(self, mock_get_client):
     mock_get_client.return_value = mock_client
 
     # Call the tool
-    result = your_new_tool("spark-app-123")
+    result = your_new_tool("spark-app-123", self.DEFAULT_SERVER_SPEC)
 
     # Verify results
     self.assertEqual(result, expected_result)

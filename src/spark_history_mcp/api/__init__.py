@@ -1,1 +1,1 @@
-"""API clients for interacting with Spark History Server."""
+"""API clients."""
