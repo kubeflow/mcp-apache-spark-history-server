@@ -1,0 +1,70 @@
+nameOverride: "mcp-apache-spark-history-server"
+fullnameOverride: "mcp-apache-spark-history-server"
+
+image:
+  name: "mcp-apache-spark-history-server"
+
+service:
+  targetPort: 8000
+
+replicas:
+  production: 1
+  staging: 1
+
+podAnnotations:
+  ad.datadoghq.com/tags: '{"service_type": "data"}'
+
+# Using exec probe to match parent chart and avoid conflicts
+livenessProbeOverride: {}
+
+# Using exec probe to match parent chart and avoid conflicts
+readinessProbeOverride: {}
+ingress:
+  enabled: true
+  extraAnnotations:
+    kubernetes.io/ingress.class: nginx-internal
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "300s"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300s"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300s"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+
+resources:
+  staging:
+    requests:
+      cpu: "0.2"
+      memory: "0.4Gi"
+    limits:
+
+      cpu: "2"
+      memory: "6Gi"
+  production:
+    requests:
+      cpu: "0.2"
+      memory: "0.2Gi"
+    limits:
+      cpu: "2"
+      memory: "2Gi"
+
+#env:
+#  all:
+#    - name: SERVICE_PORT
+#      value: "8000"
+#    - name: SERVICE_BIND_ADDRESS
+#      value: "0.0.0.0"
+#    - name: service_name
+#      value: data-support-mcp
+#    - name: PYTHONPATH
+#      value: "/app"
+#    - name: DD_SERVICE_NAME
+#      value: data-support-mcp
+#    - name: DD_TRACE_AGENT_PORT
+#      value: "8126"
+#    - name: DD_DOGSTATSD_PORT
+#      value: "8125"
+
+nodeSelectorName:
+  production: "dataapps"
+  staging: "dataapps"
+command:
+  enabled: true
+  args: [ "touch /tmp/healthy && uv run ./src/spark_history_mcp/core/main.py" ]

@@ -1,8 +1,8 @@
 # WARNING: Do not commit your sensitive credentials
-servers:
-  local:
-    default: true  # if server name is not provided in tool calls, this Spark History Server is used
-    url: "http://localhost:18080"
+#servers:
+#  local:
+#    default: true  # if server name is not provided in tool calls, this Spark History Server is used
+#    url: "http://localhost:18080"
     # Optional authentication (can also use environment variables).
     # auth:
     #   username: ${SHS_SERVERS_LOCAL_AUTH_USERNAME}
@@ -36,7 +36,7 @@ servers:
   # emr_persistent_ui:
   #   emr_cluster_arn: "<EMR Cluster ARN>"
 
-# dynamic_emr_clusters_mode: true # To be able to add cluster id or name to the prompt
+dynamic_emr_clusters_mode: true # To be able to add cluster id or name to the prompt
 
 mcp:
   transports:
