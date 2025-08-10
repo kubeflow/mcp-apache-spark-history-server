@@ -15,6 +15,8 @@ import boto3
 import requests
 from botocore.exceptions import ClientError
 
+from spark_history_mcp.config.config import ServerConfig
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -25,15 +27,15 @@ logger = logging.getLogger(__name__)
 class EMRPersistentUIClient:
     """Client for managing EMR Persistent App UI and HTTP sessions."""
 
-    def __init__(self, emr_cluster_arn: str):
+    def __init__(self, server_config: ServerConfig):
         """
         Initialize the EMR client.
 
         Args:
-            emr_cluster_arn: ARN of the EMR cluster
+            server_config: ServerConfig object
         """
-        self.emr_cluster_arn = emr_cluster_arn
-        self.region = emr_cluster_arn.split(":")[3]  # Extract region from ARN
+        self.emr_cluster_arn = server_config.emr_cluster_arn
+        self.region = self.emr_cluster_arn.split(":")[3]  # Extract region from ARN
 
         # Initialize boto3 client with credentials
         self.emr_client = boto3.client(
@@ -45,6 +47,7 @@ class EMRPersistentUIClient:
         self.persistent_ui_id: Optional[str] = None
         self.presigned_url: Optional[str] = None
         self.base_url: Optional[str] = None
+        self.timeout: int = server_config.timeout
 
     def create_persistent_app_ui(self) -> Dict:
         """
@@ -202,7 +205,7 @@ class EMRPersistentUIClient:
             # Make initial request to establish session and get cookies
             logger.info("Making initial request")
             response = self.session.get(
-                self.presigned_url, timeout=30, allow_redirects=True
+                self.presigned_url, timeout=self.timeout, allow_redirects=True
             )
             response.raise_for_status()
 

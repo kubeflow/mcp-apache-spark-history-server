@@ -287,6 +287,7 @@ SHS_SERVERS_*_AUTH_USERNAME - Username for a specific server
 SHS_SERVERS_*_AUTH_PASSWORD - Password for a specific server
 SHS_SERVERS_*_AUTH_TOKEN - Token for a specific server
 SHS_SERVERS_*_VERIFY_SSL - Whether to verify SSL for a specific server (true/false)
+SHS_SERVERS_*_TIMEOUT - HTTP request timeout in seconds for a specific server (default: 30)
 SHS_SERVERS_*_EMR_CLUSTER_ARN - EMR cluster ARN for a specific server
 ```
 
