@@ -72,10 +72,11 @@ Create the name of the config map
 Create the name of the secret
 */}}
 {{- define "mcp-apache-spark-history-server.secretName" -}}
-{{- if .Values.auth.secret.create }}
-{{- printf "%s-auth" (include "mcp-apache-spark-history-server.fullname" .) }}
-{{- else }}
-{{- default (printf "%s-auth" (include "mcp-apache-spark-history-server.fullname" .)) .Values.auth.secret.name }}
+{{- $default := printf "%s-auth" (include "mcp-apache-spark-history-server.fullname" .) -}}
+{{- if .Values.auth.secret.name -}}
+{{- .Values.auth.secret.name -}}
+{{- else -}}
+{{- $default -}}
 {{- end }}
 {{- end }}
 
@@ -94,7 +95,7 @@ Create environment variables
   value: {{ .Values.config.port | quote }}
 - name: MCP_DEBUG
   value: {{ .Values.config.debug | quote }}
-{{- if .Values.auth.enabled }}
+{{- if and .Values.auth.enabled (or .Values.auth.secret.create .Values.auth.externalsecret.create) }}
 - name: SPARK_USERNAME
   valueFrom:
     secretKeyRef:

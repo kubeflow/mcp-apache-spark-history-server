@@ -96,12 +96,24 @@ config:
 # Authentication configuration
 auth:
   enabled: false
+  # Enable exactly one of the following backends
+  # Users are responsible for ensuring mutual exclusivity
+
+  # inline: chart creates a Kubernetes Secret from values below
   secret:
     create: false
     name: ""
     username: ""
     password: ""
     token: ""
+
+  # externalsecret: use External Secrets Operator to sync a Secret from a provider
+  externalsecret:
+    create: false
+    secretStoreRef:
+      name: ""           # e.g. my-secret-store
+      kind: ClusterSecretStore  # or SecretStore
+    secretPath: ""        # e.g. path/to/secret containing username/password/token properties
 
 # Environment variables
 env: []
