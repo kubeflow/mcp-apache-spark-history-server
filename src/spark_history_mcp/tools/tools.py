@@ -1,3 +1,4 @@
+import heapq
 from typing import Any, Dict, List, Optional
 
 from spark_history_mcp.core.app import mcp
@@ -127,15 +128,12 @@ def list_slowest_jobs(
     if not jobs:
         return []
 
-    # Sort jobs by duration (descending)
     def get_job_duration(job):
         if job.completion_time and job.submission_time:
             return (job.completion_time - job.submission_time).total_seconds()
         return 0
 
-    sorted_jobs = sorted(jobs, key=get_job_duration, reverse=True)
-
-    return sorted_jobs[:n]
+    return heapq.nlargest(n, jobs, key=get_job_duration)
 
 
 @mcp.tool()
@@ -199,29 +197,23 @@ def list_slowest_stages(
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server)
 
-    # Get all stages with details
-    stages = client.list_stages(app_id=app_id, details=True)
+    stages = client.list_stages(app_id=app_id)
 
-    if not stages:
-        return []
-
-    # Filter out running stages if not included
+    # Filter out running stages if not included. This avoids using the `details` param which can significantly slow down the execution time
     if not include_running:
         stages = [stage for stage in stages if stage.status != "RUNNING"]
 
     if not stages:
         return []
 
-    # Sort stages by duration (descending) and take top N
-    # Calculate duration from completion_time and submission_time
-    def get_stage_duration(stage):
-        if stage.completion_time and stage.submission_time:
-            return (stage.completion_time - stage.submission_time).total_seconds()
+    def get_stage_duration(stage: StageData):
+        if stage.completion_time and stage.first_task_launched_time:
+            return (
+                stage.completion_time - stage.first_task_launched_time
+            ).total_seconds()
         return 0
 
-    sorted_stages = sorted(stages, key=get_stage_duration, reverse=True)
-
-    return sorted_stages[:n]
+    return heapq.nlargest(n, stages, key=get_stage_duration)
 
 
 @mcp.tool()
@@ -828,9 +820,7 @@ def list_slowest_sql_queries(
             e for e in all_executions if e.status != SQLExecutionStatus.RUNNING.value
         ]
 
-    # Sort by duration (descending) and take top N
-    sorted_executions = sorted(all_executions, key=lambda e: e.duration, reverse=True)
-    return sorted_executions[:top_n]
+    return heapq.nlargest(top_n, all_executions, key=lambda e: e.duration)
 
 
 @mcp.tool()
@@ -863,8 +853,7 @@ def get_job_bottlenecks(
     # Get executor summary
     exec_summary = get_executor_summary(app_id, server)
 
-    # Get all stages for detailed analysis
-    all_stages = client.list_stages(app_id=app_id, details=True)
+    all_stages = client.list_stages(app_id=app_id)
 
     # Identify stages with high spill
     high_spill_stages = []
@@ -885,8 +874,9 @@ def get_job_bottlenecks(
                 }
             )
 
-    # Sort by memory spilled
-    high_spill_stages.sort(key=lambda x: x["memory_spilled_mb"], reverse=True)
+    high_spill_stages = heapq.nlargest(
+        len(high_spill_stages), high_spill_stages, key=lambda x: x["memory_spilled_mb"]
+    )
 
     # Identify GC pressure
     gc_pressure = (
@@ -1002,7 +992,7 @@ def get_resource_usage_timeline(
     executors = client.list_all_executors(app_id=app_id)
 
     # Get stages
-    stages = client.list_stages(app_id=app_id, details=True)
+    stages = client.list_stages(app_id=app_id)
 
     # Create timeline events
     timeline_events = []
@@ -1094,7 +1084,6 @@ def get_resource_usage_timeline(
     return {
         "application_id": app_id,
         "application_name": app.name,
-        "timeline": resource_timeline,
         "summary": {
             "total_events": len(timeline_events),
             "executor_additions": len(

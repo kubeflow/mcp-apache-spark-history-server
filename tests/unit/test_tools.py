@@ -18,6 +18,7 @@ from spark_history_mcp.tools.tools import (
     list_jobs,
     list_slowest_jobs,
     list_slowest_sql_queries,
+    list_slowest_stages,
     list_stages,
 )
 
@@ -588,6 +589,224 @@ class TestTools(unittest.TestCase):
             get_stage_task_summary("spark-app-123", 999, 0)
 
         self.assertIn("Stage not found", str(context.exception))
+
+    # Tests for list_slowest_stages tool
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_slowest_stages_execution_time_vs_total_time(self, mock_get_client):
+        """Test that list_slowest_stages prioritizes execution time over total stage duration"""
+        mock_client = MagicMock()
+
+        # Create Stage A: Longer total duration but shorter execution time
+        stage_a = MagicMock(spec=StageData)
+        stage_a.stage_id = 1
+        stage_a.attempt_id = 0
+        stage_a.name = "Stage A"
+        stage_a.status = "COMPLETE"
+        # Total duration: 10 minutes (submission to completion)
+        stage_a.submission_time = datetime.now() - timedelta(minutes=10)
+        stage_a.first_task_launched_time = datetime.now() - timedelta(
+            minutes=5
+        )  # 5 min delay
+        stage_a.completion_time = datetime.now()
+        # Execution time: 5 minutes (first_task_launched to completion)
+
+        # Create Stage B: Shorter total duration but longer execution time
+        stage_b = MagicMock(spec=StageData)
+        stage_b.stage_id = 2
+        stage_b.attempt_id = 0
+        stage_b.name = "Stage B"
+        stage_b.status = "COMPLETE"
+        # Total duration: 8 minutes (submission to completion)
+        stage_b.submission_time = datetime.now() - timedelta(minutes=8)
+        stage_b.first_task_launched_time = datetime.now() - timedelta(
+            minutes=7
+        )  # 1 min delay
+        stage_b.completion_time = datetime.now()
+        # Execution time: 7 minutes (first_task_launched to completion)
+
+        mock_client.list_stages.return_value = [stage_a, stage_b]
+        mock_get_client.return_value = mock_client
+
+        # Call the function
+        result = list_slowest_stages("app-123", n=2)
+
+        # Verify results - Stage B should be first (longer execution time: 7 min vs 5 min)
+        # even though Stage A has longer total duration (10 min vs 8 min)
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0], stage_b)  # Stage B first (7 min execution)
+        self.assertEqual(result[1], stage_a)  # Stage A second (5 min execution)
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_slowest_stages_exclude_running(self, mock_get_client):
+        """Test that list_slowest_stages excludes running stages by default"""
+        mock_client = MagicMock()
+
+        # Create running stage with long execution time
+        running_stage = MagicMock(spec=StageData)
+        running_stage.stage_id = 1
+        running_stage.attempt_id = 0
+        running_stage.name = "Running Stage"
+        running_stage.status = "RUNNING"
+        running_stage.submission_time = datetime.now() - timedelta(minutes=20)
+        running_stage.first_task_launched_time = datetime.now() - timedelta(minutes=15)
+        running_stage.completion_time = None  # Still running
+
+        # Create completed stage with shorter execution time
+        completed_stage = MagicMock(spec=StageData)
+        completed_stage.stage_id = 2
+        completed_stage.attempt_id = 0
+        completed_stage.name = "Completed Stage"
+        completed_stage.status = "COMPLETE"
+        completed_stage.submission_time = datetime.now() - timedelta(minutes=5)
+        completed_stage.first_task_launched_time = datetime.now() - timedelta(minutes=4)
+        completed_stage.completion_time = datetime.now()
+
+        mock_client.list_stages.return_value = [running_stage, completed_stage]
+        mock_get_client.return_value = mock_client
+
+        # Call the function with include_running=False (default)
+        result = list_slowest_stages("app-123", include_running=False, n=2)
+
+        # Should only return the completed stage
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0], completed_stage)
+        self.assertNotIn(running_stage, result)
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_slowest_stages_include_running(self, mock_get_client):
+        """Test that list_slowest_stages includes running stages when requested"""
+        mock_client = MagicMock()
+
+        # Create running stage
+        running_stage = MagicMock(spec=StageData)
+        running_stage.stage_id = 1
+        running_stage.attempt_id = 0
+        running_stage.name = "Running Stage"
+        running_stage.status = "RUNNING"
+        running_stage.submission_time = datetime.now() - timedelta(minutes=10)
+        running_stage.first_task_launched_time = datetime.now() - timedelta(minutes=8)
+        running_stage.completion_time = None
+
+        # Create completed stage
+        completed_stage = MagicMock(spec=StageData)
+        completed_stage.stage_id = 2
+        completed_stage.attempt_id = 0
+        completed_stage.name = "Completed Stage"
+        completed_stage.status = "COMPLETE"
+        completed_stage.submission_time = datetime.now() - timedelta(minutes=5)
+        completed_stage.first_task_launched_time = datetime.now() - timedelta(minutes=4)
+        completed_stage.completion_time = datetime.now()
+
+        mock_client.list_stages.return_value = [running_stage, completed_stage]
+        mock_get_client.return_value = mock_client
+
+        # Call the function with include_running=True
+        result = list_slowest_stages("app-123", include_running=True, n=2)
+
+        # Should include both stages, but running stage will have duration 0
+        # so completed stage should be first
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0], completed_stage)  # Has actual duration
+        self.assertEqual(result[1], running_stage)  # Duration 0
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_slowest_stages_missing_timestamps(self, mock_get_client):
+        """Test list_slowest_stages handles stages with missing timestamps"""
+        # Setup mock client
+        mock_client = MagicMock()
+
+        # Create stage with missing first_task_launched_time
+        stage_missing_launch = MagicMock(spec=StageData)
+        stage_missing_launch.stage_id = 1
+        stage_missing_launch.attempt_id = 0
+        stage_missing_launch.name = "Stage Missing Launch Time"
+        stage_missing_launch.status = "COMPLETE"
+        stage_missing_launch.submission_time = datetime.now() - timedelta(minutes=10)
+        stage_missing_launch.first_task_launched_time = None
+        stage_missing_launch.completion_time = datetime.now()
+
+        # Create stage with missing completion_time
+        stage_missing_completion = MagicMock(spec=StageData)
+        stage_missing_completion.stage_id = 2
+        stage_missing_completion.attempt_id = 0
+        stage_missing_completion.name = "Stage Missing Completion Time"
+        stage_missing_completion.status = "COMPLETE"
+        stage_missing_completion.submission_time = datetime.now() - timedelta(minutes=5)
+        stage_missing_completion.first_task_launched_time = datetime.now() - timedelta(
+            minutes=4
+        )
+        stage_missing_completion.completion_time = None
+
+        # Create valid stage
+        valid_stage = MagicMock(spec=StageData)
+        valid_stage.stage_id = 3
+        valid_stage.attempt_id = 0
+        valid_stage.name = "Valid Stage"
+        valid_stage.status = "COMPLETE"
+        valid_stage.submission_time = datetime.now() - timedelta(minutes=3)
+        valid_stage.first_task_launched_time = datetime.now() - timedelta(minutes=2)
+        valid_stage.completion_time = datetime.now()
+
+        mock_client.list_stages.return_value = [
+            stage_missing_launch,
+            stage_missing_completion,
+            valid_stage,
+        ]
+        mock_get_client.return_value = mock_client
+
+        # Call the function
+        result = list_slowest_stages("app-123", n=3)
+
+        # Should return valid stage first, others should have duration 0
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[0], valid_stage)  # Only one with valid duration
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_slowest_stages_empty_result(self, mock_get_client):
+        """Test list_slowest_stages with no stages"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_client.list_stages.return_value = []
+        mock_get_client.return_value = mock_client
+
+        # Call the function
+        result = list_slowest_stages("app-123", n=5)
+
+        # Should return empty list
+        self.assertEqual(result, [])
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_slowest_stages_limit_results(self, mock_get_client):
+        """Test list_slowest_stages limits results to n"""
+        # Setup mock client
+        mock_client = MagicMock()
+
+        # Create 5 stages with different execution times
+        stages = []
+        for i in range(5):
+            stage = MagicMock(spec=StageData)
+            stage.stage_id = i
+            stage.attempt_id = 0
+            stage.name = f"Stage {i}"
+            stage.status = "COMPLETE"
+            stage.submission_time = datetime.now() - timedelta(minutes=10)
+            # Different execution times: 1, 2, 3, 4, 5 minutes
+            stage.first_task_launched_time = datetime.now() - timedelta(minutes=i + 1)
+            stage.completion_time = datetime.now()
+            stages.append(stage)
+
+        mock_client.list_stages.return_value = stages
+        mock_get_client.return_value = mock_client
+
+        # Call the function with n=3
+        result = list_slowest_stages("app-123", n=3)
+
+        # Should return only 3 stages (the ones with longest execution times)
+        self.assertEqual(len(result), 3)
+        # Should be sorted by execution time descending (5, 4, 3 minutes)
+        self.assertEqual(result[0].stage_id, 4)  # 5 minutes
+        self.assertEqual(result[1].stage_id, 3)  # 4 minutes
+        self.assertEqual(result[2].stage_id, 2)  # 3 minutes
 
     # Tests for list_slowest_sql_queries tool
     @patch("spark_history_mcp.tools.tools.get_client_or_default")

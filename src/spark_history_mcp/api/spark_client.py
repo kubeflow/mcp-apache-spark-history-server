@@ -305,10 +305,10 @@ class SparkRestClient:
         Args:
             app_id: The application ID
             status: Filter by stage status
-            details: Whether to include task details
+            details: Whether to include task details (WARNING: Setting this to True can significantly slow down the API call due to the large amount of task data returned)
             with_summaries: Whether to include summary metrics
             quantiles: Comma-separated list of quantiles to use for summary metrics
-            task_status: Filter by task status
+            task_status: Filter by task status (only takes effect when details=true)
 
         Returns:
             List of StageData objects
@@ -321,7 +321,8 @@ class SparkRestClient:
 
         if status:
             params["status"] = [s.value for s in status]
-        if task_status:
+        # taskStatus parameter only takes effect when details=true
+        if task_status and details:
             params["taskStatus"] = [s.value for s in task_status]
 
         data = self._get(f"applications/{app_id}/stages", params)
