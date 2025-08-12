@@ -96,10 +96,8 @@ config:
 # Authentication configuration
 auth:
   enabled: false
-  # Enable exactly one of the following backends
-  # Users are responsible for ensuring mutual exclusivity
 
-  # inline: chart creates a Kubernetes Secret from values below
+  # secret: use Kubernetes Secret to store spark history server credentials as environment variables
   secret:
     create: false
     name: ""
@@ -107,7 +105,8 @@ auth:
     password: ""
     token: ""
 
-  # externalsecret: use External Secrets Operator to sync a Secret from a provider
+  # externalsecret: use External Secrets Operator to sync a Secret from a secret provider.
+  # Requiring External Secrets Operator to be installed in the k8s cluster.
   externalsecret:
     create: false
     secretStoreRef:
