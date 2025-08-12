@@ -45,7 +45,7 @@ def buildAll = true
 def initiateData = [project: project, agentImage: template_vars['python_image'],triggerStaticJob: "Operations_Manual_Service_Deployment"]
 def compileData = [run: false, artifacts: ["DockerHub"]]
 def testData = [run: false]
-def artifactData = [run: true]
+def artifactData = [def artifactData = [run: true, uploadTo:["DockerHub"]]]
 def intTestData = [run: false]
 def deploymentData = [run: false]
 def buildCommands = [
