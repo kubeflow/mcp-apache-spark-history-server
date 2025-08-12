@@ -12,7 +12,7 @@ WORKDIR /app
 # Copy entire source code first to ensure .git is available for version detection
 COPY . /app
 
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml ./
 
 # Debug: Check what files are actually copied
 RUN ls -la /app
