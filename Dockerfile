@@ -1,7 +1,4 @@
-# Define the build argument with default value
-ARG PYTHON_VERSION=3.12
-
-FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim AS builder
+FROM naturalintelligence/python:3.12-bookworm-slim as builder
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 
 ENV UV_PYTHON_DOWNLOADS=0
@@ -18,7 +15,7 @@ COPY . /app
 # Install dependencies with version detection (works if .git exists, falls back gracefully if not)
 RUN uv sync --frozen --no-dev --no-editable
 
-FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim
+FROM naturalintelligence/python:3.12-bookworm-slim
 
 # Create app user and group
 RUN groupadd -r app && useradd -r -g app app
