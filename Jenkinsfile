@@ -58,7 +58,7 @@ def buildCommands = [
 ]
 
 // Load properties
-new com.naturalint.properties.data.pythonSvc().pythonMultiSvc([services: services.keySet().toList(), buildAll: buildAll])
+// new com.naturalint.properties.data.pythonSvc().pythonMultiSvc([services: services.keySet().toList(), buildAll: buildAll])
 
 timestamps {
     commonPipeline(sharedLibrary, repoName, buildCommands, pod, slackChannel)
