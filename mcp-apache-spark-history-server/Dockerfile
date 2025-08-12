@@ -8,7 +8,7 @@ ENV UV_CACHE_DIR=/app/.cache
 WORKDIR /app
 
 # RUN apt update && apt install git -y
-
+COPY ../pyproject.toml ./
 # Copy entire source code first to ensure .git is available for version detection
 COPY . /app
 
