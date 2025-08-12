@@ -30,11 +30,11 @@ def project = "dataapps"
 //     ]
 // ]
 
-def packages = [
-//     'cli': [
-//         agentImage: 'python:3.12.0'
-//     ]
-]
+// def packages = [
+// //     'cli': [
+// //         agentImage: 'python:3.12.0'
+// //     ]
+// ]
 def buildAll = true
 
 // Custom unit test command
@@ -42,7 +42,7 @@ def buildAll = true
 // def intTestCommand="uv run pytest -v --cov=src --cov-report=term-missing --cov-report=xml:coverage.xml"
 
 // Args for pipeline
-def initiateData = [project: project, agentImage: template_vars['python_image'],  services: services, packages: packages, triggerStaticJob: "Operations_Manual_Service_Deployment"]
+def initiateData = [project: project, agentImage: template_vars['python_image'],triggerStaticJob: "Operations_Manual_Service_Deployment"]
 def compileData = [run: false, artifacts: ["DockerHub"]]
 def testData = [run: false]
 def artifactData = [run: true]
