@@ -10,7 +10,7 @@ def repoName = currentBuild.rawBuild.project.parent.displayName
 def pod = libraryResource 'com/naturalint/python-agent.yaml'
 
 def template_vars = [
-    'python_image': 'naturalintelligence/python:3.12.0',
+    'python_image': 'naturalintelligence/python:3.12.11',
     'build_label': repoName,
     'jenkins_build_number': env['jenkins_build_number']
 ]
@@ -25,7 +25,7 @@ def slackChannel = "python-web-services"
 def project = "dataapps"
 def services = [
     'mcp-apache-spark-history-server': [
-        agentImage: 'python:3.12.0',
+        agentImage: 'python:3.12.11',
         buildFromRoot: true
     ]
 ]
