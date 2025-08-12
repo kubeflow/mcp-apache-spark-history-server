@@ -12,15 +12,10 @@ WORKDIR /app
 
 RUN apt update && apt install git -y
 
-# Just in case for future external caching mechanisms
-RUN --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    --mount=type=bind,source=.git,target=.git \
-    uv sync --frozen --no-install-project --no-dev --no-editable
-
+# Copy entire source code first to ensure .git is available for version detection
 COPY . /app
 
-# Install project
+# Install dependencies with version detection (works if .git exists, falls back gracefully if not)
 RUN uv sync --frozen --no-dev --no-editable
 
 FROM ghcr.io/astral-sh/uv:python${PYTHON_VERSION}-bookworm-slim
