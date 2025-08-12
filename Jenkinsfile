@@ -43,7 +43,7 @@ def buildAll = true
 
 // Args for pipeline
 def initiateData = [project: project, agentImage: template_vars['python_image'],  services: services, packages: packages, triggerStaticJob: "Operations_Manual_Service_Deployment"]
-def compileData = [run: false, artifacts: ["DockerHub", "ECR"]]
+def compileData = [run: false, artifacts: ["DockerHub"]]
 def testData = [run: false]
 def artifactData = [run: true]
 def intTestData = [run: false]
