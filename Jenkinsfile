@@ -26,7 +26,7 @@ def project = "dataapps"
 def services = [
     'mcp-apache-spark-history-server': [
         agentImage: 'python:3.12.11',
-        buildFromRoot: false
+        buildFromRoot: true
     ]
 ]
 
