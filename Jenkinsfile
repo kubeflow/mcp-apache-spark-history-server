@@ -18,17 +18,17 @@ pod = renderTemplate(pod, template_vars)
 print pod
 
 // Define sharedLibrary
-def sharedLibrary = new com.naturalint.pythonMultiSvc()
+def sharedLibrary = new com.naturalint.pythonSvc()
 
 // Set slack channel
 def slackChannel = "python-web-services"
 def project = "dataapps"
-def services = [
-    'mcp-apache-spark-history-server': [
-        agentImage: 'python:3.12.11',
-        buildFromRoot: false
-    ]
-]
+// def services = [
+//     'mcp-apache-spark-history-server': [
+//         agentImage: 'python:3.12.11',
+//         buildFromRoot: false
+//     ]
+// ]
 
 def packages = [
 //     'cli': [
@@ -61,5 +61,5 @@ def buildCommands = [
 new com.naturalint.properties.data.pythonSvc().pythonMultiSvc([services: services.keySet().toList(), buildAll: buildAll])
 
 timestamps {
-    commonPipelineMultiPod(sharedLibrary, repoName, buildCommands, pod, slackChannel)
+    commonPipeline(sharedLibrary, repoName, buildCommands, pod, slackChannel)
 }
