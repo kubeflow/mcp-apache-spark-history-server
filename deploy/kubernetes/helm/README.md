@@ -81,6 +81,12 @@ config:
       url: "http://dev-spark-history:18080"
 ```
 
+#### 1a. Dynamic EMR Clusters Configuration
+```yaml
+config:
+  dynamic_emr_clusters_mode: true
+```
+
 #### 2. Authentication Setup
 ```yaml
 auth:

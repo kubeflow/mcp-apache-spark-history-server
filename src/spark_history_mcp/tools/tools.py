@@ -1,11 +1,16 @@
 import heapq
-from typing import Any, Dict, List, Optional
+from collections import defaultdict
+from typing import Any, Callable, Dict, List, Optional, TypeVar
 
+from spark_history_mcp.api.client_factory import create_spark_emr_client
+from spark_history_mcp.api.emr_client import EMRClient
+from spark_history_mcp.api.spark_client import SparkRestClient
 from spark_history_mcp.core.app import mcp
 from spark_history_mcp.models.mcp_types import (
     JobSummary,
     SqlQuerySummary,
 )
+from spark_history_mcp.models.server_spec import ServerSpec
 from spark_history_mcp.models.spark_types import (
     ApplicationInfo,
     ExecutionData,
@@ -17,39 +22,112 @@ from spark_history_mcp.models.spark_types import (
     TaskMetricDistributions,
 )
 
+emr_cluster_id_to_arn_cache: Dict[str, str] = {}
+arn_to_spark_emr_client_cache: Dict[str, SparkRestClient] = {}
+session_emr_cluster_name_to_arn_cache: Dict[int, Dict[str, str]] = defaultdict(dict)
 
-def get_client_or_default(ctx, server_name: Optional[str] = None):
+
+K = TypeVar("K")  # Key type
+V = TypeVar("V")  # Value type
+
+
+def _get_cacheable(key: K, cache: Dict[K, V], get_value_func: Callable[[K], V]) -> V:
+    if key in cache:
+        return cache[key]
+
+    value = get_value_func(key)
+    cache[key] = value
+    return value
+
+
+def _get_emr_client(ctx) -> EMRClient:
+    emr_client: EMRClient = ctx.request_context.lifespan_context.emr_client
+    if not emr_client:
+        raise ValueError("EMR client is not initialized in dynamic mode")
+    return emr_client
+
+
+def get_client(ctx, server_spec: ServerSpec) -> SparkRestClient:
     """
-    Get a client by server name or the default client if no name is provided.
+    Get a client by ServerSpec.
 
     Args:
         ctx: The MCP context
-        server_name: Optional server name
+        server_spec: ServerSpec
 
     Returns:
         SparkRestClient: The requested client or default client
 
     Raises:
-        ValueError: If no client is found
+        ValueError: If no client is found or configuration is invalid
     """
-    clients = ctx.request_context.lifespan_context.clients
-    default_client = ctx.request_context.lifespan_context.default_client
 
-    if server_name:
-        client = clients.get(server_name)
-        if client:
+    if server_spec.static_server_spec:
+        if ctx.request_context.lifespan_context.dynamic_emr_clusters_mode:
+            raise ValueError(
+                "MCP is running in dynamic EMR mode, but static server spec was provided."
+            )
+
+        spec = server_spec.static_server_spec
+
+        if spec.default_client:
+            default_client = (
+                ctx.request_context.lifespan_context.static_clients.default_client
+            )
+            if not default_client:
+                raise ValueError("No default client configured")
+            return default_client
+
+        if spec.server_name:
+            clients = ctx.request_context.lifespan_context.static_clients.clients
+            client = clients.get(spec.server_name)
+            if not client:
+                raise ValueError(f"No server configured with name: {spec.server_name}")
             return client
 
-    if default_client:
-        return default_client
+    if server_spec.dynamic_emr_server_spec:
+        if not ctx.request_context.lifespan_context.dynamic_emr_clusters_mode:
+            raise ValueError(
+                "MCP is not running in dynamic EMR mode, but dynamic server spec was provided."
+            )
 
-    raise ValueError(
-        "No Spark client found. Please specify a valid server name or set a default server."
-    )
+        spec = server_spec.dynamic_emr_server_spec
+
+        if spec.emr_cluster_arn:
+            arn = spec.emr_cluster_arn
+
+        elif spec.emr_cluster_id:
+            arn = _get_cacheable(
+                spec.emr_cluster_id,
+                emr_cluster_id_to_arn_cache,
+                lambda cluster_id: _get_emr_client(ctx).get_cluster_arn_by_id(
+                    cluster_id
+                ),
+            )
+
+        elif spec.emr_cluster_name:
+            arn = _get_cacheable(
+                spec.emr_cluster_name,
+                session_emr_cluster_name_to_arn_cache[id(ctx.session)],
+                lambda cluster_name: _get_emr_client(
+                    ctx
+                ).get_active_cluster_arn_by_name(cluster_name),
+            )
+
+        else:
+            raise ValueError("Invalid server_spec")
+
+        return _get_cacheable(
+            arn,
+            arn_to_spark_emr_client_cache,
+            lambda _arn: create_spark_emr_client(_arn),
+        )
+
+    raise ValueError("Invalid server_spec")
 
 
 @mcp.tool()
-def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInfo:
+def get_application(app_id: str, server_spec: ServerSpec) -> ApplicationInfo:
     """
     Get detailed information about a specific Spark application.
 
@@ -58,34 +136,34 @@ def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInf
 
     Args:
         app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
 
     Returns:
         ApplicationInfo object containing application details
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     return client.get_application(app_id)
 
 
 @mcp.tool()
 def list_jobs(
-    app_id: str, server: Optional[str] = None, status: Optional[list[str]] = None
+    app_id: str, server_spec: ServerSpec, status: Optional[list[str]] = None
 ) -> list:
     """
     Get a list of all jobs for a Spark application.
 
     Args:
         app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
         status: Optional list of job status values to filter by
 
     Returns:
         List of JobData objects for the application
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     # Convert string status values to JobExecutionStatus enum if provided
     job_statuses = None
@@ -98,7 +176,7 @@ def list_jobs(
 @mcp.tool()
 def list_slowest_jobs(
     app_id: str,
-    server: Optional[str] = None,
+    server_spec: ServerSpec,
     include_running: bool = False,
     n: int = 5,
 ) -> List[JobData]:
@@ -109,7 +187,7 @@ def list_slowest_jobs(
 
     Args:
         app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
         include_running: Whether to include running jobs in the search
         n: Number of slowest jobs to return (default: 5)
 
@@ -117,7 +195,7 @@ def list_slowest_jobs(
         List of JobData objects for the slowest jobs, or empty list if no jobs found
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     # Get all jobs
     jobs = client.list_jobs(app_id=app_id)
@@ -143,7 +221,7 @@ def list_slowest_jobs(
 @mcp.tool()
 def list_stages(
     app_id: str,
-    server: Optional[str] = None,
+    server_spec: ServerSpec,
     status: Optional[list[str]] = None,
     with_summaries: bool = False,
 ) -> list:
@@ -155,7 +233,7 @@ def list_stages(
 
     Args:
         app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
         status: Optional list of stage status values to filter by
         with_summaries: Whether to include summary metrics in the response
 
@@ -163,7 +241,7 @@ def list_stages(
         List of StageData objects for the application
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     # Convert string status values to StageStatus enum if provided
     stage_statuses = None
@@ -180,7 +258,7 @@ def list_stages(
 @mcp.tool()
 def list_slowest_stages(
     app_id: str,
-    server: Optional[str] = None,
+    server_spec: ServerSpec,
     include_running: bool = False,
     n: int = 5,
 ) -> List[StageData]:
@@ -191,7 +269,7 @@ def list_slowest_stages(
 
     Args:
         app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
         include_running: Whether to include running stages in the search
         n: Number of slowest stages to return (default: 5)
 
@@ -199,7 +277,7 @@ def list_slowest_stages(
         List of StageData objects for the slowest stages, or empty list if no stages found
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     stages = client.list_stages(app_id=app_id)
 
@@ -224,8 +302,8 @@ def list_slowest_stages(
 def get_stage(
     app_id: str,
     stage_id: int,
+    server_spec: ServerSpec,
     attempt_id: Optional[int] = None,
-    server: Optional[str] = None,
     with_summaries: bool = False,
 ) -> StageData:
     """
@@ -234,15 +312,15 @@ def get_stage(
     Args:
         app_id: The Spark application ID
         stage_id: The stage ID
+        server_spec: ServerSpec for specifying the server
         attempt_id: Optional stage attempt ID (if not provided, returns the latest attempt)
-        server: Optional server name to use (uses default if not specified)
         with_summaries: Whether to include summary metrics
 
     Returns:
         StageData object containing stage information
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     if attempt_id is not None:
         # Get specific attempt
@@ -287,7 +365,7 @@ def get_stage(
 
 
 @mcp.tool()
-def get_environment(app_id: str, server: Optional[str] = None):
+def get_environment(app_id: str, server_spec: ServerSpec):
     """
     Get the comprehensive Spark runtime configuration for a Spark application.
 
@@ -296,20 +374,20 @@ def get_environment(app_id: str, server: Optional[str] = None):
 
     Args:
         app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
 
     Returns:
         ApplicationEnvironmentInfo object containing environment details
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     return client.get_environment(app_id=app_id)
 
 
 @mcp.tool()
 def list_executors(
-    app_id: str, server: Optional[str] = None, include_inactive: bool = False
+    app_id: str, server_spec: ServerSpec, include_inactive: bool = False
 ):
     """
     Get executor information for a Spark application.
@@ -319,14 +397,14 @@ def list_executors(
 
     Args:
         app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
         include_inactive: Whether to include inactive executors (default: False)
 
     Returns:
         List of ExecutorSummary objects containing executor information
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     if include_inactive:
         return client.list_all_executors(app_id=app_id)
@@ -335,7 +413,7 @@ def list_executors(
 
 
 @mcp.tool()
-def get_executor(app_id: str, executor_id: str, server: Optional[str] = None):
+def get_executor(app_id: str, executor_id: str, server_spec: ServerSpec):
     """
     Get information about a specific executor.
 
@@ -345,13 +423,13 @@ def get_executor(app_id: str, executor_id: str, server: Optional[str] = None):
     Args:
         app_id: The Spark application ID
         executor_id: The executor ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
 
     Returns:
         ExecutorSummary object containing executor details or None if not found
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     # Get all executors and find the one with matching ID
     executors = client.list_all_executors(app_id=app_id)
@@ -364,7 +442,7 @@ def get_executor(app_id: str, executor_id: str, server: Optional[str] = None):
 
 
 @mcp.tool()
-def get_executor_summary(app_id: str, server: Optional[str] = None):
+def get_executor_summary(app_id: str, server_spec: ServerSpec):
     """
     Aggregates metrics across all executors for a Spark application.
 
@@ -373,13 +451,13 @@ def get_executor_summary(app_id: str, server: Optional[str] = None):
 
     Args:
         app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
 
     Returns:
         Dictionary containing aggregated executor metrics
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     executors = client.list_all_executors(app_id=app_id)
 
@@ -417,7 +495,7 @@ def get_executor_summary(app_id: str, server: Optional[str] = None):
 
 @mcp.tool()
 def compare_job_environments(
-    app_id1: str, app_id2: str, server: Optional[str] = None
+    app_id1: str, app_id2: str, server_spec: ServerSpec
 ) -> Dict[str, Any]:
     """
     Compare Spark environment configurations between two jobs.
@@ -428,13 +506,13 @@ def compare_job_environments(
     Args:
         app_id1: First Spark application ID
         app_id2: Second Spark application ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
 
     Returns:
         Dictionary containing configuration differences and similarities
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     env1 = client.get_environment(app_id=app_id1)
     env2 = client.get_environment(app_id=app_id2)
@@ -504,7 +582,7 @@ def compare_job_environments(
 
 @mcp.tool()
 def compare_job_performance(
-    app_id1: str, app_id2: str, server: Optional[str] = None
+    app_id1: str, app_id2: str, server_spec: ServerSpec
 ) -> Dict[str, Any]:
     """
     Compare performance metrics between two Spark jobs.
@@ -515,21 +593,21 @@ def compare_job_performance(
     Args:
         app_id1: First Spark application ID
         app_id2: Second Spark application ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
 
     Returns:
         Dictionary containing detailed performance comparison
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     # Get application info
     app1 = client.get_application(app_id1)
     app2 = client.get_application(app_id2)
 
     # Get executor summaries
-    exec_summary1 = get_executor_summary(app_id1, server)
-    exec_summary2 = get_executor_summary(app_id2, server)
+    exec_summary1 = get_executor_summary(app_id1, server_spec)
+    exec_summary2 = get_executor_summary(app_id2, server_spec)
 
     # Get job data
     jobs1 = client.list_jobs(app_id=app_id1)
@@ -618,9 +696,9 @@ def compare_job_performance(
 def compare_sql_execution_plans(
     app_id1: str,
     app_id2: str,
+    server_spec: ServerSpec,
     execution_id1: Optional[int] = None,
     execution_id2: Optional[int] = None,
-    server: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Compare SQL execution plans between two Spark jobs.
@@ -631,15 +709,15 @@ def compare_sql_execution_plans(
     Args:
         app_id1: First Spark application ID
         app_id2: Second Spark application ID
+        server_spec: ServerSpec for specifying the server
         execution_id1: Optional specific execution ID for first app (uses longest if not specified)
         execution_id2: Optional specific execution ID for second app (uses longest if not specified)
-        server: Optional server name to use (uses default if not specified)
 
     Returns:
         Dictionary containing SQL execution plan comparison
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     # Get SQL executions for both applications
     sql_execs1 = client.get_sql_list(
@@ -738,8 +816,8 @@ def compare_sql_execution_plans(
 def get_stage_task_summary(
     app_id: str,
     stage_id: int,
+    server_spec: ServerSpec,
     attempt_id: int = 0,
-    server: Optional[str] = None,
     quantiles: str = "0.05,0.25,0.5,0.75,0.95",
 ) -> TaskMetricDistributions:
     """
@@ -751,15 +829,15 @@ def get_stage_task_summary(
     Args:
         app_id: The Spark application ID
         stage_id: The stage ID
+        server_spec: ServerSpec for specifying the server
         attempt_id: The stage attempt ID (default: 0)
-        server: Optional server name to use (uses default if not specified)
         quantiles: Comma-separated list of quantiles to use for summary metrics
 
     Returns:
         TaskMetricDistributions object containing metric distributions
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     return client.get_stage_task_summary(
         app_id=app_id, stage_id=stage_id, attempt_id=attempt_id, quantiles=quantiles
@@ -794,7 +872,7 @@ def truncate_plan_description(plan_desc: str, max_length: int) -> str:
 @mcp.tool()
 def list_slowest_sql_queries(
     app_id: str,
-    server: Optional[str] = None,
+    server_spec: ServerSpec,
     attempt_id: Optional[str] = None,
     top_n: int = 1,
     page_size: int = 100,
@@ -807,7 +885,7 @@ def list_slowest_sql_queries(
 
     Args:
         app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
         attempt_id: Optional attempt ID
         top_n: Number of slowest queries to return (default: 1)
         page_size: Number of executions to fetch per page (default: 100)
@@ -819,7 +897,7 @@ def list_slowest_sql_queries(
         List of SqlQuerySummary objects for the slowest queries
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     all_executions: List[ExecutionData] = []
     offset = 0
@@ -889,7 +967,7 @@ def list_slowest_sql_queries(
 
 @mcp.tool()
 def get_job_bottlenecks(
-    app_id: str, server: Optional[str] = None, top_n: int = 5
+    app_id: str, server_spec: ServerSpec, top_n: int = 5
 ) -> Dict[str, Any]:
     """
     Identify performance bottlenecks in a Spark job.
@@ -899,23 +977,23 @@ def get_job_bottlenecks(
 
     Args:
         app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
         top_n: Number of top bottlenecks to return
 
     Returns:
         Dictionary containing identified bottlenecks and recommendations
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     # Get slowest stages
-    slowest_stages = list_slowest_stages(app_id, server, False, top_n)
+    slowest_stages = list_slowest_stages(app_id, server_spec, False, top_n)
 
     # Get slowest jobs
-    slowest_jobs = list_slowest_jobs(app_id, server, False, top_n)
+    slowest_jobs = list_slowest_jobs(app_id, server_spec, False, top_n)
 
     # Get executor summary
-    exec_summary = get_executor_summary(app_id, server)
+    exec_summary = get_executor_summary(app_id, server_spec)
 
     all_stages = client.list_stages(app_id=app_id)
 
@@ -1030,9 +1108,7 @@ def get_job_bottlenecks(
 
 
 @mcp.tool()
-def get_resource_usage_timeline(
-    app_id: str, server: Optional[str] = None
-) -> Dict[str, Any]:
+def get_resource_usage_timeline(app_id: str, server_spec: ServerSpec) -> Dict[str, Any]:
     """
     Get resource usage timeline for a Spark application.
 
@@ -1041,13 +1117,13 @@ def get_resource_usage_timeline(
 
     Args:
         app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
+        server_spec: ServerSpec for specifying the server
 
     Returns:
         Dictionary containing timeline of resource usage
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client(ctx, server_spec)
 
     # Get application info
     app = client.get_application(app_id)
