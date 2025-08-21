@@ -124,14 +124,8 @@ Create environment variables
 {{- end }}
 
 {{/*
-Create the name of the SecretProviderClass
+Get the name of the SecretProviderClass (must be created externally)
 */}}
 {{- define "mcp-apache-spark-history-server.secretProviderClassName" -}}
-{{- $default := printf "%s-spc" (include "mcp-apache-spark-history-server.fullname" .) -}}
-{{- $spc := (default (dict) .Values.auth.csisecretstore.secretProviderClass) -}}
-{{- if $spc.name -}}
-{{- $spc.name -}}
-{{- else -}}
-{{- $default -}}
-{{- end }}
+{{- .Values.auth.csisecretstore.secretProviderClassName -}}
 {{- end }}

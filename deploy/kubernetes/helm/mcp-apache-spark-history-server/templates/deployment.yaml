@@ -26,9 +26,6 @@ spec:
         {{- if and .Values.auth.enabled .Values.auth.externalsecret.create }}
         checksum/externalsecret: {{ include (print $.Template.BasePath "/externalsecret.yaml") . | sha256sum }}
         {{- end }}
-        {{- if and .Values.auth.enabled .Values.auth.csisecretstore.enabled }}
-        checksum/secretproviderclass: {{ include (print $.Template.BasePath "/secretproviderclass.yaml") . | sha256sum }}
-        {{- end }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

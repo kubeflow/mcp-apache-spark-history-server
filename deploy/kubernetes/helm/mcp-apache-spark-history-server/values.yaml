@@ -5,7 +5,7 @@
 image:
   repository: ghcr.io/deepdiagnostix-ai/mcp-apache-spark-history-server
   pullPolicy: IfNotPresent
-  tag: "sha-5e0d9e4"
+  tag: "v0.1.0"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -116,35 +116,12 @@ auth:
 
   # csisecretstore: use Secret Store CSI Driver to mount secrets and (optionally) sync to a Kubernetes Secret.
   # Requires the Secret Store CSI Driver to be installed in the cluster, and the relevant provider.
+  # Note: SecretProviderClass must be created separately by platform/security team.
   csisecretstore:
     enabled: false
+    # Reference to existing SecretProviderClass (must be created separately)
+    secretProviderClassName: ""
     # mountPath: /mnt/secrets-store
-    # provider: "vault"
-    # parameters:
-    #   vaultAddress: "http://vault:8200"
-    #   authType: "kubernetes"
-    #   authMountPath: "kubernetes"
-    #   roleName: "mcp-role"
-    #   objects: |
-    #     - objectName: "username"
-    #       secretPath: "secret/data/my/creds"
-    #       secretKey: "username"
-    #     - objectName: "password"
-    #       secretPath: "secret/data/my/creds"
-    #       secretKey: "password"
-    #     - objectName: "token"
-    #       secretPath: "secret/data/my/creds"
-    #       secretKey: "token"
-    # secretObjects:
-    #   - secretName: spark-history-auth
-    #     type: Opaque
-    #     data:
-    #       - objectName: "username"
-    #         key: "username"
-    #       - objectName: "password"
-    #         key: "password"
-    #       - objectName: "token"
-    #         key: "token"
 
 # Environment variables
 env: []
