@@ -475,15 +475,65 @@ class TestTools(unittest.TestCase):
         """Test job retrieval without status filter"""
         # Setup mock client
         mock_client = MagicMock()
-        mock_jobs = [MagicMock(spec=JobData), MagicMock(spec=JobData)]
+
+        job1 = MagicMock(spec=JobData)
+        job1.job_id = 1
+        job1.name = "Job 1"
+        job1.description = "Test job 1"
+        job1.status = "FAILED"
+        job1.submission_time = datetime.now() - timedelta(minutes=10)
+        job1.completion_time = datetime.now() - timedelta(minutes=5)
+        job1.stage_ids = [1, 2]
+
+        job2 = MagicMock(spec=JobData)
+        job2.job_id = 2
+        job2.name = "Job 2"
+        job2.description = "Test job 2"
+        job2.status = "RUNNING"
+        job2.submission_time = datetime.now() - timedelta(minutes=5)
+        job2.completion_time = None
+        job2.stage_ids = [3]
+
+        # Create mock stages to test stage ID grouping
+        stage1 = MagicMock(spec=StageData)
+        stage1.stage_id = 1
+        stage1.status = "COMPLETE"
+
+        stage2 = MagicMock(spec=StageData)
+        stage2.stage_id = 2
+        stage2.status = "FAILED"
+
+        stage3 = MagicMock(spec=StageData)
+        stage3.stage_id = 3
+        stage3.status = "ACTIVE"
+
+        mock_jobs = [job1, job2]
+        mock_stages = [stage1, stage2, stage3]
         mock_client.list_jobs.return_value = mock_jobs
+        mock_client.list_stages.return_value = mock_stages
         mock_get_client.return_value = mock_client
 
-        # Call the function
         result = list_jobs("spark-app-123")
 
-        # Verify results
-        self.assertEqual(result, mock_jobs)
+        # Verify results - should return JobSummary objects with stage IDs grouped
+        self.assertEqual(len(result), 2)
+
+        self.assertEqual(result[0].job_id, 1)
+        self.assertEqual(result[0].status, "FAILED")
+        self.assertEqual(result[0].succeeded_stage_ids, [1])  # Stage 1 is COMPLETE
+        self.assertEqual(result[0].failed_stage_ids, [2])  # Stage 2 is FAILED
+        self.assertEqual(result[0].active_stage_ids, [])
+        self.assertEqual(result[0].pending_stage_ids, [])
+        self.assertEqual(result[0].skipped_stage_ids, [])
+
+        self.assertEqual(result[1].job_id, 2)
+        self.assertEqual(result[1].status, "RUNNING")
+        self.assertEqual(result[1].succeeded_stage_ids, [])
+        self.assertEqual(result[1].failed_stage_ids, [])
+        self.assertEqual(result[1].active_stage_ids, [3])  # Stage 3 is ACTIVE
+        self.assertEqual(result[1].pending_stage_ids, [])
+        self.assertEqual(result[1].skipped_stage_ids, [])
+
         mock_client.list_jobs.assert_called_once_with(
             app_id="spark-app-123", status=None
         )
@@ -491,19 +541,31 @@ class TestTools(unittest.TestCase):
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_list_jobs_with_status_filter(self, mock_get_client):
         """Test job retrieval with status filter"""
-        # Setup mock client
         mock_client = MagicMock()
-        mock_jobs = [MagicMock(spec=JobData)]
-        mock_jobs[0].status = "SUCCEEDED"
+
+        job1 = MagicMock(spec=JobData)
+        job1.job_id = 1
+        job1.name = "Successful Job"
+        job1.description = "Test successful job"
+        job1.status = "SUCCEEDED"
+        job1.submission_time = datetime.now() - timedelta(minutes=10)
+        job1.completion_time = datetime.now() - timedelta(minutes=5)
+        job1.stage_ids = [1]
+
+        mock_jobs = [job1]
         mock_client.list_jobs.return_value = mock_jobs
+        mock_client.list_stages.return_value = []  # Add this for the stages call
         mock_get_client.return_value = mock_client
 
         # Call the function with status filter
         result = list_jobs("spark-app-123", status=["SUCCEEDED"])
 
-        # Verify results
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].status, "SUCCEEDED")
+        self.assertEqual(
+            result[0].succeeded_stage_ids, []
+        )  # No stages since mock_stages is empty
+        self.assertEqual(result[0].failed_stage_ids, [])
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_list_jobs_empty_result(self, mock_get_client):
@@ -522,27 +584,90 @@ class TestTools(unittest.TestCase):
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_list_jobs_status_filtering(self, mock_get_client):
         """Test job status filtering logic"""
+        mock_client = MagicMock()
+
+        job2 = MagicMock(spec=JobData)
+        job2.job_id = 2
+        job2.name = "Successful Job"
+        job2.description = "Test successful job"
+        job2.status = "SUCCEEDED"
+        job2.submission_time = datetime.now() - timedelta(minutes=10)
+        job2.completion_time = datetime.now() - timedelta(minutes=5)
+        job2.stage_ids = [2]
+
+        mock_client.list_jobs.return_value = [job2]
+        mock_client.list_stages.return_value = []
+        mock_get_client.return_value = mock_client
+
+        result = list_jobs("spark-app-123", status=["SUCCEEDED"])
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].status, "SUCCEEDED")
+        self.assertEqual(result[0].succeeded_stage_ids, [])
+        self.assertEqual(result[0].failed_stage_ids, [])
+
+        from spark_history_mcp.models.spark_types import JobExecutionStatus
+
+        mock_client.list_jobs.assert_called_once_with(
+            app_id="spark-app-123", status=[JobExecutionStatus.SUCCEEDED]
+        )
+        mock_client.list_stages.assert_called_once_with(
+            app_id="spark-app-123", details=False
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_jobs_stage_id_grouping(self, mock_get_client):
+        """Test that stage IDs are properly grouped by status"""
         # Setup mock client
         mock_client = MagicMock()
 
-        # Create jobs with different statuses
+        # Create job with multiple stages
         job1 = MagicMock(spec=JobData)
-        job1.status = "RUNNING"
-        job2 = MagicMock(spec=JobData)
-        job2.status = "SUCCEEDED"
-        job3 = MagicMock(spec=JobData)
-        job3.status = "FAILED"
+        job1.job_id = 1
+        job1.name = "Multi-stage Job"
+        job1.description = "Job with various stage statuses"
+        job1.status = "SUCCEEDED"
+        job1.submission_time = datetime.now() - timedelta(minutes=10)
+        job1.completion_time = datetime.now() - timedelta(minutes=5)
+        job1.stage_ids = [1, 2, 3, 4, 5]
 
-        # Mock client to return only SUCCEEDED job when filtered
-        mock_client.list_jobs.return_value = [job2]  # Only return SUCCEEDED job
+        # Create stages with different statuses
+        stage1 = MagicMock(spec=StageData)
+        stage1.stage_id = 1
+        stage1.status = "COMPLETE"
+
+        stage2 = MagicMock(spec=StageData)
+        stage2.stage_id = 2
+        stage2.status = "FAILED"
+
+        stage3 = MagicMock(spec=StageData)
+        stage3.stage_id = 3
+        stage3.status = "ACTIVE"
+
+        stage4 = MagicMock(spec=StageData)
+        stage4.stage_id = 4
+        stage4.status = "PENDING"
+
+        stage5 = MagicMock(spec=StageData)
+        stage5.stage_id = 5
+        stage5.status = "SKIPPED"
+
+        mock_client.list_jobs.return_value = [job1]
+        mock_client.list_stages.return_value = [stage1, stage2, stage3, stage4, stage5]
         mock_get_client.return_value = mock_client
 
-        # Test filtering for SUCCEEDED jobs
-        result = list_jobs("spark-app-123", status=["SUCCEEDED"])
+        # Call the function
+        result = list_jobs("spark-app-123")
 
-        # Should only return SUCCEEDED job
+        # Verify stage IDs are grouped correctly
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].status, "SUCCEEDED")
+        job_summary = result[0]
+
+        self.assertEqual(job_summary.succeeded_stage_ids, [1])  # COMPLETE
+        self.assertEqual(job_summary.failed_stage_ids, [2])  # FAILED
+        self.assertEqual(job_summary.active_stage_ids, [3])  # ACTIVE
+        self.assertEqual(job_summary.pending_stage_ids, [4])  # PENDING
+        self.assertEqual(job_summary.skipped_stage_ids, [5])  # SKIPPED
 
     # Tests for list_stages tool
     @patch("spark_history_mcp.tools.tools.get_client_or_default")

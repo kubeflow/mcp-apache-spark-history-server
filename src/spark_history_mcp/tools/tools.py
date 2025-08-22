@@ -115,18 +115,21 @@ def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInf
 
 @mcp.tool()
 def list_jobs(
-    app_id: str, server: Optional[str] = None, status: Optional[list[str]] = None
-) -> list:
+    app_id: str,
+    server: Optional[str] = None,
+    status: Optional[list[str]] = None,
+    limit: int = 50,
+) -> List[JobSummary]:
     """
-    Get a list of all jobs for a Spark application.
-
+    Get a list of jobs for a Spark application.
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
-        status: Optional list of job status values to filter by
+        status: Optional list of job status values to filter by (running|succeeded|failed|unknown)
+        limit: Maximum number of jobs to return (default: 50)
 
     Returns:
-        List of JobData objects for the application
+        List of JobSummary objects for the application
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server)
@@ -136,7 +139,43 @@ def list_jobs(
     if status:
         job_statuses = [JobExecutionStatus.from_string(s) for s in status]
 
-    return client.list_jobs(app_id=app_id, status=job_statuses)
+    jobs = client.list_jobs(app_id=app_id, status=job_statuses)
+
+    stages = client.list_stages(app_id=app_id, details=False)
+
+    job_summaries = [JobSummary.from_job_data(job, stages) for job in jobs]
+
+    if limit > 0:
+        job_summaries = job_summaries[:limit]
+
+    return job_summaries
+
+
+@mcp.tool()
+def get_job(
+    app_id: str,
+    job_id: int,
+    server: Optional[str] = None,
+) -> JobSummary:
+    """
+    Get information about a specific job.
+
+    Args:
+        app_id: The Spark application ID
+        job_id: The job ID
+        server: Optional server name to use (uses default if not specified)
+
+    Returns:
+        JobSummary object containing job information with stage IDs grouped by status
+    """
+    ctx = mcp.get_context()
+    client = get_client_or_default(ctx, server)
+
+    job_data = client.get_job(app_id, job_id)
+
+    stages = client.list_stages(app_id=app_id, details=False)
+
+    return JobSummary.from_job_data(job_data, stages)
 
 
 @mcp.tool()
@@ -190,6 +229,7 @@ def list_stages(
     server: Optional[str] = None,
     status: Optional[list[str]] = None,
     with_summaries: bool = False,
+    limit: int = 20,
 ) -> list:
     """
     Get a list of all stages for a Spark application.
@@ -202,6 +242,7 @@ def list_stages(
         server: Optional server name to use (uses default if not specified)
         status: Optional list of stage status values to filter by
         with_summaries: Whether to include summary metrics in the response
+        limit: Maximum number of stages to return (default: 20)
 
     Returns:
         List of StageData objects for the application
@@ -214,11 +255,16 @@ def list_stages(
     if status:
         stage_statuses = [StageStatus.from_string(s) for s in status]
 
-    return client.list_stages(
+    stages = client.list_stages(
         app_id=app_id,
         status=stage_statuses,
         with_summaries=with_summaries,
     )
+
+    if limit > 0:
+        stages = stages[:limit]
+
+    return stages
 
 
 @mcp.tool()
@@ -939,12 +985,6 @@ def list_slowest_sql_queries(
     # Create simplified results without additional API calls. Raw object is too verbose.
     simplified_results = []
     for execution in slowest_executions:
-        job_summary = JobSummary(
-            success_job_ids=execution.success_job_ids,
-            failed_job_ids=execution.failed_job_ids,
-            running_job_ids=execution.running_job_ids,
-        )
-
         # Handle plan description based on include_plan_description flag
         plan_description = ""
         if include_plan_description and execution.plan_description:
@@ -961,7 +1001,9 @@ def list_slowest_sql_queries(
             if execution.submission_time
             else None,
             plan_description=plan_description,
-            job_summary=job_summary,
+            success_job_ids=execution.success_job_ids,
+            failed_job_ids=execution.failed_job_ids,
+            running_job_ids=execution.running_job_ids,
         )
 
         simplified_results.append(query_summary)
