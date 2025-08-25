@@ -71,6 +71,11 @@ spec:
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
             {{- end }}
+            {{- if and .Values.auth.enabled .Values.auth.csisecretstore.enabled }}
+            - name: csi-secrets
+              mountPath: {{ .Values.auth.csisecretstore.mountPath }}
+              readOnly: true
+            {{- end }}
             {{- with .Values.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -100,6 +105,14 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "mcp-apache-spark-history-server.fullname" . }}
+        {{- end }}
+        {{- if and .Values.auth.enabled .Values.auth.csisecretstore.enabled }}
+        - name: csi-secrets
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: {{ include "mcp-apache-spark-history-server.secretProviderClassName" . }}
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}

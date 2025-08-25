@@ -95,7 +95,8 @@ Create environment variables
   value: {{ .Values.config.port | quote }}
 - name: MCP_DEBUG
   value: {{ .Values.config.debug | quote }}
-{{- if and .Values.auth.enabled (or .Values.auth.secret.create .Values.auth.externalsecret.create) }}
+{{- $csi := (default (dict) .Values.auth.csisecretstore) -}}
+{{- if and .Values.auth.enabled (or .Values.auth.secret.create .Values.auth.externalsecret.create $csi.enabled) }}
 - name: SPARK_USERNAME
   valueFrom:
     secretKeyRef:
@@ -119,4 +120,11 @@ Create environment variables
 - name: {{ .name }}
   value: {{ .value | quote }}
 {{- end }}
+{{- end }}
+
+{{/*
+Get the name of the SecretProviderClass (must be created externally)
+*/}}
+{{- define "mcp-apache-spark-history-server.secretProviderClassName" -}}
+{{- .Values.auth.csisecretstore.secretProviderClassName -}}
 {{- end }}

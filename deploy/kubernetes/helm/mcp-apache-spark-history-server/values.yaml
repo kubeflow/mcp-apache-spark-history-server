@@ -3,7 +3,7 @@
 
 # Image configuration
 image:
-  repository: ghcr.io/deepdiagnostix-ai/spark-history-mcp
+  repository: ghcr.io/deepdiagnostix-ai/mcp-apache-spark-history-server
   pullPolicy: IfNotPresent
   tag: "v0.1.0"
 
@@ -113,6 +113,15 @@ auth:
       name: ""           # e.g. my-secret-store
       kind: ClusterSecretStore  # or SecretStore
     secretPath: ""        # e.g. path/to/secret containing username/password/token properties
+
+  # csisecretstore: use Secret Store CSI Driver to mount secrets and (optionally) sync to a Kubernetes Secret.
+  # Requires the Secret Store CSI Driver to be installed in the cluster, and the relevant provider.
+  # Note: SecretProviderClass must be created separately by platform/security team.
+  csisecretstore:
+    enabled: false
+    # Reference to existing SecretProviderClass (must be created separately)
+    secretProviderClassName: ""
+    # mountPath: /mnt/secrets-store
 
 # Environment variables
 env: []

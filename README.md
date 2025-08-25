@@ -228,6 +228,8 @@ helm install spark-history-mcp ./deploy/kubernetes/helm/spark-history-mcp/ \
 
 📚 See [`deploy/kubernetes/helm/`](deploy/kubernetes/helm/) for complete deployment manifests and configuration options.
 
+> **Note**: When using Secret Store CSI Driver authentication, you must create a `SecretProviderClass` externally before deploying the chart.
+
 ## 🌐 Multi-Spark History Server Setup
 Setup multiple Spark history servers in the config.yaml and choose which server you want the LLM to interact with for each query.
 
