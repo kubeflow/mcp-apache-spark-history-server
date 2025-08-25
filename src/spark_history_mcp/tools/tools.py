@@ -17,6 +17,8 @@ from spark_history_mcp.models.spark_types import (
     TaskMetricDistributions,
 )
 
+from ..utils.utils import parallel_execute
+
 
 def get_client_or_default(ctx, server_name: Optional[str] = None):
     """
@@ -382,37 +384,7 @@ def get_executor_summary(app_id: str, server: Optional[str] = None):
     client = get_client_or_default(ctx, server)
 
     executors = client.list_all_executors(app_id=app_id)
-
-    summary = {
-        "total_executors": len(executors),
-        "active_executors": sum(1 for e in executors if e.is_active),
-        "memory_used": 0,
-        "disk_used": 0,
-        "completed_tasks": 0,
-        "failed_tasks": 0,
-        "total_duration": 0,
-        "total_gc_time": 0,
-        "total_input_bytes": 0,
-        "total_shuffle_read": 0,
-        "total_shuffle_write": 0,
-    }
-
-    # Aggregate metrics from all executors
-    for executor in executors:
-        summary["memory_used"] += (
-            executor.memory_metrics.used_on_heap_storage_memory
-            + executor.memory_metrics.used_off_heap_storage_memory
-        )
-        summary["disk_used"] += executor.disk_used
-        summary["completed_tasks"] += executor.completed_tasks
-        summary["failed_tasks"] += executor.failed_tasks
-        summary["total_duration"] += executor.total_duration
-        summary["total_gc_time"] += executor.total_gc_time
-        summary["total_input_bytes"] += executor.total_input_bytes
-        summary["total_shuffle_read"] += executor.total_shuffle_read
-        summary["total_shuffle_write"] += executor.total_shuffle_write
-
-    return summary
+    return _calculate_executor_metrics(executors)
 
 
 @mcp.tool()
@@ -502,6 +474,33 @@ def compare_job_environments(
     return comparison
 
 
+def _calculate_executor_metrics(executors):
+    """Calculate executor summary metrics from executor list."""
+    return {
+        "total_executors": len(executors),
+        "active_executors": sum(1 for e in executors if e.is_active),
+        "memory_used": sum(
+            e.memory_metrics.used_on_heap_storage_memory
+            + e.memory_metrics.used_off_heap_storage_memory
+            for e in executors
+        ),
+        "disk_used": sum(e.disk_used for e in executors),
+        "completed_tasks": sum(e.completed_tasks for e in executors),
+        "failed_tasks": sum(e.failed_tasks for e in executors),
+        "total_duration": sum(e.total_duration for e in executors),
+        "total_gc_time": sum(e.total_gc_time for e in executors),
+        "total_input_bytes": sum(e.total_input_bytes for e in executors),
+        "total_shuffle_read": sum(e.total_shuffle_read for e in executors),
+        "total_shuffle_write": sum(e.total_shuffle_write for e in executors),
+    }
+
+
+def _calc_executor_summary_from_client(client, app_id: str):
+    """Helper function to calculate executor summary without MCP context."""
+    executors = client.list_all_executors(app_id=app_id)
+    return _calculate_executor_metrics(executors)
+
+
 @mcp.tool()
 def compare_job_performance(
     app_id1: str, app_id2: str, server: Optional[str] = None
@@ -523,17 +522,58 @@ def compare_job_performance(
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server)
 
-    # Get application info
-    app1 = client.get_application(app_id1)
-    app2 = client.get_application(app_id2)
+    # Define API calls for parallel execution
+    api_calls = [
+        ("app1", lambda: client.get_application(app_id1)),
+        ("app2", lambda: client.get_application(app_id2)),
+        ("exec_summary1", lambda: _calc_executor_summary_from_client(client, app_id1)),
+        ("exec_summary2", lambda: _calc_executor_summary_from_client(client, app_id2)),
+        ("jobs1", lambda: client.list_jobs(app_id=app_id1)),
+        ("jobs2", lambda: client.list_jobs(app_id=app_id2)),
+    ]
 
-    # Get executor summaries
-    exec_summary1 = get_executor_summary(app_id1, server)
-    exec_summary2 = get_executor_summary(app_id2, server)
+    # Execute all API calls in parallel
+    execution_result = parallel_execute(
+        api_calls,
+        max_workers=6,
+        timeout=300,  # Apply generous timeout for large scale Spark applications
+    )
 
-    # Get job data
-    jobs1 = client.list_jobs(app_id=app_id1)
-    jobs2 = client.list_jobs(app_id=app_id2)
+    # If parallel execution fails, try sequential as fallback
+    if execution_result["errors"] and len(execution_result["results"]) == 0:
+        try:
+            # Sequential fallback - get basic info first
+            app1 = client.get_application(app_id1)
+            app2 = client.get_application(app_id2)
+
+            # Use the actual errors from parallel execution
+            error_summary = "; ".join(execution_result["errors"])
+            return {
+                "error": f"Parallel execution failed: {error_summary}. Falling back to basic app info only.",
+                "partial_data": {
+                    "app1": {"id": app_id1, "name": app1.name},
+                    "app2": {"id": app_id2, "name": app2.name},
+                },
+            }
+        except Exception as e:
+            # If even basic app info fails, provide the original errors plus this failure
+            all_errors = execution_result["errors"] + [
+                f"Sequential fallback failed: {str(e)}"
+            ]
+            return {"error": f"Complete failure: {'; '.join(all_errors)}"}
+
+    if execution_result["errors"]:
+        return {"error": f"API failures: {'; '.join(execution_result['errors'])}"}
+
+    results = execution_result["results"]
+
+    # Extract results
+    app1 = results["app1"]
+    app2 = results["app2"]
+    exec_summary1 = results["exec_summary1"]
+    exec_summary2 = results["exec_summary2"]
+    jobs1 = results["jobs1"]
+    jobs2 = results["jobs2"]
 
     # Calculate job duration statistics
     def calc_job_stats(jobs):
