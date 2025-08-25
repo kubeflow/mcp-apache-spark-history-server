@@ -96,7 +96,6 @@ Create environment variables
 - name: MCP_DEBUG
   value: {{ .Values.config.debug | quote }}
 {{- $csi := (default (dict) .Values.auth.csisecretstore) -}}
-{{- $secretObjs := (default (list) $csi.secretObjects) -}}
 {{- if and .Values.auth.enabled (or .Values.auth.secret.create .Values.auth.externalsecret.create $csi.enabled) }}
 - name: SPARK_USERNAME
   valueFrom:
