@@ -1,37 +1,43 @@
 suite: Deployment CSI integration
 templates:
-  - templates/deployment.yaml
+  - deployment.yaml
+  - configmap.yaml
 
 tests:
-  - it: adds CSI volume, mount and checksum annotation when enabled
+  - it: renders successfully when CSI is enabled
     set:
       auth:
         enabled: true
         csisecretstore:
           enabled: true
+          secretProviderClassName: "test-spc"
           mountPath: /mnt/secrets-store
-          provider: vault
-          parameters:
-            vaultAddress: http://vault.vault:8200
     asserts:
       - isKind:
           of: Deployment
+        template: deployment.yaml
+      - hasDocuments:
+          count: 1
+        template: deployment.yaml
       - contains:
           path: spec.template.spec.volumes
           content:
             name: csi-secrets
             csi:
               driver: secrets-store.csi.k8s.io
+              readOnly: true
+              volumeAttributes:
+                secretProviderClass: "test-spc"
+        template: deployment.yaml
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
           content:
             name: csi-secrets
-            mountPath: /mnt/secrets-store
+            mountPath: "/mnt/secrets-store"
             readOnly: true
-      - exists:
-          path: spec.template.metadata.annotations["checksum/secretproviderclass"]
+        template: deployment.yaml
 
-  - it: omits CSI volume, mount and checksum annotation when disabled
+  - it: renders successfully when CSI is disabled
     set:
       auth:
         enabled: true
@@ -40,6 +46,10 @@ tests:
     asserts:
       - isKind:
           of: Deployment
+        template: templates/deployment.yaml
+      - hasDocuments:
+          count: 1
+        template: templates/deployment.yaml
       - notContains:
           path: spec.template.spec.volumes
           content:
