@@ -36,6 +36,10 @@ tests:
             mountPath: "/mnt/secrets-store"
             readOnly: true
         template: deployment.yaml
+      - exists:
+          path: spec.template.metadata.annotations["checksum/secretproviderclass"]
+        template: deployment.yaml
+
 
   - it: renders successfully when CSI is disabled
     set:
