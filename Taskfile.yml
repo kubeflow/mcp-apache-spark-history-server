@@ -69,7 +69,7 @@ tasks:
       - uv run pytest --cov=. -cov-report=xml --cov-report=term-missing .
       - echo "✅ Tests completed!"
 
-  helm-tests:
+  test-helm:
     desc: Run helm chart unit tests
     cmds:
       - helm unittest ./deploy/kubernetes/helm/mcp-apache-spark-history-server/

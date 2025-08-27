@@ -66,7 +66,7 @@ jobs:
       run: task test
 
     - name: helm chart test
-      run: task helm-tests
+      run: task test-helm
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
