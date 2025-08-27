@@ -31,19 +31,6 @@ tasks:
         else
           echo "✅ uv is already installed"
         fi
-  
-  check-helm-unittest:
-    desc: Check if helm unittest is installed and install if needed
-    internal: true
-    cmds:
-      - |
-        if ! command -v helm unittest &> /dev/null; then
-          echo "📦 Installing helm unittest..."
-          helm plugin install https://github.com/helm-unittest/helm-unittest
-          echo "✅ helm unittest installed!"
-        else
-          echo "✅ helm unittest is already installed"
-        fi
 
   install:
     desc: Install project dependencies

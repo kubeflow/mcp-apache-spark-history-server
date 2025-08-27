@@ -18,9 +18,6 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v2
 
-    - name: Install helm unittest
-      run: task check-helm-unittest
-
     - name: Install Task
       uses: arduino/setup-task@v2
       with:
@@ -53,7 +50,7 @@ jobs:
       uses: azure/setup-helm@v4
 
     - name: Install helm unittest
-      run: task check-helm-unittest
+      run: helm plugin install https://github.com/helm-unittest/helm-unittest
 
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
