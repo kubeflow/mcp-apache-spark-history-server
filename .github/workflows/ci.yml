@@ -46,6 +46,12 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         version: 3.x
 
+    - name: Install Helm
+      uses: azure/setup-helm@v4
+
+    - name: Install helm unittest
+      run: helm plugin install https://github.com/helm-unittest/helm-unittest
+
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
 
@@ -58,6 +64,9 @@ jobs:
 
     - name: unit test
       run: task test
+
+    - name: helm chart test
+      run: task test-helm
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
