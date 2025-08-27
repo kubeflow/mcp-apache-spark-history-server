@@ -31,6 +31,19 @@ tasks:
         else
           echo "✅ uv is already installed"
         fi
+  
+  check-helm-unittest:
+    desc: Check if helm unittest is installed and install if needed
+    internal: true
+    cmds:
+      - |
+        if ! command -v helm unittest &> /dev/null; then
+          echo "📦 Installing helm unittest..."
+          helm plugin install https://github.com/helm-unittest/helm-unittest
+          echo "✅ helm unittest installed!"
+        else
+          echo "✅ helm unittest is already installed"
+        fi
 
   install:
     desc: Install project dependencies
@@ -68,6 +81,12 @@ tasks:
     cmds:
       - uv run pytest --cov=. -cov-report=xml --cov-report=term-missing .
       - echo "✅ Tests completed!"
+
+  helm-tests:
+    desc: Run helm chart unit tests
+    cmds:
+      - helm unittest ./deploy/kubernetes/helm/mcp-apache-spark-history-server/
+      - echo "✅ Helm chart unit tests completed!"
 
   test-e2e:
     desc: Run end-to-end tests with Spark and MCP servers
