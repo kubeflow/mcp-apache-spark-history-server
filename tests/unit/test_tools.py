@@ -15,6 +15,7 @@ from spark_history_mcp.tools.tools import (
     get_client_or_default,
     get_stage,
     get_stage_task_summary,
+    list_applications,
     list_jobs,
     list_slowest_jobs,
     list_slowest_sql_queries,
@@ -386,6 +387,87 @@ class TestTools(unittest.TestCase):
             get_application("non-existent-app")
 
         self.assertIn("Application not found", str(context.exception))
+
+    # Tests for list_applications tool
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_applications_no_filter(self, mock_get_client):
+        """Test application listing without filters"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_apps = [MagicMock(spec=ApplicationInfo), MagicMock(spec=ApplicationInfo)]
+        mock_apps[0].id = "app-1"
+        mock_apps[1].id = "app-2"
+        mock_client.list_applications.return_value = mock_apps
+        mock_get_client.return_value = mock_client
+
+        # Call the function
+        result = list_applications()
+
+        # Verify results
+        self.assertEqual(result, mock_apps)
+        mock_client.list_applications.assert_called_once_with(
+            status=None,
+            min_date=None,
+            max_date=None,
+            min_end_date=None,
+            max_end_date=None,
+            limit=None,
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_applications_with_filters(self, mock_get_client):
+        """Test application listing with filters"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_apps = [MagicMock(spec=ApplicationInfo)]
+        mock_apps[0].id = "completed-app"
+        mock_client.list_applications.return_value = mock_apps
+        mock_get_client.return_value = mock_client
+
+        # Call with filters
+        result = list_applications(
+            status=["COMPLETED"], min_date="2024-01-01", limit=10
+        )
+
+        # Verify results
+        self.assertEqual(result, mock_apps)
+        mock_client.list_applications.assert_called_once_with(
+            status=["COMPLETED"],
+            min_date="2024-01-01",
+            max_date=None,
+            min_end_date=None,
+            max_end_date=None,
+            limit=10,
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_applications_empty_result(self, mock_get_client):
+        """Test application listing with empty result"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_client.list_applications.return_value = []
+        mock_get_client.return_value = mock_client
+
+        # Call the function
+        result = list_applications()
+
+        # Verify results
+        self.assertEqual(result, [])
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_applications_with_server(self, mock_get_client):
+        """Test application listing with specific server"""
+        # Setup mock client
+        mock_client = MagicMock()
+        mock_apps = [MagicMock(spec=ApplicationInfo)]
+        mock_client.list_applications.return_value = mock_apps
+        mock_get_client.return_value = mock_client
+
+        # Call with server
+        list_applications(server="production")
+
+        # Verify server parameter is passed
+        mock_get_client.assert_called_once_with(unittest.mock.ANY, "production")
 
     # Tests for list_jobs tool
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
