@@ -132,12 +132,13 @@ mcp:
 
 > **Note**: These tools are subject to change as we scale and improve the performance of the MCP server.
 
-The MCP server provides **17 specialized tools** organized by analysis patterns. LLMs can intelligently select and combine these tools based on user queries:
+The MCP server provides **18 specialized tools** organized by analysis patterns. LLMs can intelligently select and combine these tools based on user queries:
 
 ### 📊 Application Information
 *Basic application metadata and overview*
 | 🔧 Tool | 📝 Description |
 |---------|----------------|
+| `list_applications` | 📋 Get a list of all applications available on the Spark History Server with optional filtering by status, date ranges, and limits |
 | `get_application` | 📊 Get detailed information about a specific Spark application including status, resource usage, duration, and attempt details |
 
 ### 🔗 Job Analysis
@@ -194,6 +195,7 @@ The MCP server provides **17 specialized tools** organized by analysis patterns.
 ### 🤖 How LLMs Use These Tools
 
 **Query Pattern Examples:**
+- *"Show me all applications between 12 AM and 1 AM on 2025-06-27"* → `list_applications`
 - *"Why is my job slow?"* → `get_job_bottlenecks` + `list_slowest_stages` + `get_executor_summary`
 - *"Compare today vs yesterday"* → `compare_job_performance` + `compare_job_environments`
 - *"What's wrong with stage 5?"* → `get_stage` + `get_stage_task_summary`

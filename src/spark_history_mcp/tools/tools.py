@@ -51,6 +51,48 @@ def get_client_or_default(ctx, server_name: Optional[str] = None):
 
 
 @mcp.tool()
+def list_applications(
+    server: Optional[str] = None,
+    status: Optional[list[str]] = None,
+    min_date: Optional[str] = None,
+    max_date: Optional[str] = None,
+    min_end_date: Optional[str] = None,
+    max_end_date: Optional[str] = None,
+    limit: Optional[int] = None,
+) -> list[ApplicationInfo]:
+    """
+    Get a list of applications from the Spark History Server.
+
+    Args:
+        server: Optional server name to use (uses default if not specified)
+        status: Optional list only applications in the chosen state: [completed|running]
+        min_date: Optional earliest start date/time to list
+        max_date: Optional latest start date/time to list
+        min_end_date: Optional earliest end date/time to list
+        max_end_date: Optional latest end date/time to list
+        limit: Optional maximum number of applications to return (limits the number of applications listed)
+    Date format:
+        - Accepted: YYYY-MM-DD["T"HH:mm:ss.SSS"GMT"]
+        - Time is optional. If present, it must include milliseconds and the literal GMT.
+        - Examples: 2015-02-10, 2015-02-03T16:42:40.000GMT
+        - Timezone: All values are interpreted as GMT.
+    Returns:
+        List of ApplicationInfo objects for all applications
+    """
+    ctx = mcp.get_context()
+    client = get_client_or_default(ctx, server)
+
+    return client.list_applications(
+        status=status,
+        min_date=min_date,
+        max_date=max_date,
+        min_end_date=min_end_date,
+        max_end_date=max_end_date,
+        limit=limit,
+    )
+
+
+@mcp.tool()
 def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInfo:
     """
     Get detailed information about a specific Spark application.
