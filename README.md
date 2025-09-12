@@ -5,6 +5,29 @@
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
+---
+
+## 🚨 **IMPORTANT: MIGRATION TO KUBEFLOW** 🚨
+
+### 🎉 **OFFICIALLY APPROVED FOR KUBEFLOW ORGANIZATION!**
+
+[![Kubeflow](https://img.shields.io/badge/Approved%20for-Kubeflow-orange?style=for-the-badge&logo=kubernetes)](https://github.com/kubeflow)
+[![Status](https://img.shields.io/badge/Status-Planning%20Migration-blue?style=for-the-badge)](https://github.com/kubeflow/community/pull/873)
+
+**📋 MIGRATION TIMELINE:** Tracked in repository issues (migration starting soon)
+
+#### ✅ **What's Happening:**
+- **APPROVED** by Kubeflow maintainers via [**community proposal PR #873**](https://github.com/kubeflow/community/pull/873)
+- **MIGRATION PLANNING** phase - timeline and checklist tracked in this repository's issues
+- **FULL COMMIT HISTORY** will be preserved during transfer
+- **NO BREAKING CHANGES** - all functionality remains identical
+- **ENHANCED INTEGRATION** with Kubeflow ML ecosystem
+
+#### 👥 **For Users:**
+**Continue using this repository normally.** Migration timeline and progress updates will be posted in this repository's issues. We'll provide clear instructions when the transfer begins.
+
+---
+
 > **🤖 Connect AI agents to Apache Spark History Server for intelligent job analysis and performance monitoring**
 
 Transform your Spark infrastructure monitoring with AI! This Model Context Protocol (MCP) server enables AI agents to analyze job performance, identify bottlenecks, and provide intelligent insights from your Spark History Server data.
