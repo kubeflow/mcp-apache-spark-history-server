@@ -6,7 +6,7 @@ Connect Amazon Q CLI to Spark History Server for command-line Spark analysis.
 
 1. **Clone and setup repository**:
 ```bash
-git clone https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server.git
+git clone https://github.com/kubeflow/mcp-apache-spark-history-server.git
 cd mcp-apache-spark-history-server
 
 # Install Task (if not already installed)

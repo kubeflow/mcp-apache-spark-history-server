@@ -1,32 +1,11 @@
 # MCP Server for Apache Spark History Server
 
-[![CI](https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server/actions)
+[![CI](https://github.com/kubeflow/mcp-apache-spark-history-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kubeflow/mcp-apache-spark-history-server/actions)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-
----
-
-## 🚨 **IMPORTANT: MIGRATION TO KUBEFLOW** 🚨
-
-### 🎉 **OFFICIALLY APPROVED FOR KUBEFLOW ORGANIZATION!**
-
-[![Kubeflow](https://img.shields.io/badge/Approved%20for-Kubeflow-orange?style=for-the-badge&logo=kubernetes)](https://github.com/kubeflow)
-[![Status](https://img.shields.io/badge/Status-Planning%20Migration-blue?style=for-the-badge)](https://github.com/kubeflow/community/pull/873)
-
-**📋 MIGRATION TIMELINE:** Tracked in repository issues (migration starting soon)
-
-#### ✅ **What's Happening:**
-- **APPROVED** by Kubeflow maintainers via [**community proposal PR #873**](https://github.com/kubeflow/community/pull/873)
-- **MIGRATION PLANNING** phase - timeline and checklist tracked in this repository's issues
-- **FULL COMMIT HISTORY** will be preserved during transfer
-- **NO BREAKING CHANGES** - all functionality remains identical
-- **ENHANCED INTEGRATION** with Kubeflow ML ecosystem
-
-#### 👥 **For Users:**
-**Continue using this repository normally.** Migration timeline and progress updates will be posted in this repository's issues. We'll provide clear instructions when the transfer begins.
-
----
+[![Kubeflow](https://img.shields.io/badge/Kubeflow-Official-orange.svg)](https://github.com/kubeflow)
+[![Slack](https://img.shields.io/badge/Slack-CNCF%20%23mcp--apache--spark--history--server-purple.svg)](https://cloud-native.slack.com/archives/C09FRRM6QM7)
 
 > **🤖 Connect AI agents to Apache Spark History Server for intelligent job analysis and performance monitoring**
 
@@ -83,7 +62,7 @@ graph TB
 ### 🚀 Setup & Testing
 
 ```bash
-git clone https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server.git
+git clone https://github.com/kubeflow/mcp-apache-spark-history-server.git
 cd mcp-apache-spark-history-server
 
 # Install Task (if not already installed)

@@ -52,9 +52,9 @@ version_scheme = "no-guess-dev"
 spark-mcp = "spark_history_mcp.core.main:main"
 
 [project.urls]
-Homepage = "https://github.com/DeepDiagnostix-AI/spark-history-server-mcp"
-Repository = "https://github.com/DeepDiagnostix-AI/spark-history-server-mcp"
-Issues = "https://github.com/DeepDiagnostix-AI/spark-history-server-mcp/issues"
+Homepage = "https://github.com/kubeflow/mcp-apache-spark-history-server"
+Repository = "https://github.com/kubeflow/mcp-apache-spark-history-server"
+Issues = "https://github.com/kubeflow/mcp-apache-spark-history-server/issues"
 
 [tool.ruff]
 target-version = "py312"
