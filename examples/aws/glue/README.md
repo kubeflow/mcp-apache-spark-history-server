@@ -48,8 +48,8 @@ glue_ec2:
 
 ```yaml
 local:
-    default: true
-    url: "http://localhost:18080"
+  default: true
+  url: "http://localhost:18080"
 ```
 
 ## Step 4: Start the MCP Server
