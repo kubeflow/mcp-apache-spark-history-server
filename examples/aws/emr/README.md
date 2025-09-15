@@ -30,17 +30,12 @@ Amazon EMR-EC2 users can use a service-managed [Persistent UI](https://docs.aws.
 - Edit SHS MCP Config: [config.yaml](../../../config.yaml) to add the EMR Cluster Id
 
 ```yaml
-emr_persistent_ui:
-  emr_cluster_arn: "<emr_cluster_arn>"
+servers:
+  local:
+    emr_cluster_arn: "<emr_cluster_arn>"
 ```
 
 **Note**: The MCP Server manages the creation of the Persistent UI and its authentication using tokens with Persistent UI. You do not need to open the Persistent UI URL in a Web Browser. Please ensure the user running the MCP has access to create and view the Persistent UI for that cluster by following the [EMR Documentation](https://docs.aws.amazon.com/emr/latest/ManagementGuide/app-history-spark-UI.html#app-history-spark-UI-permissions).
-
-## Step 4: Start the MCP Server
-
-```bash
-task start-mcp-bg
-```
 
 If you need to access an EMR Spark History Server running in private subnets:
 
