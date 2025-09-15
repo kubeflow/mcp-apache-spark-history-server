@@ -10,9 +10,9 @@ keywords:
   - analytics
   - performance
   - history-server
-home: https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server
+home: https://github.com/kubeflow/mcp-apache-spark-history-server
 sources:
-  - https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server
+  - https://github.com/kubeflow/mcp-apache-spark-history-server
 maintainers:
   - name: Manabu McCloskey
     email: Manabu.McCloskey@gmail.com

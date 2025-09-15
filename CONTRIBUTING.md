@@ -1,4 +1,6 @@
-# 🤝 Contributing to Spark History Server MCP
+# Contributing to MCP Apache Spark History Server
+
+Welcome to the MCP Apache Spark History Server project. We'd love to accept your patches and contributions to this project. For detailed information about how to contribute to Kubeflow, please refer to [Contributing to Kubeflow](https://www.kubeflow.org/docs/about/contributing/).
 
 Thank you for your interest in contributing! This guide will help you get started with contributing to the Spark History Server MCP project.
 
@@ -219,19 +221,10 @@ Contributors are recognized in:
 
 ## 📞 Getting Help
 
-- **💬 Discussions**: [GitHub Discussions](https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server/discussions)
-- **🐛 Issues**: [GitHub Issues](https://github.com/DeepDiagnostix-AI/mcp-apache-spark-history-server/issues)
+- **🐛 Issues**: [GitHub Issues](https://github.com/kubeflow/mcp-apache-spark-history-server/issues)
 - **📚 Documentation**: Check existing docs first
 
-## 📜 Code of Conduct
+## Code Reviews
 
-- **🤝 Be respectful**: Treat everyone with kindness and professionalism
-- **🎯 Stay on topic**: Keep discussions relevant to the project
-- **🧠 Be constructive**: Provide helpful feedback and suggestions
-- **🌍 Be inclusive**: Welcome contributors of all backgrounds and skill levels
+All submissions, including submissions by project members, require review. We use GitHub pull requests for this purpose. Consult [GitHub Help](https://help.github.com/articles/about-pull-requests/) for more information on using pull requests.
 
----
-
-**🎉 Thank you for contributing to Spark History Server MCP!**
-
-Your contributions help make Apache Spark monitoring more intelligent and accessible to the community.

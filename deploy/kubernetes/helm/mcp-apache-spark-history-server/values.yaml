@@ -3,7 +3,7 @@
 
 # Image configuration
 image:
-  repository: ghcr.io/deepdiagnostix-ai/mcp-apache-spark-history-server
+  repository: ghcr.io/kubeflow/mcp-apache-spark-history-server
   pullPolicy: IfNotPresent
   tag: "v0.1.0"
 
