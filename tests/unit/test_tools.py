@@ -357,7 +357,9 @@ class TestTools(unittest.TestCase):
         # Verify results
         self.assertEqual(result, mock_app)
         mock_client.get_application.assert_called_once_with("spark-app-123")
-        mock_get_client.assert_called_once_with(unittest.mock.ANY, None)
+        mock_get_client.assert_called_once_with(
+            unittest.mock.ANY, None, "spark-app-123"
+        )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_get_application_with_server(self, mock_get_client):
@@ -372,7 +374,9 @@ class TestTools(unittest.TestCase):
         get_application("spark-app-123", server="production")
 
         # Verify server parameter is passed
-        mock_get_client.assert_called_once_with(unittest.mock.ANY, "production")
+        mock_get_client.assert_called_once_with(
+            unittest.mock.ANY, "production", "spark-app-123"
+        )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_get_application_not_found(self, mock_get_client):
@@ -389,23 +393,28 @@ class TestTools(unittest.TestCase):
         self.assertIn("Application not found", str(context.exception))
 
     # Tests for list_applications tool
-    @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_list_applications_no_filter(self, mock_get_client):
+    @patch("spark_history_mcp.tools.tools.mcp.get_context")
+    def test_list_applications_no_filter(self, mock_get_context):
         """Test application listing without filters"""
+        # Setup mock context
+        mock_context = MagicMock()
+        mock_context.request_context.lifespan_context.clients = {
+            "server1": self.mock_client1
+        }
+        mock_get_context.return_value = mock_context
+
         # Setup mock client
-        mock_client = MagicMock()
         mock_apps = [MagicMock(spec=ApplicationInfo), MagicMock(spec=ApplicationInfo)]
         mock_apps[0].id = "app-1"
         mock_apps[1].id = "app-2"
-        mock_client.list_applications.return_value = mock_apps
-        mock_get_client.return_value = mock_client
+        self.mock_client1.list_applications.return_value = mock_apps
 
         # Call the function
         result = list_applications()
 
         # Verify results
         self.assertEqual(result, mock_apps)
-        mock_client.list_applications.assert_called_once_with(
+        self.mock_client1.list_applications.assert_called_once_with(
             status=None,
             min_date=None,
             max_date=None,
@@ -414,15 +423,20 @@ class TestTools(unittest.TestCase):
             limit=None,
         )
 
-    @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_list_applications_with_filters(self, mock_get_client):
+    @patch("spark_history_mcp.tools.tools.mcp.get_context")
+    def test_list_applications_with_filters(self, mock_get_context):
         """Test application listing with filters"""
+        # Setup mock context
+        mock_context = MagicMock()
+        mock_context.request_context.lifespan_context.clients = {
+            "server1": self.mock_client1
+        }
+        mock_get_context.return_value = mock_context
+
         # Setup mock client
-        mock_client = MagicMock()
         mock_apps = [MagicMock(spec=ApplicationInfo)]
         mock_apps[0].id = "completed-app"
-        mock_client.list_applications.return_value = mock_apps
-        mock_get_client.return_value = mock_client
+        self.mock_client1.list_applications.return_value = mock_apps
 
         # Call with filters
         result = list_applications(
@@ -431,7 +445,7 @@ class TestTools(unittest.TestCase):
 
         # Verify results
         self.assertEqual(result, mock_apps)
-        mock_client.list_applications.assert_called_once_with(
+        self.mock_client1.list_applications.assert_called_once_with(
             status=["COMPLETED"],
             min_date="2024-01-01",
             max_date=None,
@@ -440,13 +454,18 @@ class TestTools(unittest.TestCase):
             limit=10,
         )
 
-    @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_list_applications_empty_result(self, mock_get_client):
+    @patch("spark_history_mcp.tools.tools.mcp.get_context")
+    def test_list_applications_empty_result(self, mock_get_context):
         """Test application listing with empty result"""
+        # Setup mock context
+        mock_context = MagicMock()
+        mock_context.request_context.lifespan_context.clients = {
+            "server1": self.mock_client1
+        }
+        mock_get_context.return_value = mock_context
+
         # Setup mock client
-        mock_client = MagicMock()
-        mock_client.list_applications.return_value = []
-        mock_get_client.return_value = mock_client
+        self.mock_client1.list_applications.return_value = []
 
         # Call the function
         result = list_applications()

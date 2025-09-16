@@ -12,11 +12,14 @@ from spark_history_mcp.api.emr_persistent_ui_client import EMRPersistentUIClient
 from spark_history_mcp.api.spark_client import SparkRestClient
 from spark_history_mcp.config.config import Config
 
+from ..utils.utils import ApplicationDiscovery
+
 
 @dataclass
 class AppContext:
     clients: dict[str, SparkRestClient]
     default_client: Optional[SparkRestClient] = None
+    app_discovery: Optional[ApplicationDiscovery] = None
 
 
 class DateTimeEncoder(json.JSONEncoder):
@@ -60,7 +63,10 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
         if server_config.default:
             default_client = clients[name]
 
-    yield AppContext(clients=clients, default_client=default_client)
+    app_discovery = ApplicationDiscovery(clients)
+    yield AppContext(
+        clients=clients, default_client=default_client, app_discovery=app_discovery
+    )
 
 
 def run(config: Config):
