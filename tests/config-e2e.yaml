@@ -1,0 +1,14 @@
+# E2E Test Configuration - Multiple Spark History Servers
+servers:
+  local:
+    default: true
+    url: "http://localhost:18080"
+  local2:
+    url: "http://localhost:18081"
+
+mcp:
+  transports:
+    - streamable-http
+  port: "18888"
+  debug: true
+  address: localhost

@@ -2,10 +2,16 @@
 Simple timeout handling and parallel execution for MCP tools.
 """
 
+import logging
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import requests
+
+from spark_history_mcp.api.spark_client import SparkRestClient
+
+logger = logging.getLogger(__name__)
 
 
 def parallel_execute(
@@ -56,3 +62,55 @@ def parallel_execute(
                 errors.append(error_msg)
 
     return {"results": results, "errors": errors}
+
+
+"""
+Application discovery with TTL cache and collision handling.
+"""
+
+
+class ApplicationDiscovery:
+    def __init__(self, clients: Dict[str, SparkRestClient], ttl: int = 300):
+        self.clients = clients
+        self.ttl = ttl
+        self._cache: Dict[str, Dict] = {}
+
+    def _is_expired(self, entry: Dict) -> bool:
+        return time.time() - entry["last_updated"] > self.ttl
+
+    def find_application_servers(self, app_id: str) -> List[str]:
+        if app_id in self._cache and not self._is_expired(self._cache[app_id]):
+            return self._cache[app_id]["servers"]
+
+        # Search all servers
+        servers = []
+        for server_name, client in self.clients.items():
+            logger.debug(f"Checking for application '{app_id}' in '{server_name}'")
+            try:
+                client.get_application(app_id)
+                servers.append(server_name)
+            except Exception as e:
+                logger.debug(
+                    f"Application '{app_id}' not found on server '{server_name}': {e}"
+                )
+                continue
+
+        self._cache[app_id] = {"servers": servers, "last_updated": time.time()}
+
+        return servers
+
+    def get_client_for_app(
+        self, app_id: str, server_name: Optional[str] = None
+    ) -> Tuple[SparkRestClient, str]:
+        if server_name:
+            if server_name not in self.clients:
+                raise ValueError(f"Server '{server_name}' not found")
+            return self.clients[server_name], server_name
+
+        servers = self.find_application_servers(app_id)
+        if not servers:
+            raise ValueError(f"Application '{app_id}' not found on any server")
+
+        # Use first server found
+        chosen_server = servers[0]
+        return self.clients[chosen_server], chosen_server

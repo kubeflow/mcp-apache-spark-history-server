@@ -15,6 +15,9 @@ OPTIONS:
     --dry-run                 Validate prerequisites without starting the server
     --interactive             Run Docker container in interactive mode
     --spark-version VERSION   Specify Spark version (default: 3.5.5)
+    --event-dir PATH          Host path to Spark event directory (default: examples/basic)
+    --container-name NAME     Docker container name (default: spark-history-server)
+    --port PORT               Port to expose (default: 18080)
 
 DESCRIPTION:
     This script starts a local Spark History Server using Docker for testing
@@ -42,6 +45,11 @@ EOF
 # Parse command line arguments
 DRY_RUN=false
 INTERACTIVE=false
+SPARK_VERSION="3.5.5"
+EVENT_DIR="examples/basic"
+CONTAINER_NAME="spark-history-server"
+PORT="18080"
+
 for arg in "$@"; do
     case $arg in
         -h|--help)
@@ -57,18 +65,20 @@ for arg in "$@"; do
             shift
             ;;
         --spark-version=*)
-            spark_version="${arg#*=}"
+            SPARK_VERSION="${arg#*=}"
             shift
             ;;
-        --spark-version)
+        --event-dir=*)
+            EVENT_DIR="${arg#*=}"
             shift
-            if [ -n "$1" ] && [ "${1:0:1}" != "-" ]; then
-                spark_version="$1"
-                shift
-            else
-                echo "Error: Argument for $arg is missing" >&2
-                exit 1
-            fi
+            ;;
+        --container-name=*)
+            CONTAINER_NAME="${arg#*=}"
+            shift
+            ;;
+        --port=*)
+            PORT="${arg#*=}"
+            shift
             ;;
         *)
             echo "Unknown option: $arg"
@@ -91,15 +101,15 @@ check_docker() {
 
 # Function to validate test data
 validate_test_data() {
-    if [ ! -d "examples/basic/events" ]; then
-        echo "❌ Error: Test data directory 'examples/basic/events' not found."
-        echo "   Please ensure you're running this script from the project root directory."
+    if [ ! -d "$EVENT_DIR/events" ]; then
+        echo "❌ Error: Test data directory '$EVENT_DIR/events' not found."
+        echo "   Please ensure the event directory path is correct."
         exit 1
     fi
 
-    if [ ! -f "examples/basic/history-server.conf" ]; then
+    if [ ! -f "$EVENT_DIR/history-server.conf" ]; then
         echo "❌ Error: Spark History Server configuration file not found."
-        echo "   Expected: examples/basic/history-server.conf"
+        echo "   Expected: $EVENT_DIR/history-server.conf"
         exit 1
     fi
 }
@@ -111,42 +121,43 @@ validate_test_data
 
 # Stop any existing spark-history-server container
 echo "🛑 Stopping any existing Spark History Server containers..."
-docker stop spark-history-server 2>/dev/null && echo "   Stopped existing container" || echo "   No existing container found"
-docker rm spark-history-server 2>/dev/null && echo "   Removed existing container" || true
+docker stop $CONTAINER_NAME 2>/dev/null && echo "   Stopped existing container" || echo "   No existing container found"
+docker rm $CONTAINER_NAME 2>/dev/null && echo "   Removed existing container" || true
 
 echo ""
 echo "📊 Available Test Applications:"
 echo "==============================="
 
 # Get actual event directories and their sizes
-event_dirs=$(ls -1 examples/basic/events/ 2>/dev/null | grep "eventlog_v2_" | head -10)
+event_dirs=$(ls -1 $EVENT_DIR/events/ 2>/dev/null | grep "eventlog_v2_" | head -10)
 if [ -z "$event_dirs" ]; then
-    echo "❌ No Spark event logs found in examples/basic/events/"
+    echo "❌ No Spark event logs found in $EVENT_DIR/events/"
     exit 1
 fi
 
 # Display available applications with actual sizes
 for dir in $event_dirs; do
     app_id=$(echo "$dir" | sed 's/eventlog_v2_//')
-    size=$(du -sh "examples/basic/events/$dir" | cut -f1)
+    size=$(du -sh "$EVENT_DIR/events/$dir" | cut -f1)
     echo "📋 $app_id ($size)"
 done
 
 echo ""
 echo "📁 Event directories found:"
-ls -1 examples/basic/events/ | grep eventlog | sed 's/^/   /'
+ls -1 $EVENT_DIR/events/ | grep eventlog | sed 's/^/   /'
 
 echo ""
 echo "📋 Configuration:"
-echo "   Log Directory: $(cat examples/basic/history-server.conf)"
-echo "   Port: 18080"
-echo "   Docker Image: apache/spark:$spark_version"
+echo "   Log Directory: $(cat $EVENT_DIR/history-server.conf)"
+echo "   Port: $PORT"
+echo "   Container: $CONTAINER_NAME"
+echo "   Docker Image: apache/spark:$SPARK_VERSION"
 
 echo ""
 echo "🚀 Starting Spark History Server..."
-echo "📍 Will be available at: http://localhost:18080"
-echo "📍 Web UI: http://localhost:18080"
-echo "📍 API: http://localhost:18080/api/v1/"
+echo "📍 Will be available at: http://localhost:$PORT"
+echo "📍 Web UI: http://localhost:$PORT"
+echo "📍 API: http://localhost:$PORT/api/v1/"
 echo ""
 echo "⚠️  Keep this terminal open - Press Ctrl+C to stop the server"
 echo "⚠️  It may take 30-60 seconds for the server to fully start"
@@ -166,11 +177,12 @@ fi
 echo "🐳 Starting Docker container..."
 if [ "$INTERACTIVE" = true ]; then
   docker run -it \
-    --name spark-history-server \
+    --name $CONTAINER_NAME \
+    --label "mcp-spark-test=true" \
     --rm \
-    -v "$(pwd)/examples/basic:/mnt/data" \
-    -p 18080:18080 \
-    docker.io/apache/spark:$spark_version \
+    -v "$(pwd)/$EVENT_DIR:/mnt/data" \
+    -p $PORT:18080 \
+    docker.io/apache/spark:$SPARK_VERSION \
     /opt/java/openjdk/bin/java \
     -cp '/opt/spark/conf:/opt/spark/jars/*' \
     -Xmx1g \
@@ -178,11 +190,12 @@ if [ "$INTERACTIVE" = true ]; then
     --properties-file /mnt/data/history-server.conf
 else
   docker run \
-    --name spark-history-server \
+    --name $CONTAINER_NAME \
+    --label "mcp-spark-test=true" \
     --rm \
-    -v "$(pwd)/examples/basic:/mnt/data" \
-    -p 18080:18080 \
-    docker.io/apache/spark:$spark_version \
+    -v "$(pwd)/$EVENT_DIR:/mnt/data" \
+    -p $PORT:18080 \
+    docker.io/apache/spark:$SPARK_VERSION \
     /opt/java/openjdk/bin/java \
     -cp '/opt/spark/conf:/opt/spark/jars/*' \
     -Xmx1g \
@@ -190,8 +203,8 @@ else
     --properties-file /mnt/data/history-server.conf
 
   echo "Spark History Server started in detached mode"
-  echo "To view logs: docker logs -f spark-history-server"
-  echo "To stop: docker stop spark-history-server"
+  echo "To view logs: docker logs -f $CONTAINER_NAME"
+  echo "To stop: docker stop $CONTAINER_NAME"
 fi
 
 echo ""

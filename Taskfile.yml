@@ -27,7 +27,7 @@ tasks:
           echo "📦 Installing uv..."
           curl -LsSf https://astral.sh/uv/install.sh | sh
           export PATH="$HOME/.local/bin:$PATH"
-          echo "✅ uv installed! Please restart your terminal or run: export PATH=\"\$HOME/.local/bin:\$PATH\""
+          echo "✅ uv installed! Please restart your terminal or run: exPORT PATH=\"\$HOME/.local/bin:\$PATH\""
         else
           echo "✅ uv is already installed"
         fi
@@ -76,10 +76,31 @@ tasks:
       - echo "✅ Helm chart unit tests completed!"
 
   test-e2e:
-    desc: Run end-to-end tests with Spark and MCP servers
-    deps: [start-spark-bg, start-mcp-bg]
+    desc: Run end-to-end tests with multiple Spark servers and MCP server
     cmds:
-      - echo "🧪 Starting end-to-end tests..."
+      - echo "🧪 Starting end-to-end tests with multiple Spark servers..."
+      - echo "Backing up original config..."
+      - cp config.yaml config.yaml.backup
+      - defer: cp config.yaml.backup config.yaml && rm config.yaml.backup
+      - defer:
+          task: stop-all
+      - echo "Setting up e2e configuration..."
+      - cp tests/config-e2e.yaml config.yaml
+      - task: start-mcp-bg
+      - echo "Starting first Spark server..."
+      - task: start-spark-bg
+        vars:
+          CONTAINER_NAME: "spark-server-1"
+          PORT: "18080"
+          EVENT_DIR: "examples/basic"
+      - echo "Starting second Spark server..."
+      - task: start-spark-bg
+        vars:
+          CONTAINER_NAME: "spark-server-2"
+          PORT: "18081"
+          EVENT_DIR: "examples/basic2"
+        silent: false
+      - echo "Both servers started, running tests..."
       - |
         echo "Running e2e tests..."
         uv run pytest tests/e2e.py -v
@@ -127,21 +148,32 @@ tasks:
     desc: Start local Spark History Server for testing
     interactive: true
     vars:
-      SPARK_VERSION: '{{.spark_version | default "3.5.5"}}'
+      SPARK_VERSION: '{{.SPARK_VERSION | default "3.5.5"}}'
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default "spark-history-server"}}'
+      PORT: '{{.PORT | default "18080"}}'
+      EVENT_DIR: '{{.EVENT_DIR | default "examples/basic"}}'
     cmds:
-      - ./start_local_spark_history.sh --spark-version={{.SPARK_VERSION}}
+      - ./start_local_spark_history.sh --spark-version={{.SPARK_VERSION}} --container-name={{.CONTAINER_NAME}} --port={{.PORT}} --event-dir={{.EVENT_DIR}}
       - task: wait-for-spark
+        vars:
+          PORT: '{{.PORT}}'
       - echo "🔥 Spark History Server started!"
 
   start-spark-bg:
     desc: Start local Spark History Server in background
+    run: always
     vars:
-      SPARK_VERSION: '{{.spark_version | default "3.5.5"}}'
+      SPARK_VERSION: '{{.SPARK_VERSION | default "3.5.5"}}'
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default "spark-history-server"}}'
+      PORT: '{{.PORT | default "18080"}}'
+      EVENT_DIR: '{{.EVENT_DIR | default "examples/basic"}}'
     cmds:
       - |
         echo "Starting Spark History Server in background..."
-        nohup ./start_local_spark_history.sh --spark-version={{.SPARK_VERSION}} > spark-history.log 2>&1 &
+        nohup ./start_local_spark_history.sh --spark-version={{.SPARK_VERSION}} --container-name={{.CONTAINER_NAME}} --port={{.PORT}} --event-dir={{.EVENT_DIR}} > {{.CONTAINER_NAME}}.log 2>&1 &
       - task: wait-for-spark
+        vars:
+          PORT: '{{.PORT}}'
 
   start-mcp:
     desc: Start MCP server
@@ -207,7 +239,7 @@ tasks:
         pkill -f "start_local_spark_history.sh" || true
         pkill -f "spark_history_mcp.core.main" || true
         pkill -f "inspector" || true
-        docker stop spark-history-server 2>/dev/null || true
+        docker stop $(docker ps -q --filter "label=mcp-spark-test=true") 2>/dev/null || true
         sleep 1
         echo "✅ All services stopped!"
 
@@ -245,14 +277,17 @@ tasks:
   wait-for-spark:
     desc: Checks if Spark History Server is running
     internal: true
+    run: always
+    vars:
+      PORT: '{{.PORT | default "18080"}}'
     cmds:
       - |
-        echo "Checking if Spark History Server is running..."
+        echo "Checking if Spark History Server is running on PORT {{.PORT}}..."
         max_attempts=30
         attempt=1
         while [ $attempt -le $max_attempts ]; do
-          if curl -s --connect-timeout 1 http://localhost:18080 > /dev/null; then
-            echo "✅ Spark History Server is available on port 18080"
+          if curl -s --connect-timeout 1 http://localhost:{{.PORT}} > /dev/null; then
+            echo "✅ Spark History Server is available on PORT {{.PORT}}"
             exit 0
           fi
           echo "Waiting for Spark History Server... ($attempt/$max_attempts)"
@@ -272,7 +307,7 @@ tasks:
         attempt=1
         while [ $attempt -le $max_attempts ]; do
           if curl -s --connect-timeout 1 http://localhost:18888 > /dev/null; then
-            echo "✅ MCP Server is available on port 18888"
+            echo "✅ MCP Server is available on PORT 18888"
             exit 0
           fi
           echo "Waiting for MCP Server... ($attempt/$max_attempts)"
