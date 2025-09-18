@@ -94,18 +94,13 @@ python3 -m spark_history_mcp.core.main
 # Deactivate venv
 deactivate
 ```
-
-
-### 📊 Sample Data
-The repository includes real Spark event logs for testing:
-- `spark-bcec39f6201b42b9925124595baad260` - ✅ Successful ETL job
-- `spark-110be3a8424d4a2789cb88134418217b` - 🔄 Data processing job
-- `spark-cc4d115f011443d787f03a71a476a745` - 📈 Multi-stage analytics job
-
-See **[TESTING.md](TESTING.md)** for using them.
-
 ### ⚙️ Server Configuration
 Edit `config.yaml` for your Spark History Server:
+
+**Config File Options:**
+- Command line: `--config /path/to/config.yaml` or `-c /path/to/config.yaml`
+- Environment variable: `SHS_MCP_CONFIG=/path/to/config.yaml`
+- Default: `./config.yaml`
 ```yaml
 servers:
   local:
@@ -120,6 +115,15 @@ mcp:
   port: "18888"
   debug: true
 ```
+
+
+### 📊 Sample Data
+The repository includes real Spark event logs for testing:
+- `spark-bcec39f6201b42b9925124595baad260` - ✅ Successful ETL job
+- `spark-110be3a8424d4a2789cb88134418217b` - 🔄 Data processing job
+- `spark-cc4d115f011443d787f03a71a476a745` - 📈 Multi-stage analytics job
+
+See **[TESTING.md](TESTING.md)** for using them.
 
 ## 📸 Screenshots
 
