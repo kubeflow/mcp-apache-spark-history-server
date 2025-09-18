@@ -4,65 +4,86 @@ Connect Amazon Q CLI to Spark History Server for command-line Spark analysis.
 
 ## Prerequisites
 
-1. **Clone and setup repository**:
+1. **Install uv** (if not already installed):
+
 ```bash
+# macOS/Linux
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# or see https://docs.astral.sh/uv/getting-started/installation/
+```
+
+2. **Start Spark History Server** (optional - for testing with sample data):
+
+```bash
+# Clone repository for sample data
 git clone https://github.com/kubeflow/mcp-apache-spark-history-server.git
 cd mcp-apache-spark-history-server
 
-# Install Task (if not already installed)
-brew install go-task  # macOS
-# or see https://taskfile.dev/installation/ for other platforms
+# Install Task and start sample server
+brew install go-task  # macOS, see https://taskfile.dev/installation/ for others
+task start-spark-bg   # Starts server at http://localhost:18080 with 3 sample applications
 
-# Setup dependencies
-task install
-```
-
-2. **Start Spark History Server with sample data**:
-```bash
-task start-spark-bg
-# Starts server at http://localhost:18080 with 3 sample applications
-```
-
-3. **Verify setup**:
-```bash
+# Verify setup
 curl http://localhost:18080/api/v1/applications
 # Should return 3 applications
 ```
 
 ## Setup
 
-1. **Add MCP server**:
+1. **Add MCP server** (using default configuration):
+
 ```bash
 q mcp add \
   --name spark-history-server \
-  --command $(git rev-parse --show-toplevel)/spark_history_server_mcp_launcher.sh \
-  --args "-p,q_cli" \
+  --command uvx \
+  --args "--from,mcp-apache-spark-history-server,spark-mcp" \
   --env SHS_MCP_TRANSPORT=stdio \
   --scope global
 ```
 
-Results should look something like this
-```
-cat ~/.aws/amazonq/mcp.json
+2. **Add MCP server with custom configuration**:
 
+```bash
+# Using command line config argument
+q mcp add \
+  --name spark-history-server \
+  --command uvx \
+  --args "--from,mcp-apache-spark-history-server,spark-mcp,--config,/path/to/config.yaml" \
+  --env SHS_MCP_TRANSPORT=stdio \
+  --scope global
+
+# Using environment variable
+q mcp add \
+  --name spark-history-server \
+  --command uvx \
+  --args "--from,mcp-apache-spark-history-server,spark-mcp" \
+  --env SHS_MCP_CONFIG=/path/to/config.yaml \
+  --env SHS_MCP_TRANSPORT=stdio \
+  --scope global
+```
+
+Results should look something like this:
+
+
+```bash
+cat ~/.aws/amazonq/mcp.json
+```
+```json
 {
   "mcpServers": {
     "spark-history-server": {
-      "command": "/Users/name/mcp-apache-spark-history-server/spark_history_server_mcp_launcher.sh",
+      "command": "uvx",
       "args": [
-        "-p",
-        "q_cli" # pre-appends to mcp_server_output.log
+        "--from",
+        "mcp-apache-spark-history-server",
+        "spark-mcp"
       ],
-      "env": {
-        "SHS_MCP_TRANSPORT": "stdio"
-      },
       "timeout": 120000,
       "disabled": false
     }
+  }
 }
 ```
-
-2. **Test connection**
 
 ## Usage
 
@@ -87,18 +108,49 @@ echo "What are the bottlenecks in spark-cc4d115f011443d787f03a71a476a745?"
 - List servers: `q mcp list`
 - Remove: `q mcp remove --name mcp-apache-spark-history-server`
 
-## Remote Spark History Server
+## Configuration
 
-To connect to a remote Spark History Server, edit `config.yaml` in the repository:
+The MCP server supports flexible configuration file paths:
+
+### Configuration Priority
+1. **Command line argument** (highest priority): `--config /path/to/config.yaml`
+2. **Environment variable**: `SHS_MCP_CONFIG=/path/to/config.yaml`
+3. **Default**: Uses `config.yaml` in current directory
+
+### Configuration File Format
+Create a `config.yaml` file for your Spark History Server:
 
 ```yaml
 servers:
   production:
     default: true
     url: "https://spark-history-prod.company.com:18080"
-    auth:
+    auth:  # optional
       username: "user"
       password: "pass"
+  staging:
+    url: "https://spark-history-staging.company.com:18080"
+```
+
+### Remote Spark History Server Examples
+
+**Using command line config:**
+```bash
+q mcp add \
+  --name spark-history-server \
+  --command uvx \
+  --args "--from,mcp-apache-spark-history-server,spark-mcp,--config,/path/to/prod-config.yaml" \
+  --scope global
+```
+
+**Using environment variable:**
+```bash
+q mcp add \
+  --name spark-history-server \
+  --command uvx \
+  --args "--from,mcp-apache-spark-history-server,spark-mcp" \
+  --env SHS_MCP_CONFIG=/path/to/staging-config.yaml \
+  --scope global
 ```
 
 **Note**: Amazon Q CLI requires local MCP server execution. For remote MCP servers, consider:
