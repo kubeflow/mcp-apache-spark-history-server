@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     permissions:
-      contents: read
+      contents: write
       packages: write
       id-token: write # required. https://docs.pypi.org/trusted-publishers/using-a-publisher/
 
@@ -45,6 +45,11 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # 2.2.2
+        with:
+          generate_release_notes: true
 
       - name: Install uv
         uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc #6.4.3
