@@ -54,6 +54,9 @@ graph TB
 
 ## ⚡ Quick Start
 
+### 📦 Ready-to-Use Package
+The package is published to PyPI: https://pypi.org/project/mcp-apache-spark-history-server/
+
 ### 📋 Prerequisites
 - 🔥 Existing Spark History Server (running and accessible)
 - 🐍 Python 3.12+
