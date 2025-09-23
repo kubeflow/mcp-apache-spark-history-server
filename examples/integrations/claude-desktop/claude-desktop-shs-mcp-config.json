@@ -1,15 +1,19 @@
 {
     "mcpServers": {
-        "mcp-apache-spark-history-server": {
+        "sparkinsight-ai": {
             "command": "uv",
             "args": [
                 "run",
                 "--project",
-                "/path/to/mcp-apache-spark-history-server",
-                "python",
-                "main_stdio.py"
+                "/path/to/sparkinsight-ai",
+                "-m",
+                "sparkinsight_ai.core.main_stdio"
             ],
-            "cwd": "/path/to/mcp-apache-spark-history-server"
+            "cwd": "/path/to/sparkinsight-ai",
+            "env": {
+                "SHS_MCP_DEBUG": "true",
+                "SHS_SERVERS_LOCAL_URL": "http://localhost:18080"
+            }
         }
     }
 }

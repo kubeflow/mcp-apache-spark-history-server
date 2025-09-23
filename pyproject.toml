@@ -53,6 +53,7 @@ version_scheme = "no-guess-dev"
 
 [project.scripts]
 sparkinsight-ai = "sparkinsight_ai.core.main:main"
+sparkinsight-ai-stdio = "sparkinsight_ai.core.main_stdio:main"
 
 [project.urls]
 Homepage = "https://github.com/DeepDiagnostix-AI/sparkinsight-ai"

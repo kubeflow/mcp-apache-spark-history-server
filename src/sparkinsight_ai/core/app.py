@@ -64,10 +64,31 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
 
 
 def run(config: Config):
-    mcp.settings.host = config.mcp.address
-    mcp.settings.port = int(config.mcp.port)
-    mcp.settings.debug = bool(config.mcp.debug)
-    mcp.run(transport=os.getenv("SHS_MCP_TRANSPORT", config.mcp.transports[0]))
+    """Run the MCP server with the specified configuration."""
+    import asyncio
+
+    # Get transport from environment or config
+    transport = os.getenv("SHS_MCP_TRANSPORT", config.mcp.transports[0])
+
+    if transport == "stdio":
+        # For STDIO transport, run directly without server settings
+        mcp.settings.debug = bool(config.mcp.debug)
+        asyncio.run(mcp.run(transport="stdio"))
+    else:
+        # For HTTP-based transports (streamable-http, sse), set server settings
+        mcp.settings.host = config.mcp.address
+        mcp.settings.port = int(config.mcp.port)
+        mcp.settings.debug = bool(config.mcp.debug)
+
+        # Map config transport names to FastMCP transport names
+        transport_map = {
+            "streamable-http": "streamable-http",
+            "sse": "sse",
+            "http": "streamable-http"  # Alias
+        }
+
+        actual_transport = transport_map.get(transport, transport)
+        asyncio.run(mcp.run(transport=actual_transport))
 
 
 mcp = FastMCP("Spark Events", lifespan=app_lifespan)

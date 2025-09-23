@@ -36,15 +36,40 @@ curl http://localhost:18080/api/v1/applications
 ```json
 {
     "mcpServers": {
-        "mcp-apache-spark-history-server": {
+        "sparkinsight-ai": {
             "command": "uv",
-            "args": ["run", "-m", "spark_history_mcp.core.main"]
+            "args": [
+                "run",
+                "--project",
+                "/path/to/sparkinsight-ai",
+                "-m",
+                "sparkinsight_ai.core.main_stdio"
+            ],
+            "cwd": "/path/to/sparkinsight-ai",
+            "env": {
+                "SHS_MCP_DEBUG": "true",
+                "SHS_SERVERS_LOCAL_URL": "http://localhost:18080"
+            }
         }
     }
 }
 ```
 
-**⚠️ Important**: Replace `/Users/username/mcp-apache-spark-history-server` with your actual repository path.
+**⚠️ Important**: Replace `/path/to/sparkinsight-ai` with your actual repository path.
+
+### Alternative: Using Published Package
+
+If you have SparkInsight AI installed via pip, you can use the dedicated STDIO command:
+
+```json
+{
+    "mcpServers": {
+        "sparkinsight-ai": {
+            "command": "sparkinsight-ai-stdio"
+        }
+    }
+}
+```
 
 2. **Restart Claude Desktop**
 

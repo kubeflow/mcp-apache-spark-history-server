@@ -1,13 +1,10 @@
 {
   "mcpServers": {
     "sparkinsight-ai": {
-      "command": "uvx",
-      "args": ["--from", "sparkinsight-ai", "sparkinsight-ai", "server", "start"],
+      "command": "sparkinsight-ai-stdio",
+      "args": [],
       "env": {
-        "SHS_MCP_PORT": "18888",
         "SHS_MCP_DEBUG": "true",
-        "SHS_MCP_ADDRESS": "localhost",
-        "SHS_MCP_TRANSPORT": "stdio",
         "SHS_SERVERS_LOCAL_URL": "http://localhost:18080"
       },
       "timeout": 120000,
@@ -15,11 +12,9 @@
     },
     "sparkinsight-ai-dev": {
       "command": "uv",
-      "args": ["run", "-m", "sparkinsight_ai.core.main"],
+      "args": ["run", "-m", "sparkinsight_ai.core.main_stdio"],
       "env": {
-        "SHS_MCP_PORT": "18888",
         "SHS_MCP_DEBUG": "true",
-        "SHS_MCP_TRANSPORT": "stdio",
         "SHS_SERVERS_LOCAL_URL": "http://localhost:18080",
         "SHS_SERVERS_PRODUCTION_URL": "https://spark-history.company.com:18080",
         "SHS_SERVERS_PRODUCTION_AUTH_USERNAME": "${SPARK_USERNAME}",

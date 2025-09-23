@@ -21,13 +21,10 @@ Choose one of the three configuration options below based on your use case:
 {
   "mcpServers": {
     "sparkinsight-ai": {
-      "command": "uvx",
-      "args": ["--from", "sparkinsight-ai", "sparkinsight-ai", "server", "start"],
+      "command": "sparkinsight-ai-stdio",
+      "args": [],
       "env": {
-        "SHS_MCP_PORT": "18888",
         "SHS_MCP_DEBUG": "true",
-        "SHS_MCP_ADDRESS": "localhost",
-        "SHS_MCP_TRANSPORT": "stdio",
         "SHS_SERVERS_LOCAL_URL": "http://localhost:18080"
       },
       "timeout": 120000,
@@ -39,8 +36,11 @@ Choose one of the three configuration options below based on your use case:
 
 **Setup steps**:
 ```bash
-# Test that uvx can find the package
-uvx --from sparkinsight-ai sparkinsight-ai --help
+# Install SparkInsight AI
+pip install sparkinsight-ai
+
+# Verify the STDIO command is available
+sparkinsight-ai-stdio --help
 
 # Start your Spark History Server or use our test setup
 git clone https://github.com/DeepDiagnostix-AI/sparkinsight-ai.git
@@ -60,11 +60,9 @@ task start-spark-bg   # Starts test server with sample data
   "mcpServers": {
     "sparkinsight-ai-dev": {
       "command": "uv",
-      "args": ["run", "-m", "sparkinsight_ai.core.main"],
+      "args": ["run", "-m", "sparkinsight_ai.core.main_stdio"],
       "env": {
-        "SHS_MCP_PORT": "18888",
         "SHS_MCP_DEBUG": "true",
-        "SHS_MCP_TRANSPORT": "stdio",
         "SHS_SERVERS_LOCAL_URL": "http://localhost:18080",
         "SHS_SERVERS_PRODUCTION_URL": "https://spark-history.company.com:18080",
         "SHS_SERVERS_PRODUCTION_AUTH_USERNAME": "${SPARK_USERNAME}",
