@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 from spark_history_mcp.api.spark_client import SparkRestClient
+from spark_history_mcp.config.config import ServerConfig
 from spark_history_mcp.models.spark_types import (
     ApplicationInfo,
     ExecutionData,
@@ -1087,3 +1088,73 @@ class TestTools(unittest.TestCase):
         self.assertEqual(result[0].duration, 10000)
         self.assertEqual(result[1].duration, 9000)
         self.assertEqual(result[2].duration, 8000)
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_slowest_sql_queries_uses_server_config_for_plan_description(
+        self, mock_get_client
+    ):
+        """Test that include_plan_description falls back to server config when not provided"""
+        # Setup mock client with server config
+        mock_client = MagicMock()
+        server_config = ServerConfig(
+            url="http://test:18080", include_plan_description=False
+        )
+        mock_client.config = server_config
+
+        # Create mock SQL execution
+        sql = MagicMock(spec=ExecutionData)
+        sql.id = 1
+        sql.duration = 5000
+        sql.status = "COMPLETED"
+        sql.success_job_ids = [1]
+        sql.failed_job_ids = []
+        sql.running_job_ids = []
+        sql.description = "Test Query"
+        sql.submission_time = datetime.now()
+        sql.plan_description = "Sample plan description"
+
+        mock_client.get_sql_list.return_value = [sql]
+        mock_get_client.return_value = mock_client
+
+        # Call function without include_plan_description parameter (should use server config)
+        result = list_slowest_sql_queries("spark-app-123")
+
+        # Verify plan description is empty due to server config setting False
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].plan_description, "")
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_slowest_sql_queries_explicit_override_server_config(
+        self, mock_get_client
+    ):
+        """Test that explicit include_plan_description parameter overrides server config"""
+        # Setup mock client with server config set to False
+        mock_client = MagicMock()
+        server_config = ServerConfig(
+            url="http://test:18080", include_plan_description=False
+        )
+        mock_client.config = server_config
+
+        # Create mock SQL execution
+        sql = MagicMock(spec=ExecutionData)
+        sql.id = 1
+        sql.duration = 5000
+        sql.status = "COMPLETED"
+        sql.success_job_ids = [1]
+        sql.failed_job_ids = []
+        sql.running_job_ids = []
+        sql.description = "Test Query"
+        sql.submission_time = datetime.now()
+        sql.plan_description = "Sample plan description"
+
+        mock_client.get_sql_list.return_value = [sql]
+        mock_get_client.return_value = mock_client
+
+        # Call function with explicit include_plan_description=True (should override server config)
+        result = list_slowest_sql_queries(
+            "spark-app-123", include_plan_description=True
+        )
+
+        # Verify plan description is included despite server config being False
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].plan_description, "Sample plan description")

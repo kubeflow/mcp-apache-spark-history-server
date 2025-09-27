@@ -922,7 +922,7 @@ def list_slowest_sql_queries(
     top_n: int = 1,
     page_size: int = 100,
     include_running: bool = False,
-    include_plan_description: bool = True,
+    include_plan_description: Optional[bool] = None,
     plan_description_max_length: int = 2000,
 ) -> List[SqlQuerySummary]:
     """
@@ -935,7 +935,7 @@ def list_slowest_sql_queries(
         top_n: Number of slowest queries to return (default: 1)
         page_size: Number of executions to fetch per page (default: 100)
         include_running: Whether to include running queries (default: False)
-        include_plan_description: Whether to include execution plans (default: True)
+        include_plan_description: Whether to include execution plans (uses server config if not specified)
         plan_description_max_length: Max characters for plan description (default: 1500)
 
     Returns:
@@ -943,6 +943,10 @@ def list_slowest_sql_queries(
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
+
+    # Use server config if include_plan_description not explicitly provided
+    if include_plan_description is None:
+        include_plan_description = client.config.include_plan_description
 
     all_executions: List[ExecutionData] = []
     offset = 0

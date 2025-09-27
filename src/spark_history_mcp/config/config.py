@@ -28,6 +28,7 @@ class ServerConfig(BaseSettings):
     emr_cluster_arn: Optional[str] = None  # EMR specific field
     use_proxy: bool = False
     timeout: int = 30  # HTTP request timeout in seconds
+    include_plan_description: bool = False
 
 
 class McpConfig(BaseSettings):
