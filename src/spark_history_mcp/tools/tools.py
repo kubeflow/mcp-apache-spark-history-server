@@ -18,6 +18,7 @@ from spark_history_mcp.models.spark_types import (
     TaskMetricDistributions,
 )
 
+from ..utils.tool_filter import conditional_tool
 from ..utils.utils import parallel_execute
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,7 @@ def get_client_or_default(
     )
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def list_applications(
     server: Optional[str] = None,
     status: Optional[list[str]] = None,
@@ -130,7 +131,7 @@ def list_applications(
         return all_apps
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInfo:
     """
     Get detailed information about a specific Spark application.
@@ -151,7 +152,7 @@ def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInf
     return client.get_application(app_id)
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def list_jobs(
     app_id: str, server: Optional[str] = None, status: Optional[list[str]] = None
 ) -> list:
@@ -177,7 +178,7 @@ def list_jobs(
     return client.list_jobs(app_id=app_id, status=job_statuses)
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def list_slowest_jobs(
     app_id: str,
     server: Optional[str] = None,
@@ -222,7 +223,7 @@ def list_slowest_jobs(
     return heapq.nlargest(n, jobs, key=get_job_duration)
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def list_stages(
     app_id: str,
     server: Optional[str] = None,
@@ -259,7 +260,7 @@ def list_stages(
     )
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def list_slowest_stages(
     app_id: str,
     server: Optional[str] = None,
@@ -302,7 +303,7 @@ def list_slowest_stages(
     return heapq.nlargest(n, stages, key=get_stage_duration)
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def get_stage(
     app_id: str,
     stage_id: int,
@@ -368,7 +369,7 @@ def get_stage(
     return stage_data
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def get_environment(app_id: str, server: Optional[str] = None):
     """
     Get the comprehensive Spark runtime configuration for a Spark application.
@@ -389,7 +390,7 @@ def get_environment(app_id: str, server: Optional[str] = None):
     return client.get_environment(app_id=app_id)
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def list_executors(
     app_id: str, server: Optional[str] = None, include_inactive: bool = False
 ):
@@ -416,7 +417,7 @@ def list_executors(
         return client.list_executors(app_id=app_id)
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def get_executor(app_id: str, executor_id: str, server: Optional[str] = None):
     """
     Get information about a specific executor.
@@ -445,7 +446,7 @@ def get_executor(app_id: str, executor_id: str, server: Optional[str] = None):
     return None
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def get_executor_summary(app_id: str, server: Optional[str] = None):
     """
     Aggregates metrics across all executors for a Spark application.
@@ -467,7 +468,7 @@ def get_executor_summary(app_id: str, server: Optional[str] = None):
     return _calculate_executor_metrics(executors)
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def compare_job_environments(
     app_id1: str, app_id2: str, server: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -582,7 +583,7 @@ def _calc_executor_summary_from_client(client, app_id: str):
     return _calculate_executor_metrics(executors)
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def compare_job_performance(
     app_id1: str, app_id2: str, server: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -736,7 +737,7 @@ def compare_job_performance(
     return comparison
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def compare_sql_execution_plans(
     app_id1: str,
     app_id2: str,
@@ -857,7 +858,7 @@ def compare_sql_execution_plans(
     return comparison
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def get_stage_task_summary(
     app_id: str,
     stage_id: int,
@@ -914,7 +915,7 @@ def truncate_plan_description(plan_desc: str, max_length: int) -> str:
     return truncated + "\n... [truncated]"
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def list_slowest_sql_queries(
     app_id: str,
     server: Optional[str] = None,
@@ -1010,7 +1011,7 @@ def list_slowest_sql_queries(
     return simplified_results
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def get_job_bottlenecks(
     app_id: str, server: Optional[str] = None, top_n: int = 5
 ) -> Dict[str, Any]:
@@ -1152,7 +1153,7 @@ def get_job_bottlenecks(
     return bottlenecks
 
 
-@mcp.tool()
+@conditional_tool(mcp)
 def get_resource_usage_timeline(
     app_id: str, server: Optional[str] = None
 ) -> Dict[str, Any]:

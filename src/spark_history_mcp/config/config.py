@@ -28,6 +28,7 @@ class ServerConfig(BaseSettings):
     emr_cluster_arn: Optional[str] = None  # EMR specific field
     use_proxy: bool = False
     timeout: int = 30  # HTTP request timeout in seconds
+    disabled_tools: List[str] = Field(default_factory=list)  # Tools to disable
 
 
 class McpConfig(BaseSettings):
