@@ -112,6 +112,8 @@ servers:
     auth:  # optional
       username: "user"
       password: "pass"
+    disabled_tools: []  # optional, list of tools to disable for this server
+disabled_tools: []  # optional, global list of tools to disable for all servers
 mcp:
   transports:
     - streamable-http # streamable-http or stdio.
@@ -185,7 +187,7 @@ The MCP server provides **18 specialized tools** organized by analysis patterns.
 *SQL performance analysis and execution plan comparison*
 | 🔧 Tool | 📝 Description |
 |---------|----------------|
-| `list_slowest_sql_queries` | 🐌 Get the top N slowest SQL queries for an application with detailed execution metrics |
+| `list_slowest_sql_queries` | 🐌 Get the top N slowest SQL queries for an application with detailed execution metrics and optional plan descriptions |
 | `compare_sql_execution_plans` | 🔍 Compare SQL execution plans between two Spark jobs, analyzing logical/physical plans and execution metrics |
 
 ### 🚨 Performance & Bottleneck Analysis
@@ -302,6 +304,7 @@ SHS_SERVERS_*_AUTH_TOKEN - Token for a specific server
 SHS_SERVERS_*_VERIFY_SSL - Whether to verify SSL for a specific server (true/false)
 SHS_SERVERS_*_TIMEOUT - HTTP request timeout in seconds for a specific server (default: 30)
 SHS_SERVERS_*_EMR_CLUSTER_ARN - EMR cluster ARN for a specific server
+SHS_SERVERS_*_INCLUDE_PLAN_DESCRIPTION - Whether to include SQL execution plans by default for a specific server (true/false, default: false)
 ```
 
 ## 🤖 AI Agent Integration
