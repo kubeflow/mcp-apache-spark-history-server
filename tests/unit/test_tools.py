@@ -1127,7 +1127,7 @@ class TestTools(unittest.TestCase):
     def test_list_slowest_sql_queries_explicit_override_server_config(
         self, mock_get_client
     ):
-        """Test that explicit include_plan_description parameter overrides server config"""
+        """Test that server config overrides parameter when config is set"""
         # Setup mock client with server config set to False
         mock_client = MagicMock()
         server_config = ServerConfig(
@@ -1150,11 +1150,11 @@ class TestTools(unittest.TestCase):
         mock_client.get_sql_list.return_value = [sql]
         mock_get_client.return_value = mock_client
 
-        # Call function with explicit include_plan_description=True (should override server config)
+        # Call function with explicit include_plan_description=True (config should override to False)
         result = list_slowest_sql_queries(
             "spark-app-123", include_plan_description=True
         )
 
-        # Verify plan description is included despite server config being False
+        # Verify plan description is NOT included because server config is False
         self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].plan_description, "Sample plan description")
+        self.assertEqual(result[0].plan_description, "")

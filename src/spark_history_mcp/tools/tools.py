@@ -944,9 +944,11 @@ def list_slowest_sql_queries(
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
-    # Use server config if include_plan_description not explicitly provided
-    if include_plan_description is None:
+    # Config takes priority: if config is set (True/False), use it; otherwise default to True
+    if client.config.include_plan_description is not None:
         include_plan_description = client.config.include_plan_description
+    else:
+        include_plan_description = True
 
     all_executions: List[ExecutionData] = []
     offset = 0
