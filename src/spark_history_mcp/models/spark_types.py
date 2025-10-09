@@ -751,7 +751,7 @@ class ExecutorMetricsDistributions(BaseModel):
 
 
 class ExecutorPeakMetricsDistributions(BaseModel):
-    quantiles: Sequence[float]
+    quantiles: Optional[Sequence[float]] = None
     executor_metrics: Optional[Sequence[ExecutorMetrics]] = Field(
         None, alias="executorMetrics"
     )
