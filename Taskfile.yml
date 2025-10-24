@@ -199,14 +199,14 @@ tasks:
     cmds:
       - echo "Starting MCP Inspector at http://localhost:6274"
       - echo "Press Ctrl+C to stop the inspector"
-      - DANGEROUSLY_OMIT_AUTH=true npx --yes @modelcontextprotocol/inspector
+      - npx --yes @modelcontextprotocol/inspector
 
   start-inspector-bg:
     desc: Start MCP Inspector in background
     cmds:
       - |
         echo "Starting MCP Inspector in background..."
-        nohup sh -c 'DANGEROUSLY_OMIT_AUTH=true npx --yes @modelcontextprotocol/inspector' > inspector.log 2>&1 &
+        nohup sh -c 'npx --yes @modelcontextprotocol/inspector' > inspector.log 2>&1 &
         sleep 3
         echo "✅ MCP Inspector started at http://localhost:6274"
 
