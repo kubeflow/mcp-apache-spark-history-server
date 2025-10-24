@@ -206,8 +206,8 @@ tasks:
     cmds:
       - |
         echo "Starting MCP Inspector in background..."
-        nohup sh -c 'npx --yes @modelcontextprotocol/inspector' > inspector.log 2>&1 &
-        sleep 3
+        nohup npx --yes @modelcontextprotocol/inspector 2>&1 | tee inspector.log &
+        sleep 5
         echo "✅ MCP Inspector started at http://localhost:6274"
 
   dev-all:
