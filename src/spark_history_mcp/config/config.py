@@ -25,7 +25,9 @@ class ServerConfig(BaseSettings):
     auth: AuthConfig = Field(default_factory=AuthConfig, exclude=True)
     default: bool = False
     verify_ssl: bool = True
-    emr_cluster_arn: Optional[str] = None  # EMR specific field
+    emr_cluster_arn: Optional[str] = None  # EMR EC2 cluster ARN
+    emr_serverless_app_id: Optional[str] = None  # EMR Serverless application ID
+    region: Optional[str] = None  # AWS region
     use_proxy: bool = False
     timeout: int = 30  # HTTP request timeout in seconds
     include_plan_description: Optional[bool] = None
