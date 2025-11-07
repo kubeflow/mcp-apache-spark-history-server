@@ -30,11 +30,19 @@ def main():
     try:
         logger.info("Starting Spark History Server MCP...")
         logger.info(f"Using config file: {args.config}")
-        config = Config.from_file(args.config)
+
+        # Set the config file path in environment for Pydantic Settings
+        os.environ["SHS_MCP_CONFIG"] = args.config
+
+        # Now Config() will automatically load from the specified YAML file
+        config = Config()
         if config.mcp.debug:
             logger.setLevel(logging.DEBUG)
         logger.debug(json.dumps(json.loads(config.model_dump_json()), indent=4))
         app.run(config)
+    except FileNotFoundError as e:
+        logger.error(f"Configuration error: {e}")
+        sys.exit(1)
     except Exception as e:
         logger.error(f"Failed to start MCP server: {e}")
         sys.exit(1)
