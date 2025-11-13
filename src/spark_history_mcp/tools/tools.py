@@ -146,7 +146,7 @@ def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInf
     status, resource usage, duration, and attempt details.
 
     Args:
-        app_id: The Spark application ID
+        app_id: The Spark application ID (Must start by spark-)
         server: Optional server name to use (uses default if not specified)
 
     Returns:
@@ -1305,7 +1305,9 @@ def get_resource_usage_timeline(
 
 @mcp.tool()
 def get_job_definition(job_id: str) -> Job:
-    """Get job definition
+    """
+    Get job definition about a mortar/yoshi job.
+    The mortar/yoshi job contains the information of the spark app id
 
     Args:
         job_id: Job identifier

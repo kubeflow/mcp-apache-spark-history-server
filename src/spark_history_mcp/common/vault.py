@@ -17,8 +17,6 @@ class JWT:
                 name=self.audience, datacenter=datacenter
             )
 
-
-
     def get_token(self) -> str:
         try:
             return str(self.token_manager.get_token(self.audience))

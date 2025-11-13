@@ -2,7 +2,7 @@
 servers:
   local:
     default: true  # if server name is not provided in tool calls, this Spark History Server is used
-    url: "http://localhost:18080"
+    url: "https://spark-history-server.us1.staging.dog/"
     # Optional authentication (can also use environment variables).
     # auth:
     #   username: ${SHS_SERVERS_LOCAL_AUTH_USERNAME}
