@@ -11,13 +11,13 @@ class JWT:
         )
 
         if os.getenv("POD_NAME"):
-            token_manager_class = JWTInternalServiceAuthClientTokenManager
+            self.token_manager = JWTInternalServiceAuthClientTokenManager(issuer="sycamore")
         else:
-            token_manager_class = JWTDDToolAuthClientTokenManager
+            self.token_manager = JWTDDToolAuthClientTokenManager.instance(
+                name=self.audience, datacenter=datacenter
+            )
 
-        self.token_manager = token_manager_class.instance(
-            name=self.audience, datacenter=datacenter
-        )
+
 
     def get_token(self) -> str:
         try:
