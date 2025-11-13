@@ -48,10 +48,6 @@ class Datadog:
     def get_logs(
         self, index_names: list[str], query: str, _from: datetime, to: datetime
     ) -> list[Log]:
-        print(_from)
-        print(_from.isoformat())
-        print(to)
-        print(to.isoformat())
         with ThreadedApiClient(self.configuration) as api_client:
             logs_api_instance = LogsApi(api_client)
             request = LogsListRequest(
