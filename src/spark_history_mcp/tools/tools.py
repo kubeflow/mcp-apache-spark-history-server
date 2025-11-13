@@ -1,3 +1,4 @@
+from datetime import datetime
 import heapq
 import logging
 from typing import Any, Dict, List, Optional
@@ -1294,3 +1295,40 @@ def get_resource_usage_timeline(
             "peak_cores": max([r["total_cores"] for r in resource_timeline] + [0]),
         },
     }
+
+@mcp.tool()
+def get_yoshi_job(job_id: str):
+    pass
+
+
+#@mcp.tool()
+def get_job_logs(job_id: str, status: Optional[str] = None, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None):
+    pass
+
+
+#@mcp.tool()
+def get_operator_logs(job_id: str, status: Optional[str] = None, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None):
+    # can be merged with get_job_logs???
+    pass
+
+#@mcp.tool()
+def get_workflow_logs(workflow_id: str, status: Optional[str] = None, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None):
+    pass
+
+
+#@mcp.tool()
+def get_admission_logs(job_id: str, status: Optional[str] = None, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None):
+    pass
+
+#@mcp.tool()
+def get_oom_metrics_job(job_id: str):
+    # oom_kill.oom_process.count
+    pass
+
+#@mcp.tool()
+def get_cpu_metrics_job(job_id: str):
+    pass
+
+#@mcp.tool()
+def get_memory_metrics_job(job_id: str):
+    pass
