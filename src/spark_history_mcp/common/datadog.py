@@ -25,6 +25,7 @@ class LogDD(BaseModel):
     message: str = Field(description="Log message")
     status: str = Field(description="Log level")
     host: str = Field(description="Host where the logs has been emitted")
+    service: str = Field(description="Service where the logs has been emitted")
     pod_name: str = Field(description="Pod name where the logs has been emitted")
 
 
@@ -85,6 +86,7 @@ class Datadog:
                             message=log.attributes.get("message", ""),
                             status=log.attributes.get("status", ""),
                             host=log.attributes.get("host", ""),
+                            service=log.attributes.get("service", ""),
                             pod_name=pod_name,
                         )
                     )

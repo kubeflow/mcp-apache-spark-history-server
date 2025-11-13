@@ -1341,7 +1341,7 @@ def get_spark_job_logs(
         retry_attempt: The retry attempt number of the mortar/yoshi job
         start_time: Start time of the mortar/yoshi job
         end_time: Optional end time of the mortar/yoshi job (defaults to current time if the stop_timestamp is not available on the mortar/yoshi job)
-        status: Optional status to filter logs by (can be error, warn, info)
+        status: Optional status to filter logs by (e.g. error, warn, info)
 
     Returns:
         The matching log entries from DataDog for the specified job
@@ -1354,40 +1354,129 @@ def get_spark_job_logs(
         query += f" status:{status}"
 
     return Datadog().get_logs(
-        index_names=["data-eng", "dd-events"], query=query, _from=start_time, to=end_time
+        index_names=["data-eng", "dd-events"],
+        query=query,
+        _from=start_time,
+        to=end_time,
     )
 
-
-# @mcp.tool()
+@mcp.tool()
 def get_operator_logs(
     job_id: str,
     status: Optional[str] = None,
     start_time: Optional[datetime] = None,
     end_time: Optional[datetime] = None,
-):
-    # can be merged with get_job_logs???
-    pass
+) -> List[LogDD]:
+    """
+    Get logs from the Spark operator for a specific mortar/yoshi job.
+
+    Retrieves logs from DataDog matching the given mortar/yoshi job ID and optional filters.
+    The logs come from the Spark operator service which handles job submissions and lifecycle.
+
+    Args:
+        job_id: The mortar/yoshi job ID to get logs for
+        status: Optional status to filter logs by (e.g. error, warn, info)
+        start_time: Optional start time to get logs from
+        end_time: Optional end time to get logs until (defaults to current time)
+
+    Returns:
+        List[LogDD]: List of matching log entries from DataDog for the specified job
+    """
+    if end_time is None:
+        end_time = datetime.now()
+
+    query = f"service:spark-operator {job_id}"
+    if status is not None:
+        query += f" status:{status}"
+
+    return Datadog().get_logs(
+        index_names=["mortar"],
+        query=query,
+        _from=start_time,
+        to=end_time,
+    )
 
 
-# @mcp.tool()
+@mcp.tool()
 def get_workflow_logs(
     workflow_id: str,
     status: Optional[str] = None,
     start_time: Optional[datetime] = None,
     end_time: Optional[datetime] = None,
-):
-    pass
+) -> List[LogDD]:
+    """
+    Get logs from the Spark gateway worker for a specific workflow.
+
+    Retrieves logs from DataDog matching the given workflow ID and optional filters.
+    The logs come from the Spark gateway worker service which manages workflow execution.
+
+    The spark gateway is used to create spark application CR in kube from the yoshi job definition
+    This CR is then used by the spark operator to run the spark application
+
+    Args:
+        workflow_id: The workflow ID to get logs for
+        status: Optional status to filter logs by (e.g. error, warn, info)
+        start_time: Optional start time to get logs from
+        end_time: Optional end time to get logs until (defaults to current time)
+
+    Returns:
+        List[LogDD]: List of matching log entries from DataDog for the specified workflow
+    """
+    if end_time is None:
+        end_time = datetime.now()
+
+    query = f"service:spark_gateway-worker @WorkflowID:{workflow_id}"
+    if status is not None:
+        query += f" status:{status}"
+
+    return Datadog().get_logs(
+        index_names=["mortar"],
+        query=query,
+        _from=start_time,
+        to=end_time,
+    )
 
 
-# @mcp.tool()
+@mcp.tool()
 def get_admission_logs(
     job_id: str,
+    app_id: str,
     status: Optional[str] = None,
     start_time: Optional[datetime] = None,
     end_time: Optional[datetime] = None,
-):
-    pass
+) -> List[LogDD]:
+    """
+    Get admission controller and kueue service logs for a specific mortar/yoshi job and spark application.
 
+    Retrieves logs from DataDog matching the given mortar/yoshi job ID and spark application ID from the gateway
+    admission controller and kueue job services which handle job admission and queuing.
+
+    Spark gateway calls those admission services to select on which kubernetes cluster the spark application must
+    be submitted
+
+    Args:
+        job_id: The job ID to get admission logs for
+        app_id: The Spark application ID
+        status: Optional status to filter logs by (e.g. error, warn, info)
+        start_time: Optional start time to get logs from
+        end_time: Optional end time to get logs until (defaults to current time)
+
+    Returns:
+        List[LogDD]: List of matching log entries from DataDog from the admission services
+    """
+    if end_time is None:
+        end_time = datetime.now()
+
+    query = f"(service:gateway-admission-controller {job_id}) OR (service:kueue-job-service spark_app_name:{app_id})"
+    if status is not None:
+        query += f" status:{status}"
+
+    return Datadog().get_logs(
+        index_names=["mortar"],
+        query=query,
+        _from=start_time,
+        to=end_time,
+    )
 
 # @mcp.tool()
 def get_oom_metrics_job(job_id: str):
