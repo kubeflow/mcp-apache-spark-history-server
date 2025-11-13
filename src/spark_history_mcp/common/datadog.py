@@ -70,15 +70,15 @@ class Datadog:
                 logs = []
                 if response.data:
                     for log in response.data:
+                        pod_name = next((tag for tag in log.attributes.get("tags", []) if tag.startswith('pod_name:')), None).replace('pod_name:','')
                         logs.append(
                             {
                                 "id": log.id,
                                 "timestamp": log.attributes.timestamp,
                                 "message": log.attributes.get("message", ""),
                                 "status": log.attributes.get("status", ""),
-                                "service": log.attributes.get("service", ""),
                                 "host": log.attributes.get("host", ""),
-                                "tags": log.attributes.get("tags", []),
+                                "pod_name":pod_name,
                             }
                         )
 
