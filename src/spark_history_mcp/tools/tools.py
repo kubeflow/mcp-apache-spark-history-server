@@ -1363,8 +1363,8 @@ def get_spark_job_logs(
 @mcp.tool()
 def get_operator_logs(
     job_id: str,
+    start_time: datetime,
     status: Optional[str] = None,
-    start_time: Optional[datetime] = None,
     end_time: Optional[datetime] = None,
 ) -> List[LogDD]:
     """
@@ -1375,8 +1375,8 @@ def get_operator_logs(
 
     Args:
         job_id: The mortar/yoshi job ID to get logs for
+        start_time: start time to get logs from
         status: Optional status to filter logs by (e.g. error, warn, info)
-        start_time: Optional start time to get logs from
         end_time: Optional end time to get logs until (defaults to current time)
 
     Returns:
@@ -1400,8 +1400,8 @@ def get_operator_logs(
 @mcp.tool()
 def get_workflow_logs(
     workflow_id: str,
+    start_time: datetime,
     status: Optional[str] = None,
-    start_time: Optional[datetime] = None,
     end_time: Optional[datetime] = None,
 ) -> List[LogDD]:
     """
@@ -1415,8 +1415,8 @@ def get_workflow_logs(
 
     Args:
         workflow_id: The workflow ID to get logs for
+        start_time: start time to get logs from
         status: Optional status to filter logs by (e.g. error, warn, info)
-        start_time: Optional start time to get logs from
         end_time: Optional end time to get logs until (defaults to current time)
 
     Returns:
@@ -1441,8 +1441,8 @@ def get_workflow_logs(
 def get_admission_logs(
     job_id: str,
     app_id: str,
+    start_time: datetime,
     status: Optional[str] = None,
-    start_time: Optional[datetime] = None,
     end_time: Optional[datetime] = None,
 ) -> List[LogDD]:
     """
@@ -1457,8 +1457,8 @@ def get_admission_logs(
     Args:
         job_id: The job ID to get admission logs for
         app_id: The Spark application ID
+        start_time: start time to get logs from
         status: Optional status to filter logs by (e.g. error, warn, info)
-        start_time: Optional start time to get logs from
         end_time: Optional end time to get logs until (defaults to current time)
 
     Returns:

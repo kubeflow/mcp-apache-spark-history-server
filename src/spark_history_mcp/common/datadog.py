@@ -1,7 +1,8 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
+from threading import Lock
 
-from datadog_api_client import Configuration, ThreadedApiClient, ApiClient
+from datadog_api_client import Configuration, ApiClient
 from datadog_api_client.v2.api.logs_api import LogsApi
 from datadog_api_client.v2.model.logs_list_request import LogsListRequest
 from datadog_api_client.v2.model.logs_list_request_page import LogsListRequestPage
@@ -29,7 +30,42 @@ class LogDD(BaseModel):
     pod_name: str = Field(description="Pod name where the logs has been emitted")
 
 
-class Datadog:
+class SingletonMeta(type):
+    """
+    This is a thread-safe implementation of Singleton.
+    """
+
+    _instances = {}
+
+    _lock: Lock = Lock()
+    """
+    We now have a lock object that will be used to synchronize threads during
+    first access to the Singleton.
+    """
+
+    def __call__(cls, *args, **kwargs):
+        """
+        Possible changes to the value of the `__init__` argument do not affect
+        the returned instance.
+        """
+        # Now, imagine that the program has just been launched. Since there's no
+        # Singleton instance yet, multiple threads can simultaneously pass the
+        # previous conditional and reach this point almost at the same time. The
+        # first of them will acquire lock and will proceed further, while the
+        # rest will wait here.
+        with cls._lock:
+            # The first thread to acquire the lock, reaches this conditional,
+            # goes inside and creates the Singleton instance. Once it leaves the
+            # lock block, a thread that might have been waiting for the lock
+            # release may then enter this section. But since the Singleton field
+            # is already initialized, the thread won't create a new object.
+            if cls not in cls._instances:
+                instance = super().__call__(*args, **kwargs)
+                cls._instances[cls] = instance
+        return cls._instances[cls]
+
+
+class Datadog(metaclass=SingletonMeta):
     LIMIT_PER_QUERY_LOGS = 1000
     MAX_RETURN_LOGS = 100000
 
@@ -46,6 +82,7 @@ class Datadog:
         app_key = vault_api.get_secret_kv_store(DATADOG_SECRET_KEYS, "dd_app_key")
 
         self.configuration = Configuration()
+        self.configuration.server_variables["site"] = "datadoghq.com"
         self.configuration.api_key["apiKeyAuth"] = api_key
         self.configuration.api_key["appKeyAuth"] = app_key
         self.configuration.enable_retry = True
