@@ -1,7 +1,10 @@
+import os
 from datetime import datetime
 import heapq
 import logging
 from typing import Any, Dict, List, Optional
+
+from yoshi_client.domains.data_eng_infra.shared.libs.py.yoshi_client import Job
 
 from spark_history_mcp.core.app import mcp
 from spark_history_mcp.models.mcp_types import (
@@ -18,10 +21,13 @@ from spark_history_mcp.models.spark_types import (
     StageStatus,
     TaskMetricDistributions,
 )
+from ..common.yoshi import Yoshi
 
 from ..utils.utils import parallel_execute
 
 logger = logging.getLogger(__name__)
+
+DATACENTER = os.environ.get("DD_DATACENTER", "us1.staging.dog")
 
 
 def get_client_or_default(
@@ -1296,39 +1302,72 @@ def get_resource_usage_timeline(
         },
     }
 
+
 @mcp.tool()
-def get_yoshi_job(job_id: str):
+def get_job_definition(job_id: str) -> Job:
+    """Get job definition
+
+    Args:
+        job_id: Job identifier
+
+    Returns:
+        Job: Job definition
+    """
+    return Yoshi(DATACENTER).get_job_definition(job_id)
+
+
+# @mcp.tool()
+def get_job_logs(
+    job_id: str,
+    status: Optional[str] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+):
     pass
 
 
-#@mcp.tool()
-def get_job_logs(job_id: str, status: Optional[str] = None, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None):
-    pass
-
-
-#@mcp.tool()
-def get_operator_logs(job_id: str, status: Optional[str] = None, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None):
+# @mcp.tool()
+def get_operator_logs(
+    job_id: str,
+    status: Optional[str] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+):
     # can be merged with get_job_logs???
     pass
 
-#@mcp.tool()
-def get_workflow_logs(workflow_id: str, status: Optional[str] = None, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None):
+
+# @mcp.tool()
+def get_workflow_logs(
+    workflow_id: str,
+    status: Optional[str] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+):
     pass
 
 
-#@mcp.tool()
-def get_admission_logs(job_id: str, status: Optional[str] = None, start_time: Optional[datetime] = None, end_time: Optional[datetime] = None):
+# @mcp.tool()
+def get_admission_logs(
+    job_id: str,
+    status: Optional[str] = None,
+    start_time: Optional[datetime] = None,
+    end_time: Optional[datetime] = None,
+):
     pass
 
-#@mcp.tool()
+
+# @mcp.tool()
 def get_oom_metrics_job(job_id: str):
     # oom_kill.oom_process.count
     pass
 
-#@mcp.tool()
+
+# @mcp.tool()
 def get_cpu_metrics_job(job_id: str):
     pass
 
-#@mcp.tool()
+
+# @mcp.tool()
 def get_memory_metrics_job(job_id: str):
     pass

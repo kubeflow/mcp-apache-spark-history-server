@@ -30,7 +30,8 @@ task install
 task start-spark-bg && task start-mcp-bg && task start-inspector-bg
 
 # Opens http://localhost:6274 automatically in your browser
-# When done: task stop-all
+# When done
+task stop-all
 ```
 
 **Alternative** (if you prefer manual control):

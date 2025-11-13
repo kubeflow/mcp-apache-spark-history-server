@@ -27,7 +27,9 @@ dependencies = [
     "boto3~=1.34",
     "pydantic-settings>=2.9.1",
     "requests[socks]>=2.31.0",
-    "pysocks>=1.7.1"
+    "pysocks>=1.7.1",
+    "yoshi-client",
+    "dd-internal-authentication",
 ]
 
 [build-system]
@@ -103,3 +105,7 @@ name = "pypi-test"
 url = "https://test.pypi.org/simple/"
 publish-url = "https://test.pypi.org/legacy/"
 explicit = true
+
+[tool.uv.sources]
+yoshi-client = { url = "https://binaries.ddbuild.io/dd-source/python/yoshi_client-0.0.76422691-py3-none-any.whl" }
+dd-internal-authentication = { url = "https://binaries.ddbuild.io/dd-source/python/dd_internal_authentication-0.0.79707356-py3-none-any.whl" }
