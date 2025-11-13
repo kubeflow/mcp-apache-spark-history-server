@@ -4,7 +4,6 @@ import heapq
 import logging
 from typing import Any, Dict, List, Optional
 
-from datadog_api_client.v2.model.log import Log
 from yoshi_client.domains.data_eng_infra.shared.libs.py.yoshi_client import Job
 
 from spark_history_mcp.core.app import mcp
@@ -22,7 +21,7 @@ from spark_history_mcp.models.spark_types import (
     StageStatus,
     TaskMetricDistributions,
 )
-from ..common.datadog import Datadog
+from ..common.datadog import Datadog, LogDD
 from ..common.yoshi import Yoshi
 
 from ..utils.utils import parallel_execute
@@ -1320,6 +1319,7 @@ def get_job_definition(job_id: str) -> Job:
     return Yoshi(DATACENTER).get_job_definition(job_id)
 
 
+# TODO see to add pagination on mcp
 @mcp.tool()
 def get_spark_job_logs(
     job_id: str,
@@ -1327,7 +1327,7 @@ def get_spark_job_logs(
     start_time: datetime,
     end_time: Optional[datetime] = None,
     status: Optional[str] = None,
-) -> list[Log]:
+) -> list[LogDD]:
     """
     Get logs from DataDog for a Spark job execution.
 
