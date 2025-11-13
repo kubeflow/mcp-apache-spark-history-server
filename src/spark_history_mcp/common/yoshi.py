@@ -8,6 +8,7 @@ from yoshi_client.domains.data_eng_infra.shared.libs.py.yoshi_client import (
 )
 
 from spark_history_mcp.common import vault
+from spark_history_mcp.common.vault import JWT
 
 
 class Yoshi:
@@ -19,7 +20,7 @@ class Yoshi:
             host = f"https://yoshi.{self.AUDIENCE}.all-clusters.local-dc.fabric.dog:8443"
         self.configuration = Configuration(
             host=host,
-            access_token=vault.get_token(datacenter, self.AUDIENCE),
+            access_token=JWT(audience=self.AUDIENCE,datacenter=datacenter).get_token(),
         )
 
     def get_job_definition(self, job_id: str) -> Job:
