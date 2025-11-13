@@ -1,13 +1,12 @@
-import os
 
 from yoshi_client.domains.data_eng_infra.shared.libs.py.yoshi_client import (
-    Configuration,
     ApiClient,
-    JobApi,
+    Configuration,
     Job,
+    JobApi,
 )
 
-from spark_history_mcp.common import vault
+from spark_history_mcp.common.variable import POD_NAME
 from spark_history_mcp.common.vault import JWT
 
 
@@ -16,7 +15,7 @@ class Yoshi:
 
     def __init__(self, datacenter: str):
         host =f"https://yoshi.{datacenter}"
-        if os.getenv("POD_NAME"):
+        if POD_NAME:
             host = f"https://yoshi.{self.AUDIENCE}.all-clusters.local-dc.fabric.dog:8443"
         self.configuration = Configuration(
             host=host,

@@ -4,6 +4,7 @@ import heapq
 import logging
 from typing import Any, Dict, List, Optional
 
+from datadog_api_client.v2.model.log import Log
 from yoshi_client.domains.data_eng_infra.shared.libs.py.yoshi_client import Job
 
 from spark_history_mcp.core.app import mcp
@@ -21,6 +22,7 @@ from spark_history_mcp.models.spark_types import (
     StageStatus,
     TaskMetricDistributions,
 )
+from ..common.datadog import Datadog
 from ..common.yoshi import Yoshi
 
 from ..utils.utils import parallel_execute
@@ -1318,14 +1320,42 @@ def get_job_definition(job_id: str) -> Job:
     return Yoshi(DATACENTER).get_job_definition(job_id)
 
 
-# @mcp.tool()
-def get_job_logs(
+@mcp.tool()
+def get_spark_job_logs(
     job_id: str,
-    status: Optional[str] = None,
-    start_time: Optional[datetime] = None,
+    retry_attempt: int,
+    start_time: datetime,
     end_time: Optional[datetime] = None,
-):
-    pass
+    status: Optional[str] = None,
+) -> list[Log]:
+    """
+    Get logs from DataDog for a Spark job execution.
+
+    Retrieves logs from DataDog matching the given job ID, retry attempt, time range
+    and optionally status.
+
+    Can be used to get logs in error or warn status of a job to investigate the root cause of the issue
+
+    Args:
+        job_id: The mortar/yoshi job ID
+        retry_attempt: The retry attempt number of the mortar/yoshi job
+        start_time: Start time of the mortar/yoshi job
+        end_time: Optional end time of the mortar/yoshi job (defaults to current time if the stop_timestamp is not available on the mortar/yoshi job)
+        status: Optional status to filter logs by (can be error, warn, info)
+
+    Returns:
+        The matching log entries from DataDog for the specified job
+    """
+    if end_time is None:
+        end_time = datetime.now()
+
+    query = f"service:emr-spark-errors spark_job_id:{job_id} retry_attempt:{retry_attempt} -@source:init_script"
+    if status is not None:
+        query += f" status:{status}"
+
+    return Datadog().get_logs(
+        index_names=["data-eng", "dd-events"], query=query, _from=start_time, to=end_time
+    )
 
 
 # @mcp.tool()

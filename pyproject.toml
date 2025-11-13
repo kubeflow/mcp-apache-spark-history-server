@@ -30,6 +30,8 @@ dependencies = [
     "pysocks>=1.7.1",
     "yoshi-client",
     "dd-internal-authentication",
+    "datadog-api-client>=2.45.0",
+    "httpx-retries>=0.4.5",
 ]
 
 [build-system]
