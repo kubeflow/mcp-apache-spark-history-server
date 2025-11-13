@@ -23,6 +23,7 @@ from spark_history_mcp.models.spark_types import (
 )
 from ..common.datadog import Datadog, LogDD
 from ..common.yoshi import Yoshi
+from ..common.s3_client import S3Client
 
 from ..utils.utils import parallel_execute
 
@@ -155,6 +156,14 @@ def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInf
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
+
+    # Index spark event logs if missing
+    s3_client = S3Client(datacenter=DATACENTER)
+    if not s3_client.is_spark_event_logs_already_indexed(app_id):
+        try:
+            s3_client.copy_spark_events_logs(app_id)
+        except Exception as e:
+            raise Exception(f"Failed to copy events logs for app_id {app_id}: {e}") from e
 
     return client.get_application(app_id)
 
