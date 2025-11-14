@@ -93,17 +93,6 @@ class Config(BaseSettings):
     )
 
     @classmethod
-    def from_file(cls, file_path: str) -> "Config":
-        """Load configuration from a YAML file."""
-        if not os.path.exists(file_path):
-            return Config()
-
-        with open(file_path, "r") as f:
-            config_data = yaml.safe_load(f)
-
-        return cls.model_validate(config_data)
-
-    @classmethod
     def settings_customise_sources(
         cls,
         settings_cls: type[BaseSettings],

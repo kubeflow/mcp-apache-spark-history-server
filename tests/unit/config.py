@@ -39,8 +39,9 @@ class TestConfig(unittest.TestCase):
             temp_file_path = temp_file.name
 
         try:
-            # Load config from the file
-            config = Config.from_file(temp_file_path)
+            # Load config from the file using SHS_MCP_CONFIG env var
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
+                config = Config()
 
             # Verify the loaded configuration
             self.assertEqual(config.mcp.address, "test_host")
@@ -63,9 +64,10 @@ class TestConfig(unittest.TestCase):
             os.unlink(temp_file_path)
 
     def test_nonexistent_config_file(self):
-        """Test behavior when config file doesn't exist."""
+        """Test behavior when explicitly specified config file doesn't exist."""
         with self.assertRaises(FileNotFoundError):
-            Config.from_file("nonexistent_file.yaml")
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": "nonexistent_file.yaml"}):
+                Config()
 
     @patch.dict(
         os.environ,
@@ -89,7 +91,8 @@ class TestConfig(unittest.TestCase):
             temp_file_path = temp_file.name
 
         try:
-            config = Config.from_file(temp_file_path)
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
+                config = Config()
 
             # Verify MCP config from env vars
             self.assertEqual(config.mcp.address, "env_host")
@@ -122,7 +125,8 @@ class TestConfig(unittest.TestCase):
             temp_file_path = temp_file.name
 
         try:
-            config = Config.from_file(temp_file_path)
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
+                config = Config()
 
             # Verify that env vars override file config
             self.assertEqual(config.mcp.address, "override_host")
@@ -147,7 +151,8 @@ class TestConfig(unittest.TestCase):
             temp_file_path = temp_file.name
 
         try:
-            config = Config.from_file(temp_file_path)
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
+                config = Config()
 
             # Check MCP defaults
             self.assertEqual(config.mcp.address, "localhost")
