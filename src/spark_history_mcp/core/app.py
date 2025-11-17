@@ -33,7 +33,8 @@ class DateTimeEncoder(json.JSONEncoder):
 
 @asynccontextmanager
 async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
-    config = Config.from_file("config.yaml")
+    # Config() automatically loads from SHS_MCP_CONFIG env var (set in main.py)
+    config = Config()
 
     clients: dict[str, SparkRestClient] = {}
     default_client = None
