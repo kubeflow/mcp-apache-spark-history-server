@@ -1,0 +1,15 @@
+servers:
+  emr_serverless:
+    default: true
+    url: "https://p-00fvl0kq558sh80b-00fv4e2a3gds4n09.emrappui-prod.us-east-1.amazonaws.com/shs"
+    verify_ssl: true
+    emr_serverless_app_id: "00fv4e2a3gds4n09"
+    region: "us-east-1"
+    timeout: 60
+
+mcp:
+  transports:
+    - streamable-http
+  port: "18888"
+  debug: true
+  address: "localhost"
