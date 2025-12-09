@@ -6,8 +6,8 @@
                 "run",
                 "--project",
                 "/path/to/mcp-apache-spark-history-server",
-                "python",
-                "main_stdio.py"
+                "-m",
+                "spark_history_mcp.core.main"
             ],
             "cwd": "/path/to/mcp-apache-spark-history-server"
         }
