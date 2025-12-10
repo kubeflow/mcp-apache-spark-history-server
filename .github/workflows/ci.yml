@@ -57,7 +57,7 @@ jobs:
         helm version --short
 
     - name: Install helm unittest
-      run: helm plugin install https://github.com/helm-unittest/helm-unittest
+      run: helm plugin install https://github.com/helm-unittest/helm-unittest --version 1.0.3
 
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}
