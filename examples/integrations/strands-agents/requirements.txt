@@ -6,7 +6,7 @@ strands-agents[ollama]==0.3.0
 strands-agents-tools==0.1.9
 
 # MCP Client for Streamable HTTP transport
-mcp==1.11.0
+mcp==1.23.0
 
 # HTTP Client
 httpx==0.28.1
