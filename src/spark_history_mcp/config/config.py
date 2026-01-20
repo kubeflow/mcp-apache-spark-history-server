@@ -66,6 +66,30 @@ class ServerConfig(BaseSettings):
     include_plan_description: Optional[bool] = None
 
 
+class TransportSecurityConfig(BaseSettings):
+    """Transport security configuration for DNS rebinding protection.
+
+    See: https://github.com/modelcontextprotocol/python-sdk/issues/1798
+    """
+
+    enable_dns_rebinding_protection: bool = Field(
+        default=False,
+        description="Enable DNS rebinding protection. Set to True for production "
+        "deployments with proper allowed_hosts configuration.",
+    )
+    allowed_hosts: List[str] = Field(
+        default_factory=list,
+        description="List of allowed Host header values. Supports wildcard ports "
+        '(e.g., "localhost:*", "127.0.0.1:*", "your-gateway:*").',
+    )
+    allowed_origins: List[str] = Field(
+        default_factory=list,
+        description="List of allowed Origin header values. Supports wildcard ports "
+        '(e.g., "http://localhost:*", "http://your-gateway:*").',
+    )
+    model_config = SettingsConfigDict(extra="ignore")
+
+
 class McpConfig(BaseSettings):
     """Configuration for the MCP server."""
 
@@ -75,6 +99,10 @@ class McpConfig(BaseSettings):
     address: Optional[str] = "localhost"
     port: Optional[int | str] = "18888"
     debug: Optional[bool] = False
+    transport_security: Optional[TransportSecurityConfig] = Field(
+        default=None,
+        description="Transport security settings for DNS rebinding protection.",
+    )
     model_config = SettingsConfigDict(extra="ignore")
 
 

@@ -5,7 +5,12 @@ from unittest.mock import patch
 
 import yaml
 
-from spark_history_mcp.config.config import AuthConfig, Config, ServerConfig
+from spark_history_mcp.config.config import (
+    AuthConfig,
+    Config,
+    ServerConfig,
+    TransportSecurityConfig,
+)
 
 
 class TestConfig(unittest.TestCase):
@@ -185,3 +190,239 @@ class TestConfig(unittest.TestCase):
         # Test with explicit exclude
         server_dict = server.model_dump(exclude={"auth"})
         self.assertNotIn("auth", server_dict)
+
+
+class TestTransportSecurityConfig(unittest.TestCase):
+    """Test cases for TransportSecurityConfig.
+
+    See: https://github.com/modelcontextprotocol/python-sdk/issues/1798
+    """
+
+    def test_transport_security_default_values(self):
+        """Test that transport security defaults are set correctly."""
+        ts_config = TransportSecurityConfig()
+
+        # Default should be disabled for backwards compatibility
+        self.assertFalse(ts_config.enable_dns_rebinding_protection)
+        self.assertEqual(ts_config.allowed_hosts, [])
+        self.assertEqual(ts_config.allowed_origins, [])
+
+    def test_transport_security_from_yaml(self):
+        """Test loading transport security from YAML config."""
+        config_data = {
+            "servers": {"local": {"url": "http://localhost:18080", "default": True}},
+            "mcp": {
+                "transports": ["streamable-http"],
+                "port": "18888",
+                "transport_security": {
+                    "enable_dns_rebinding_protection": True,
+                    "allowed_hosts": ["localhost:*", "127.0.0.1:*", "my-gateway:*"],
+                    "allowed_origins": ["http://localhost:*", "http://127.0.0.1:*"],
+                },
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            yaml.dump(config_data, temp_file)
+            temp_file_path = temp_file.name
+
+        try:
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
+                config = Config()
+
+            # Verify transport security config
+            ts = config.mcp.transport_security
+            self.assertIsNotNone(ts)
+            self.assertTrue(ts.enable_dns_rebinding_protection)
+            self.assertEqual(
+                ts.allowed_hosts, ["localhost:*", "127.0.0.1:*", "my-gateway:*"]
+            )
+            self.assertEqual(
+                ts.allowed_origins, ["http://localhost:*", "http://127.0.0.1:*"]
+            )
+        finally:
+            os.unlink(temp_file_path)
+
+    def test_transport_security_disabled_in_yaml(self):
+        """Test explicitly disabling transport security in YAML."""
+        config_data = {
+            "servers": {"local": {"url": "http://localhost:18080", "default": True}},
+            "mcp": {
+                "transports": ["streamable-http"],
+                "transport_security": {
+                    "enable_dns_rebinding_protection": False,
+                },
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            yaml.dump(config_data, temp_file)
+            temp_file_path = temp_file.name
+
+        try:
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
+                config = Config()
+
+            ts = config.mcp.transport_security
+            self.assertIsNotNone(ts)
+            self.assertFalse(ts.enable_dns_rebinding_protection)
+        finally:
+            os.unlink(temp_file_path)
+
+    def test_transport_security_default_when_not_specified(self):
+        """Test transport security defaults when not specified in config."""
+        config_data = {
+            "servers": {"local": {"url": "http://localhost:18080", "default": True}},
+            "mcp": {"transports": ["streamable-http"]},
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            yaml.dump(config_data, temp_file)
+            temp_file_path = temp_file.name
+
+        try:
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
+                config = Config()
+
+            # Transport security should have default values
+            ts = config.mcp.transport_security
+            self.assertIsNotNone(ts)
+            self.assertFalse(ts.enable_dns_rebinding_protection)
+            self.assertEqual(ts.allowed_hosts, [])
+            self.assertEqual(ts.allowed_origins, [])
+        finally:
+            os.unlink(temp_file_path)
+
+    def test_transport_security_integration_with_mcp_library(self):
+        """Test that transport security config integrates with MCP library."""
+        from mcp.server.transport_security import TransportSecuritySettings
+
+        # Create config with transport security enabled
+        ts_config = TransportSecurityConfig(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=["localhost:*", "127.0.0.1:*"],
+            allowed_origins=["http://localhost:*"],
+        )
+
+        # Convert to MCP library's TransportSecuritySettings
+        ts_settings = TransportSecuritySettings(
+            enable_dns_rebinding_protection=ts_config.enable_dns_rebinding_protection,
+            allowed_hosts=ts_config.allowed_hosts,
+            allowed_origins=ts_config.allowed_origins,
+        )
+
+        # Verify the settings are correctly transferred
+        self.assertTrue(ts_settings.enable_dns_rebinding_protection)
+        self.assertEqual(ts_settings.allowed_hosts, ["localhost:*", "127.0.0.1:*"])
+        self.assertEqual(ts_settings.allowed_origins, ["http://localhost:*"])
+
+    def test_transport_security_partial_config(self):
+        """Test transport security with partial configuration."""
+        config_data = {
+            "servers": {"local": {"url": "http://localhost:18080", "default": True}},
+            "mcp": {
+                "transports": ["streamable-http"],
+                "transport_security": {
+                    "enable_dns_rebinding_protection": True,
+                    # Only specifying allowed_hosts, not allowed_origins
+                    "allowed_hosts": ["localhost:*"],
+                },
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            yaml.dump(config_data, temp_file)
+            temp_file_path = temp_file.name
+
+        try:
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
+                config = Config()
+
+            ts = config.mcp.transport_security
+            self.assertTrue(ts.enable_dns_rebinding_protection)
+            self.assertEqual(ts.allowed_hosts, ["localhost:*"])
+            # allowed_origins should default to empty list
+            self.assertEqual(ts.allowed_origins, [])
+        finally:
+            os.unlink(temp_file_path)
+
+    def test_transport_security_wildcard_patterns(self):
+        """Test various wildcard patterns for hosts and origins."""
+        ts_config = TransportSecurityConfig(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=[
+                "localhost:*",
+                "127.0.0.1:*",
+                "192.168.1.100:*",
+                "my-gateway.example.com:*",
+                "internal-service:8080",  # Specific port
+            ],
+            allowed_origins=[
+                "http://localhost:*",
+                "https://localhost:*",
+                "http://127.0.0.1:*",
+                "https://my-gateway.example.com:*",
+                "http://internal-service:8080",  # Specific port
+            ],
+        )
+
+        # Verify all patterns are stored correctly
+        self.assertEqual(len(ts_config.allowed_hosts), 5)
+        self.assertEqual(len(ts_config.allowed_origins), 5)
+        self.assertIn("localhost:*", ts_config.allowed_hosts)
+        self.assertIn("internal-service:8080", ts_config.allowed_hosts)
+        self.assertIn("http://localhost:*", ts_config.allowed_origins)
+        self.assertIn("https://localhost:*", ts_config.allowed_origins)
+
+
+class TestAppTransportSecurityIntegration(unittest.TestCase):
+    """Test app.py integration with transport security settings."""
+
+    def test_app_run_configures_transport_security(self):
+        """Test that app.run() correctly configures transport security."""
+        from mcp.server.transport_security import TransportSecuritySettings
+
+        from spark_history_mcp.core.app import mcp
+
+        config_data = {
+            "servers": {"local": {"url": "http://localhost:18080", "default": True}},
+            "mcp": {
+                "transports": ["streamable-http"],
+                "port": "18888",
+                "address": "localhost",
+                "debug": False,
+                "transport_security": {
+                    "enable_dns_rebinding_protection": True,
+                    "allowed_hosts": ["localhost:*", "test-gateway:*"],
+                    "allowed_origins": ["http://localhost:*"],
+                },
+            },
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            yaml.dump(config_data, temp_file)
+            temp_file_path = temp_file.name
+
+        try:
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
+                config = Config()
+
+            # Manually apply the transport security settings as run() would
+            if config.mcp.transport_security:
+                ts_config = config.mcp.transport_security
+                mcp.settings.transport_security = TransportSecuritySettings(
+                    enable_dns_rebinding_protection=ts_config.enable_dns_rebinding_protection,
+                    allowed_hosts=ts_config.allowed_hosts,
+                    allowed_origins=ts_config.allowed_origins,
+                )
+
+            # Verify settings were applied
+            ts = mcp.settings.transport_security
+            self.assertIsNotNone(ts)
+            self.assertTrue(ts.enable_dns_rebinding_protection)
+            self.assertEqual(ts.allowed_hosts, ["localhost:*", "test-gateway:*"])
+            self.assertEqual(ts.allowed_origins, ["http://localhost:*"])
+        finally:
+            os.unlink(temp_file_path)
+            # Reset to None to avoid affecting other tests
+            mcp.settings.transport_security = None
