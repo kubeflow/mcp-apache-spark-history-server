@@ -1,4 +1,5 @@
 import heapq
+import logging
 from typing import Any, Dict, List, Optional
 
 from spark_history_mcp.core.app import mcp
@@ -19,23 +20,35 @@ from spark_history_mcp.models.spark_types import (
 
 from ..utils.utils import parallel_execute
 
+logger = logging.getLogger(__name__)
 
-def get_client_or_default(ctx, server_name: Optional[str] = None):
+
+def get_client_or_default(
+    ctx, server_name: Optional[str] = None, app_id: Optional[str] = None
+):
     """
-    Get a client by server name or the default client if no name is provided.
+    Get a client by server name, app discovery, or default client.
 
     Args:
         ctx: The MCP context
         server_name: Optional server name
+        app_id: Optional app ID for discovery
 
     Returns:
-        SparkRestClient: The requested client or default client
+        SparkRestClient: The requested client
 
     Raises:
         ValueError: If no client is found
     """
-    clients = ctx.request_context.lifespan_context.clients
+    app_discovery = ctx.request_context.lifespan_context.app_discovery
     default_client = ctx.request_context.lifespan_context.default_client
+
+    # If app_id provided, use discovery
+    if app_id and not server_name:
+        client, _ = app_discovery.get_client_for_app(app_id, server_name)
+        return client
+
+    clients = ctx.request_context.lifespan_context.clients
 
     if server_name:
         client = clients.get(server_name)
@@ -80,16 +93,41 @@ def list_applications(
         List of ApplicationInfo objects for all applications
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
 
-    return client.list_applications(
-        status=status,
-        min_date=min_date,
-        max_date=max_date,
-        min_end_date=min_end_date,
-        max_end_date=max_end_date,
-        limit=limit,
-    )
+    if server:
+        # Return from specific server
+        client = get_client_or_default(ctx, server)
+        return client.list_applications(
+            status=status,
+            min_date=min_date,
+            max_date=max_date,
+            min_end_date=min_end_date,
+            max_end_date=max_end_date,
+            limit=limit,
+        )
+    else:
+        # Return from all servers
+        all_apps = []
+        clients = ctx.request_context.lifespan_context.clients
+
+        for server_name, client in clients.items():
+            try:
+                apps = client.list_applications(
+                    status=status,
+                    min_date=min_date,
+                    max_date=max_date,
+                    min_end_date=min_end_date,
+                    max_end_date=max_end_date,
+                    limit=limit,
+                )
+                all_apps.extend(apps)
+            except Exception as e:
+                logger.warning(
+                    f"Failed to get applications from server '{server_name}': {e}"
+                )
+                continue  # Skip unreachable servers
+
+        return all_apps
 
 
 @mcp.tool()
@@ -108,7 +146,7 @@ def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInf
         ApplicationInfo object containing application details
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
 
     return client.get_application(app_id)
 
@@ -129,7 +167,7 @@ def list_jobs(
         List of JobData objects for the application
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
 
     # Convert string status values to JobExecutionStatus enum if provided
     job_statuses = None
@@ -161,7 +199,7 @@ def list_slowest_jobs(
         List of JobData objects for the slowest jobs, or empty list if no jobs found
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
 
     # Get all jobs
     jobs = client.list_jobs(app_id=app_id)
@@ -207,7 +245,7 @@ def list_stages(
         List of StageData objects for the application
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
 
     # Convert string status values to StageStatus enum if provided
     stage_statuses = None
@@ -243,7 +281,7 @@ def list_slowest_stages(
         List of StageData objects for the slowest stages, or empty list if no stages found
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
 
     stages = client.list_stages(app_id=app_id)
 
@@ -286,7 +324,7 @@ def get_stage(
         StageData object containing stage information
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
 
     if attempt_id is not None:
         # Get specific attempt
@@ -346,7 +384,7 @@ def get_environment(app_id: str, server: Optional[str] = None):
         ApplicationEnvironmentInfo object containing environment details
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
 
     return client.get_environment(app_id=app_id)
 
@@ -370,7 +408,7 @@ def list_executors(
         List of ExecutorSummary objects containing executor information
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
 
     if include_inactive:
         return client.list_all_executors(app_id=app_id)
@@ -395,7 +433,7 @@ def get_executor(app_id: str, executor_id: str, server: Optional[str] = None):
         ExecutorSummary object containing executor details or None if not found
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
 
     # Get all executors and find the one with matching ID
     executors = client.list_all_executors(app_id=app_id)
@@ -423,7 +461,7 @@ def get_executor_summary(app_id: str, server: Optional[str] = None):
         Dictionary containing aggregated executor metrics
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
 
     executors = client.list_all_executors(app_id=app_id)
     return _calculate_executor_metrics(executors)
@@ -448,10 +486,11 @@ def compare_job_environments(
         Dictionary containing configuration differences and similarities
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client1 = get_client_or_default(ctx, server, app_id1)
+    client2 = get_client_or_default(ctx, server, app_id2)
 
-    env1 = client.get_environment(app_id=app_id1)
-    env2 = client.get_environment(app_id=app_id2)
+    env1 = client1.get_environment(app_id=app_id1)
+    env2 = client2.get_environment(app_id=app_id2)
 
     def props_to_dict(props):
         return {k: v for k, v in props} if props else {}
@@ -562,16 +601,17 @@ def compare_job_performance(
         Dictionary containing detailed performance comparison
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client1 = get_client_or_default(ctx, server, app_id1)
+    client2 = get_client_or_default(ctx, server, app_id2)
 
     # Define API calls for parallel execution
     api_calls = [
-        ("app1", lambda: client.get_application(app_id1)),
-        ("app2", lambda: client.get_application(app_id2)),
-        ("exec_summary1", lambda: _calc_executor_summary_from_client(client, app_id1)),
-        ("exec_summary2", lambda: _calc_executor_summary_from_client(client, app_id2)),
-        ("jobs1", lambda: client.list_jobs(app_id=app_id1)),
-        ("jobs2", lambda: client.list_jobs(app_id=app_id2)),
+        ("app1", lambda: client1.get_application(app_id1)),
+        ("app2", lambda: client2.get_application(app_id2)),
+        ("exec_summary1", lambda: _calc_executor_summary_from_client(client1, app_id1)),
+        ("exec_summary2", lambda: _calc_executor_summary_from_client(client2, app_id2)),
+        ("jobs1", lambda: client1.list_jobs(app_id=app_id1)),
+        ("jobs2", lambda: client2.list_jobs(app_id=app_id2)),
     ]
 
     # Execute all API calls in parallel
@@ -585,8 +625,8 @@ def compare_job_performance(
     if execution_result["errors"] and len(execution_result["results"]) == 0:
         try:
             # Sequential fallback - get basic info first
-            app1 = client.get_application(app_id1)
-            app2 = client.get_application(app_id2)
+            app1 = client1.get_application(app_id1)
+            app2 = client2.get_application(app_id2)
 
             # Use the actual errors from parallel execution
             error_summary = "; ".join(execution_result["errors"])
@@ -721,13 +761,14 @@ def compare_sql_execution_plans(
         Dictionary containing SQL execution plan comparison
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client1 = get_client_or_default(ctx, server, app_id1)
+    client2 = get_client_or_default(ctx, server, app_id2)
 
     # Get SQL executions for both applications
-    sql_execs1 = client.get_sql_list(
+    sql_execs1 = client1.get_sql_list(
         app_id=app_id1, details=True, plan_description=True
     )
-    sql_execs2 = client.get_sql_list(
+    sql_execs2 = client2.get_sql_list(
         app_id=app_id2, details=True, plan_description=True
     )
 
@@ -745,10 +786,10 @@ def compare_sql_execution_plans(
         }
 
     # Get specific execution details
-    exec1 = client.get_sql_execution(
+    exec1 = client1.get_sql_execution(
         app_id1, execution_id1, details=True, plan_description=True
     )
-    exec2 = client.get_sql_execution(
+    exec2 = client2.get_sql_execution(
         app_id2, execution_id2, details=True, plan_description=True
     )
 
@@ -841,7 +882,7 @@ def get_stage_task_summary(
         TaskMetricDistributions object containing metric distributions
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
 
     return client.get_stage_task_summary(
         app_id=app_id, stage_id=stage_id, attempt_id=attempt_id, quantiles=quantiles
@@ -881,7 +922,7 @@ def list_slowest_sql_queries(
     top_n: int = 1,
     page_size: int = 100,
     include_running: bool = False,
-    include_plan_description: bool = True,
+    include_plan_description: Optional[bool] = None,
     plan_description_max_length: int = 2000,
 ) -> List[SqlQuerySummary]:
     """
@@ -894,14 +935,20 @@ def list_slowest_sql_queries(
         top_n: Number of slowest queries to return (default: 1)
         page_size: Number of executions to fetch per page (default: 100)
         include_running: Whether to include running queries (default: False)
-        include_plan_description: Whether to include execution plans (default: True)
+        include_plan_description: Whether to include execution plans (uses server config if not specified)
         plan_description_max_length: Max characters for plan description (default: 1500)
 
     Returns:
         List of SqlQuerySummary objects for the slowest queries
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
+
+    # Config takes priority: if config is set (True/False), use it; otherwise default to True
+    if client.config.include_plan_description is not None:
+        include_plan_description = client.config.include_plan_description
+    else:
+        include_plan_description = True
 
     all_executions: List[ExecutionData] = []
     offset = 0
@@ -988,7 +1035,7 @@ def get_job_bottlenecks(
         Dictionary containing identified bottlenecks and recommendations
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
 
     # Get slowest stages
     slowest_stages = list_slowest_stages(app_id, server, False, top_n)
@@ -1129,7 +1176,7 @@ def get_resource_usage_timeline(
         Dictionary containing timeline of resource usage
     """
     ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server)
+    client = get_client_or_default(ctx, server, app_id)
 
     # Get application info
     app = client.get_application(app_id)

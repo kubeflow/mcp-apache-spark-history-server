@@ -63,9 +63,9 @@ class TestEMRIntegration(unittest.TestCase):
         self.assertEqual(apps, [])
 
     @patch("spark_history_mcp.core.app.EMRPersistentUIClient")
-    @patch("spark_history_mcp.core.app.Config.from_file")
+    @patch("spark_history_mcp.core.app.Config")
     def test_app_lifespan_with_emr_config(
-        self, mock_config_from_file, mock_emr_client_class
+        self, mock_config_class, mock_emr_client_class
     ):
         """Test app_lifespan context manager with EMR configuration."""
         import asyncio
@@ -97,7 +97,7 @@ class TestEMRIntegration(unittest.TestCase):
                 emr_cluster_arn=self.emr_cluster_arn, default=True, verify_ssl=True
             )
         }
-        mock_config_from_file.return_value = mock_config
+        mock_config_class.return_value = mock_config
 
         # Use the app_lifespan context manager
         async def test_lifespan():

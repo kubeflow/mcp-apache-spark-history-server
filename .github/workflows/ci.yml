@@ -47,10 +47,17 @@ jobs:
         version: 3.x
 
     - name: Install Helm
-      uses: azure/setup-helm@v4
+      run: |
+        set -euo pipefail
+        curl -sSL https://get.helm.sh/helm-v3.19.3-linux-amd64.tar.gz -o helm.tar.gz
+        tar -zxvf helm.tar.gz
+        sudo mv linux-amd64/helm /usr/local/bin/helm
+        rm helm.tar.gz
+        rm -rf linux-amd64
+        helm version --short
 
     - name: Install helm unittest
-      run: helm plugin install https://github.com/helm-unittest/helm-unittest
+      run: helm plugin install https://github.com/helm-unittest/helm-unittest --version 1.0.3
 
     - name: Set up Python ${{ matrix.python-version }}
       run: uv python install ${{ matrix.python-version }}

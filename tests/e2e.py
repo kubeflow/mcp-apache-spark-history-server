@@ -11,6 +11,7 @@ from spark_history_mcp.models.spark_types import ApplicationInfo, JobData
 
 mcp_endpoint = "http://localhost:18888/mcp/"
 test_app_id = "spark-cc4d115f011443d787f03a71a476a745"
+test_app_id2 = "spark-bcec39f6201b42b9925124595baad262"
 
 
 class McpClient:
@@ -118,3 +119,18 @@ async def test_list_jobs_with_status_filter():
             )
             stage = JobData.model_validate_json(content.text)
             assert stage.status == "SUCCEEDED", "All jobs should have SUCCEEDED status"
+
+
+@pytest.mark.asyncio
+async def test_get_application_from_second_server():
+    async with McpClient() as client:
+        # This should automatically discover the app on server 2
+        app_result = await client.call_tool("get_application", {"app_id": test_app_id2})
+        assert not app_result.isError
+        assert isinstance(app_result.content[0], TextContent), (
+            "get_application should return a TextContent object"
+        )
+
+        app_data = json.loads(app_result.content[0].text)
+        app_info = ApplicationInfo.model_validate(app_data)
+        assert app_info.id == test_app_id2

@@ -1,52 +1,64 @@
-# Security policy
-
-## Security bulletins
-
-For information regarding the security of this project please join:
-
-* <!-- TODO: $SLACK-CHANNEL -->
-* <!-- TODO: $EMAIL-LIST -->
-
-You may also subscribe to an RSS feed of the above using <!-- TODO: $LINK -->.
-
-## Reporting a vulnerability
-
-Please use the below process to report a vulnerability to the project:
-
-Email:
-
-1. Email the **<!-- TODO: $NAME-->**: **<!-- TODO: $ALIAS -->**
-    * Emails should contain:
-        * description of the problem
-        * precise and detailed steps (include screenshots) that created the
-          problem
-        * the affected version(s)
-        * any possible mitigations, if known
-1. You will receive a reply from one of the maintainers within **<!-- TODO: $X days -->**
-   acknowledging receipt of the email.
-1. You may be contacted by a **<!-- TODO: $PERSON -->** to further discuss the reported item.
-   Please bear with us as we seek to understand the breadth and scope of the
-   reported problem, recreate it, and confirm if there is a vulnerability
-   present.
-
-Web Form:
-
-1. Please visit **<!-- TODO: $LINK -->**
-   * You will receive a confirmation email upon submission
-1. You may be contacted by a **<!-- TODO: $PERSON -->** to further discuss the reported item
-   within **<!-- TODO: $X days -->**. Please bear with us as we seek to understand the breadth
-   and scope of the reported problem, recreate it, and confirm if there is an
-   vulnerability present.
-
-This project follows a **<!-- TODO: $X day --> disclosure timeline**. Refer to our embargo
-policy **<!-- TODO: $LINK -->** for more information.
+# Security Policy
 
 ## Supported Versions
 
-Information regarding supported versions of this project can be found on
-**<!-- TODO: $LINK -->** located on the **<!-- TODO: $WEBSITE -->**  and in the below table:
+Kubeflow Spark History MCP Server versions are expressed as `vX.Y.Z`, where X is the major version,
+Y is the minor version, and Z is the patch version, following the
+[Semantic Versioning](https://semver.org/) terminology.
 
-| Version | Supported |
-| --- | --- |
-| <!-- TODO: x.xx.x --> | :white_check_mark: |
-| <=<!-- TODO: x.xx.x --> | :x: |
+The Kubeflow Spark History MCP Server project maintains release branches for the most recent two minor releases.
+Applicable fixes, including security fixes, may be backported to those two release branches,
+depending on severity and feasibility.
+
+Users are encouraged to stay updated with the latest releases to benefit from security patches and
+improvements.
+
+## Reporting a Vulnerability
+
+We're extremely grateful for security researchers and users that report vulnerabilities to the
+Kubeflow Open Source Community. All reports are thoroughly investigated by Kubeflow projects owners.
+
+You can use the following ways to report security vulnerabilities privately:
+
+- Using the Kubeflow Spark History MCP Server repository [GitHub Security Advisory](https://github.com/kubeflow/mcp-apache-spark-history-server/security/advisories/new).
+- Using our private Kubeflow Steering Committee mailing list: ksc@kubeflow.org.
+
+Please provide detailed information to help us understand and address the issue promptly.
+
+## Disclosure Process
+
+**Acknowledgment**: We will acknowledge receipt of your report within 10 business days.
+
+**Assessment**: The Kubeflow projects owners will investigate the reported issue to determine its
+validity and severity.
+
+**Resolution**: If the issue is confirmed, we will work on a fix and prepare a release.
+
+**Notification**: Once a fix is available, we will notify the reporter and coordinate a public
+disclosure.
+
+**Public Disclosure**: Details of the vulnerability and the fix will be published in the project's
+release notes and communicated through appropriate channels.
+
+## Prevention Mechanisms
+
+Kubeflow Spark History MCP Server employs several measures to prevent security issues:
+
+**Code Reviews**: All code changes are reviewed by maintainers to ensure code quality and security.
+
+**Dependency Management**: Regular updates and monitoring of dependencies (e.g. Dependabot) to
+address known vulnerabilities.
+
+**Continuous Integration**: Automated testing and security checks are integrated into the CI/CD pipeline.
+
+**Image Scanning**: Container images are scanned for vulnerabilities.
+
+## Communication Channels
+
+For the general questions please join the following resources:
+
+- Kubeflow [Slack channels](https://www.kubeflow.org/docs/about/community/#kubeflow-slack-channels).
+
+- Kubeflow discuss [mailing list](https://www.kubeflow.org/docs/about/community/#kubeflow-mailing-list).
+
+Please **do not report** security vulnerabilities through public channels.

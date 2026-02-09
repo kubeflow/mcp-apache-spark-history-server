@@ -38,13 +38,20 @@ curl http://localhost:18080/api/v1/applications
     "mcpServers": {
         "mcp-apache-spark-history-server": {
             "command": "uv",
-            "args": ["run", "-m", "spark_history_mcp.core.main"]
+            "args": [
+              "run",
+              "--project",
+              "/path/to/mcp-apache-spark-history-server",
+              "-m",
+              "spark_history_mcp.core.main"
+            ],
+            "cwd": "/path/to/mcp-apache-spark-history-server"
         }
     }
 }
 ```
 
-**⚠️ Important**: Replace `/Users/username/mcp-apache-spark-history-server` with your actual repository path.
+**⚠️ Important**: Replace `/path/to/mcp-apache-spark-history-server` with your actual repository path.
 
 2. **Restart Claude Desktop**
 

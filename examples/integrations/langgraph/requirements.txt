@@ -2,7 +2,7 @@
 # Pinned versions for reproducible builds across Mac/Windows/Linux
 
 # Core LangChain and LangGraph - compatible versions
-langchain-core==0.3.36
+langchain-core==0.3.81
 langchain-ollama==0.2.2
 langgraph==0.2.60
 

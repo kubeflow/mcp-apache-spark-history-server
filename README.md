@@ -1,4 +1,4 @@
-# MCP Server for Apache Spark History Server
+# Kubeflow Spark History MCP Server
 
 [![CI](https://github.com/kubeflow/mcp-apache-spark-history-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kubeflow/mcp-apache-spark-history-server/actions)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
@@ -54,6 +54,9 @@ graph TB
 
 ## ⚡ Quick Start
 
+### 📦 Ready-to-Use Package
+The package is published to PyPI: https://pypi.org/project/mcp-apache-spark-history-server/
+
 ### 📋 Prerequisites
 - 🔥 Existing Spark History Server (running and accessible)
 - 🐍 Python 3.12+
@@ -94,6 +97,28 @@ python3 -m spark_history_mcp.core.main
 # Deactivate venv
 deactivate
 ```
+### ⚙️ Server Configuration
+Edit `config.yaml` for your Spark History Server:
+
+**Config File Options:**
+- Command line: `--config /path/to/config.yaml` or `-c /path/to/config.yaml`
+- Environment variable: `SHS_MCP_CONFIG=/path/to/config.yaml`
+- Default: `./config.yaml`
+```yaml
+servers:
+  local:
+    default: true
+    url: "http://your-spark-history-server:18080"
+    auth:  # optional
+      username: "user"
+      password: "pass"
+    include_plan_description: false  # optional, whether to include SQL execution plans by default (default: false)
+mcp:
+  transports:
+    - streamable-http # streamable-http or stdio.
+  port: "18888"
+  debug: true
+```
 
 
 ### 📊 Sample Data
@@ -103,23 +128,6 @@ The repository includes real Spark event logs for testing:
 - `spark-cc4d115f011443d787f03a71a476a745` - 📈 Multi-stage analytics job
 
 See **[TESTING.md](TESTING.md)** for using them.
-
-### ⚙️ Server Configuration
-Edit `config.yaml` for your Spark History Server:
-```yaml
-servers:
-  local:
-    default: true
-    url: "http://your-spark-history-server:18080"
-    auth:  # optional
-      username: "user"
-      password: "pass"
-mcp:
-  transports:
-    - streamable-http # streamable-http or stdio.
-  port: "18888"
-  debug: true
-```
 
 ## 📸 Screenshots
 
@@ -178,7 +186,7 @@ The MCP server provides **18 specialized tools** organized by analysis patterns.
 *SQL performance analysis and execution plan comparison*
 | 🔧 Tool | 📝 Description |
 |---------|----------------|
-| `list_slowest_sql_queries` | 🐌 Get the top N slowest SQL queries for an application with detailed execution metrics |
+| `list_slowest_sql_queries` | 🐌 Get the top N slowest SQL queries for an application with detailed execution metrics and optional plan descriptions |
 | `compare_sql_execution_plans` | 🔍 Compare SQL execution plans between two Spark jobs, analyzing logical/physical plans and execution metrics |
 
 ### 🚨 Performance & Bottleneck Analysis
@@ -295,6 +303,7 @@ SHS_SERVERS_*_AUTH_TOKEN - Token for a specific server
 SHS_SERVERS_*_VERIFY_SSL - Whether to verify SSL for a specific server (true/false)
 SHS_SERVERS_*_TIMEOUT - HTTP request timeout in seconds for a specific server (default: 30)
 SHS_SERVERS_*_EMR_CLUSTER_ARN - EMR cluster ARN for a specific server
+SHS_SERVERS_*_INCLUDE_PLAN_DESCRIPTION - Whether to include SQL execution plans by default for a specific server (true/false, default: false)
 ```
 
 ## 🤖 AI Agent Integration

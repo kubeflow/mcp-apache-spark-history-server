@@ -42,12 +42,37 @@ mcp:
   debug: true
   address: localhost
 
+  # Transport security settings for DNS rebinding protection
+  # See: https://github.com/modelcontextprotocol/python-sdk/issues/1798
+  # This is only relevant when actual mcp package version is higher than 1.23.0
+  #transport_security:
+    # Enable DNS rebinding protection. Set to true for production deployments
+    # with proper allowed_hosts/allowed_origins configuration.
+    #enable_dns_rebinding_protection: false
+
+    # List of allowed Host header values. Required when enable_dns_rebinding_protection is true.
+    # Supports wildcard ports (e.g., "localhost:*", "127.0.0.1:*", "your-gateway:*").
+    # allowed_hosts:
+    #   - "localhost:*"
+    #   - "127.0.0.1:*"
+    #   - "your-proxy-domain:*"
+
+    # List of allowed Origin header values. Required when enable_dns_rebinding_protection is true.
+    # Supports wildcard ports (e.g., "http://localhost:*", "http://your-gateway:*").
+    # allowed_origins:
+    #   - "http://localhost:*"
+    #   - "http://127.0.0.1:*"
+    #   - "http://your-proxy-domain:*"
+
 
 # Available Environment Variables:
 # SHS_MCP_PORT - Port for MCP server (default: 18888)
 # SHS_MCP_DEBUG - Enable debug mode (default: false)
 # SHS_MCP_ADDRESS - Address for MCP server (default: localhost)
 # SHS_MCP_TRANSPORT - MCP transport mode (default: streamable-http)
+# SHS_MCP_TRANSPORT_SECURITY_ENABLE_DNS_REBINDING_PROTECTION - Enable DNS rebinding protection (true/false)
+# SHS_MCP_TRANSPORT_SECURITY_ALLOWED_HOSTS - JSON array of allowed hosts (e.g., '["localhost:*","127.0.0.1:*"]')
+# SHS_MCP_TRANSPORT_SECURITY_ALLOWED_ORIGINS - JSON array of allowed origins (e.g., '["http://localhost:*"]')
 # SHS_SERVERS_*_URL - URL for a specific server
 # SHS_SERVERS_*_AUTH_USERNAME - Username for a specific server
 # SHS_SERVERS_*_AUTH_PASSWORD - Password for a specific server
