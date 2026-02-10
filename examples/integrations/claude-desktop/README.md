@@ -37,21 +37,27 @@ curl http://localhost:18080/api/v1/applications
 {
     "mcpServers": {
         "mcp-apache-spark-history-server": {
-            "command": "uv",
+            "command": "/full/path/to/uv",
             "args": [
-              "run",
-              "--project",
-              "/path/to/mcp-apache-spark-history-server",
-              "-m",
-              "spark_history_mcp.core.main"
+                "run",
+                "--directory",
+                "/path/to/mcp-apache-spark-history-server",
+                "-m",
+                "spark_history_mcp.core.main"
             ],
-            "cwd": "/path/to/mcp-apache-spark-history-server"
+            "env": {
+                "SHS_MCP_TRANSPORT": "stdio"
+            }
         }
     }
 }
 ```
 
-**⚠️ Important**: Replace `/path/to/mcp-apache-spark-history-server` with your actual repository path.
+**⚠️ Important**:
+- Replace `/full/path/to/uv` with the full path to `uv` (run `which uv` to find it). Claude Desktop does not inherit your shell PATH.
+- Replace `/path/to/mcp-apache-spark-history-server` with your actual repository path.
+- `--directory` is required (not `--project`) so that `config.yaml` is found at runtime.
+- `SHS_MCP_TRANSPORT` must be set to `stdio` since Claude Desktop uses stdio transport.
 
 2. **Restart Claude Desktop**
 
@@ -71,9 +77,43 @@ Analyze execution times, bottlenecks, and provide optimization recommendations.
 
 ![claude-desktop](claude-desktop.png)
 
-## Remote Spark History Server
+## Remote MCP Server (Kubernetes/EKS)
 
-To connect to a remote Spark History Server, edit `config.yaml` in the repository:
+If the MCP server is deployed in Kubernetes using the [Helm chart](../../../deploy/kubernetes/helm/), Claude Desktop can connect to it over HTTP using `mcp-remote` as a bridge. No local Python or `uv` required — only Node.js.
+
+> **Note**: Claude Desktop does not connect to remote MCP servers configured directly via the `"url"` field in `claude_desktop_config.json`. You must use `mcp-remote` or add the server via **Settings > Connectors** in the Claude Desktop UI. See [Claude's remote MCP server docs](https://support.claude.com/en/articles/11503834-building-custom-connectors-via-remote-mcp-servers) for details.
+
+1. **Port-forward the MCP service**:
+
+```bash
+kubectl port-forward svc/mcp-apache-spark-history-server 18888:18888
+```
+
+2. **Configure Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+
+```json
+{
+    "mcpServers": {
+        "mcp-apache-spark-history-server": {
+            "command": "npx",
+            "args": [
+                "mcp-remote",
+                "http://localhost:18888/mcp/"
+            ]
+        }
+    }
+}
+```
+
+3. **Restart Claude Desktop**
+
+The MCP server in Kubernetes uses `streamable-http` transport by default. The `mcp-remote` tool bridges Claude Desktop's stdio transport to the remote HTTP endpoint.
+
+**Note**: If you expose the MCP service via Ingress instead of port-forward, replace the URL with your Ingress endpoint (e.g., `https://spark-mcp.company.com/mcp/`).
+
+## Remote Spark History Server (Local MCP)
+
+If you want to run the MCP server locally but point it at a remote Spark History Server, edit `config.yaml` in the repository:
 
 ```yaml
 servers:
@@ -85,12 +125,14 @@ servers:
       password: "pass"
 ```
 
-**Note**: Claude Desktop requires local MCP server execution. For remote MCP servers, consider:
-- SSH tunnel: `ssh -L 18080:remote-server:18080 user@server`
-- Deploy MCP server locally pointing to remote Spark History Server
+You can also use an SSH tunnel to access a remote Spark History Server:
+```bash
+ssh -L 18080:remote-server:18080 user@server
+```
 
 ## Troubleshooting
 
-- **Connection fails**: Check paths in config file
+- **Connection fails**: Check paths in config file (local) or that port-forward is running (remote)
 - **No tools**: Restart Claude Desktop
 - **No apps found**: Ensure Spark History Server is running and accessible
+- **Server disconnected (local)**: Ensure `command` uses the full path to `uv` (run `which uv` to find it) and `--directory` is used instead of `--project`
