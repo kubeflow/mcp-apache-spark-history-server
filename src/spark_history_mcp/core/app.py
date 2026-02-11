@@ -16,6 +16,7 @@ except ImportError:
     TransportSecuritySettings = None
 
 from spark_history_mcp.api.emr_persistent_ui_client import EMRPersistentUIClient
+from spark_history_mcp.api.emr_serverless_hybrid_client import EMRServerlessHybridClient
 from spark_history_mcp.api.spark_client import SparkRestClient
 from spark_history_mcp.config.config import Config
 
@@ -63,6 +64,36 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
             spark_client = SparkRestClient(emr_server_config)
             spark_client.session = session  # Use the authenticated session
 
+            clients[name] = spark_client
+        # Check if this is an EMR Serverless server configuration
+        elif server_config.emr_serverless_app_id:
+            # Create EMR Serverless hybrid client
+            emr_serverless_client = EMRServerlessHybridClient(server_config)
+
+            # Get the base URL (dummy for hybrid client)
+            base_url = emr_serverless_client.get_spark_history_server_url()
+            
+            # Create a modified server config with the base URL
+            emr_serverless_server_config = server_config.model_copy()
+            emr_serverless_server_config.url = base_url
+
+            # Create SparkRestClient with custom request method
+            spark_client = SparkRestClient(emr_serverless_server_config)
+            
+            # Override the _make_request method to use EMR Serverless hybrid client
+            def hybrid_make_request(path: str, params: Optional[dict] = None):
+                """Custom request method that uses EMR Serverless hybrid client."""
+                import logging
+                logger = logging.getLogger(__name__)
+                
+                logger.debug(f"EMR Serverless hybrid request: {path}")
+                if params:
+                    logger.debug(f"Request params: {params}")
+                
+                # Use hybrid client for requests
+                return emr_serverless_client.make_request(path, params=params)
+            
+            spark_client._make_request = hybrid_make_request
             clients[name] = spark_client
         else:
             # Regular Spark REST client

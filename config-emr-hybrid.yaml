@@ -1,0 +1,15 @@
+servers:
+  emr_hybrid:
+    default: true
+    url: "emr-serverless-hybrid://00fv4e2a3gds4n09"
+    emr_serverless_app_id: "00fv4e2a3gds4n09"
+    region: "us-east-1"
+    timeout: 60
+    verify_ssl: true
+
+mcp:
+  transports:
+    - streamable-http
+  port: "18888"
+  debug: true
+  address: "localhost"
