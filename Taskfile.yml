@@ -72,6 +72,7 @@ tasks:
   test-helm:
     desc: Run helm chart unit tests
     cmds:
+      - helm lint ./deploy/kubernetes/helm/mcp-apache-spark-history-server/
       - helm unittest ./deploy/kubernetes/helm/mcp-apache-spark-history-server/
       - echo "✅ Helm chart unit tests completed!"
 
