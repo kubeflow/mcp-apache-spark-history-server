@@ -36,7 +36,7 @@ wheels = [
 
 [[package]]
 name = "black"
-version = "23.12.1"
+version = "24.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -45,13 +45,13 @@ dependencies = [
     { name = "pathspec" },
     { name = "platformdirs" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fd/f4/a57cde4b60da0e249073009f4a9087e9e0a955deae78d3c2a493208d0c5c/black-23.12.1.tar.gz", hash = "sha256:4ce3ef14ebe8d9509188014d96af1c456a910d5b5cbf434a09fef7e024b3d0d5", size = 620809, upload-time = "2023-12-22T23:06:17.382Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8f/5f/bac24a952668c7482cfdb4ebf91ba57a796c9da8829363a772040c1a3312/black-24.3.0.tar.gz", hash = "sha256:a0c9c4a0771afc6919578cec71ce82a3e31e054904e7197deacbc9382671c41f", size = 634292, upload-time = "2024-03-15T19:35:43.699Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/66/16/8726cedc83be841dfa854bbeef1288ee82272282a71048d7935292182b0b/black-23.12.1-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:25e57fd232a6d6ff3f4478a6fd0580838e47c93c83eaf1ccc92d4faf27112c4e", size = 1569989, upload-time = "2023-12-22T23:20:22.158Z" },
-    { url = "https://files.pythonhosted.org/packages/d2/1e/30f5eafcc41b8378890ba39b693fa111f7dca8a2620ba5162075d95ffe46/black-23.12.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:2d9e13db441c509a3763a7a3d9a49ccc1b4e974a47be4e08ade2a228876500ec", size = 1398647, upload-time = "2023-12-22T23:19:57.225Z" },
-    { url = "https://files.pythonhosted.org/packages/99/de/ddb45cc044256431d96d846ce03164d149d81ca606b5172224d1872e0b58/black-23.12.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6d1bd9c210f8b109b1762ec9fd36592fdd528485aadb3f5849b2740ef17e674e", size = 1720450, upload-time = "2023-12-22T23:08:52.675Z" },
-    { url = "https://files.pythonhosted.org/packages/98/2b/54e5dbe9be5a10cbea2259517206ff7b6a452bb34e07508c7e1395950833/black-23.12.1-cp312-cp312-win_amd64.whl", hash = "sha256:ae76c22bde5cbb6bfd211ec343ded2163bba7883c7bc77f6b756a1049436fbb9", size = 1351070, upload-time = "2023-12-22T23:09:32.762Z" },
-    { url = "https://files.pythonhosted.org/packages/7b/14/4da7b12a9abc43a601c215cb5a3d176734578da109f0dbf0a832ed78be09/black-23.12.1-py3-none-any.whl", hash = "sha256:78baad24af0f033958cad29731e27363183e140962595def56423e626f4bee3e", size = 194363, upload-time = "2023-12-22T23:06:14.278Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/c6/1d174efa9ff02b22d0124c73fc5f4d4fb006d0d9a081aadc354d05754a13/black-24.3.0-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:2818cf72dfd5d289e48f37ccfa08b460bf469e67fb7c4abb07edc2e9f16fb63f", size = 1600822, upload-time = "2024-03-15T19:45:20.337Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/ed/704731afffe460b8ff0672623b40fce9fe569f2ee617c15857e4d4440a3a/black-24.3.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:4acf672def7eb1725f41f38bf6bf425c8237248bb0804faa3965c036f7672d11", size = 1429987, upload-time = "2024-03-15T19:45:00.637Z" },
+    { url = "https://files.pythonhosted.org/packages/a8/05/8dd038e30caadab7120176d4bc109b7ca2f4457f12eef746b0560a583458/black-24.3.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c7ed6668cbbfcd231fa0dc1b137d3e40c04c7f786e626b405c62bcd5db5857e4", size = 1755319, upload-time = "2024-03-15T19:38:24.009Z" },
+    { url = "https://files.pythonhosted.org/packages/71/9d/e5fa1ff4ef1940be15a64883c0bb8d2fcf626efec996eab4ae5a8c691d2c/black-24.3.0-cp312-cp312-win_amd64.whl", hash = "sha256:56f52cfbd3dabe2798d76dbdd299faa046a901041faf2cf33288bc4e6dae57b5", size = 1385180, upload-time = "2024-03-15T19:39:37.014Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/ea/31770a7e49f3eedfd8cd7b35e78b3a3aaad860400f8673994bc988318135/black-24.3.0-py3-none-any.whl", hash = "sha256:41622020d7120e01d377f74249e677039d20e6344ff5851de8a10f11f513bf93", size = 201493, upload-time = "2024-03-15T19:35:41.572Z" },
 ]
 
 [[package]]
@@ -516,7 +516,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "black", specifier = "~=23.0" },
+    { name = "black", specifier = ">=23,<25" },
     { name = "mypy", specifier = "~=1.7" },
     { name = "pre-commit", specifier = "~=3.0" },
     { name = "pytest", specifier = "~=8.4" },
