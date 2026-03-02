@@ -7,13 +7,7 @@ from datetime import datetime
 from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
-
-# For handling different mcp version
-try:
-    # mcp version higher than 1.23.0 we are able to import TransportSecuritySettings
-    from mcp.server.transport_security import TransportSecuritySettings
-except ImportError:
-    TransportSecuritySettings = None
+from mcp.server.transport_security import TransportSecuritySettings
 
 from spark_history_mcp.api.emr_persistent_ui_client import EMRPersistentUIClient
 from spark_history_mcp.api.spark_client import SparkRestClient
