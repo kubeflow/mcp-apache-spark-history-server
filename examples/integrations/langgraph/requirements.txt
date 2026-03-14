@@ -4,7 +4,7 @@
 # Core LangChain and LangGraph - compatible versions
 langchain-core==1.2.11
 langchain-ollama==0.2.2
-langgraph==0.2.60
+langgraph==1.0.10rc1
 
 # MCP Integration
 langchain-mcp-adapters==0.1.1
