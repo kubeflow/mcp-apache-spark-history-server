@@ -18,6 +18,7 @@ from spark_history_mcp.tools.tools import (
     get_stage,
     get_stage_task_summary,
     list_applications,
+    list_executors,
     list_jobs,
     list_slowest_jobs,
     list_slowest_sql_queries,
@@ -506,7 +507,7 @@ class TestTools(unittest.TestCase):
         # Verify results
         self.assertEqual(result, mock_jobs)
         mock_client.list_jobs.assert_called_once_with(
-            app_id="spark-app-123", status=None
+            app_id="spark-app-123", status=None, offset=0, length=None
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
@@ -581,7 +582,11 @@ class TestTools(unittest.TestCase):
         # Verify results
         self.assertEqual(result, mock_stages)
         mock_client.list_stages.assert_called_once_with(
-            app_id="spark-app-123", status=None, with_summaries=False
+            app_id="spark-app-123",
+            status=None,
+            with_summaries=False,
+            offset=0,
+            length=None,
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
@@ -623,7 +628,11 @@ class TestTools(unittest.TestCase):
 
         # Verify summaries parameter is passed
         mock_client.list_stages.assert_called_once_with(
-            app_id="spark-app-123", status=None, with_summaries=True
+            app_id="spark-app-123",
+            status=None,
+            with_summaries=True,
+            offset=0,
+            length=None,
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
@@ -1219,3 +1228,90 @@ class TestTools(unittest.TestCase):
             get_sql_execution("spark-app-123", execution_id=999)
 
         self.assertIn("999", str(ctx.exception))
+
+    # Tests for pagination support
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_jobs_with_pagination(self, mock_get_client):
+        """Test list_jobs forwards offset and length to client"""
+        mock_client = MagicMock()
+        mock_client.list_jobs.return_value = [MagicMock(spec=JobData)]
+        mock_get_client.return_value = mock_client
+
+        list_jobs("spark-app-123", offset=5, length=10)
+
+        mock_client.list_jobs.assert_called_once_with(
+            app_id="spark-app-123", status=None, offset=5, length=10
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_jobs_pagination_defaults(self, mock_get_client):
+        """Test list_jobs uses correct defaults (offset=0, length=None)"""
+        mock_client = MagicMock()
+        mock_client.list_jobs.return_value = []
+        mock_get_client.return_value = mock_client
+
+        list_jobs("spark-app-123")
+
+        mock_client.list_jobs.assert_called_once_with(
+            app_id="spark-app-123", status=None, offset=0, length=None
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_jobs_negative_offset_raises(self, mock_get_client):
+        """Test list_jobs rejects negative offset"""
+        mock_get_client.return_value = MagicMock()
+
+        with self.assertRaises(ValueError):
+            list_jobs("spark-app-123", offset=-1)
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_stages_with_pagination(self, mock_get_client):
+        """Test list_stages forwards offset and length to client"""
+        mock_client = MagicMock()
+        mock_client.list_stages.return_value = [MagicMock(spec=StageData)]
+        mock_get_client.return_value = mock_client
+
+        list_stages("spark-app-123", offset=2, length=5)
+
+        mock_client.list_stages.assert_called_once_with(
+            app_id="spark-app-123",
+            status=None,
+            with_summaries=False,
+            offset=2,
+            length=5,
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_stages_negative_length_raises(self, mock_get_client):
+        """Test list_stages rejects negative length"""
+        mock_get_client.return_value = MagicMock()
+
+        with self.assertRaises(ValueError):
+            list_stages("spark-app-123", length=-1)
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_executors_with_pagination(self, mock_get_client):
+        """Test list_executors forwards offset and length to client"""
+        mock_client = MagicMock()
+        mock_client.list_executors.return_value = []
+        mock_get_client.return_value = mock_client
+
+        list_executors("spark-app-123", offset=3, length=10)
+
+        mock_client.list_executors.assert_called_once_with(
+            app_id="spark-app-123", offset=3, length=10
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_executors_inactive_with_pagination(self, mock_get_client):
+        """Test list_executors with include_inactive uses list_all_executors"""
+        mock_client = MagicMock()
+        mock_client.list_all_executors.return_value = []
+        mock_get_client.return_value = mock_client
+
+        list_executors("spark-app-123", include_inactive=True, offset=0, length=20)
+
+        mock_client.list_all_executors.assert_called_once_with(
+            app_id="spark-app-123", offset=0, length=20
+        )
