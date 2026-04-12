@@ -14,6 +14,7 @@ from spark_history_mcp.models.spark_types import (
 from spark_history_mcp.tools.tools import (
     get_application,
     get_client_or_default,
+    get_sql_execution,
     get_stage,
     get_stage_task_summary,
     list_applications,
@@ -1158,3 +1159,63 @@ class TestTools(unittest.TestCase):
         # Verify plan description is NOT included because server config is False
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].plan_description, "")
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_sql_execution_success(self, mock_get_client):
+        """Test get_sql_execution returns execution details"""
+        mock_client = MagicMock()
+        expected = MagicMock(spec=ExecutionData)
+        expected.id = 42
+        expected.status = "COMPLETED"
+        expected.duration = 12345
+        expected.description = "SELECT * FROM table"
+        mock_client.get_sql_execution.return_value = expected
+        mock_get_client.return_value = mock_client
+
+        result = get_sql_execution("spark-app-123", execution_id=42)
+
+        self.assertEqual(result.id, 42)
+        self.assertEqual(result.status, "COMPLETED")
+        mock_client.get_sql_execution.assert_called_once_with(
+            app_id="spark-app-123",
+            execution_id=42,
+            attempt_id=None,
+            details=True,
+            plan_description=True,
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_sql_execution_with_attempt_id(self, mock_get_client):
+        """Test get_sql_execution with attempt_id"""
+        mock_client = MagicMock()
+        expected = MagicMock(spec=ExecutionData)
+        expected.id = 10
+        mock_client.get_sql_execution.return_value = expected
+        mock_get_client.return_value = mock_client
+
+        result = get_sql_execution(
+            "spark-app-123", execution_id=10, attempt_id="1", details=False
+        )
+
+        self.assertEqual(result.id, 10)
+        mock_client.get_sql_execution.assert_called_once_with(
+            app_id="spark-app-123",
+            execution_id=10,
+            attempt_id="1",
+            details=False,
+            plan_description=True,
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_sql_execution_not_found(self, mock_get_client):
+        """Test get_sql_execution raises when execution not found"""
+        mock_client = MagicMock()
+        mock_client.get_sql_execution.side_effect = Exception(
+            "SQL execution 999 not found"
+        )
+        mock_get_client.return_value = mock_client
+
+        with self.assertRaises(Exception) as ctx:
+            get_sql_execution("spark-app-123", execution_id=999)
+
+        self.assertIn("999", str(ctx.exception))
