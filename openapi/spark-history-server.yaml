@@ -1,0 +1,1955 @@
+openapi: 3.0.3
+info:
+  title: Apache Spark History Server REST API
+  description: REST API for the Apache Spark History Server, providing access to application history, jobs, stages, executors,
+    storage, SQL, streaming, and environment information.
+  version: 1.0.0
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+servers:
+- url: http://localhost:18080/api/v1
+  description: Local Spark History Server
+paths:
+  /version:
+    get:
+      operationId: getVersion
+      summary: Get Spark version
+      responses:
+        '200':
+          description: Spark version
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Version'
+  /applications:
+    get:
+      operationId: listApplications
+      summary: List all applications
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - completed
+          - running
+      - name: minDate
+        in: query
+        schema:
+          type: string
+      - name: maxDate
+        in: query
+        schema:
+          type: string
+      - name: minEndDate
+        in: query
+        schema:
+          type: string
+      - name: maxEndDate
+        in: query
+        schema:
+          type: string
+      - name: limit
+        in: query
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: List of applications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Application'
+  /applications/{appId}/jobs:
+    get:
+      operationId: listJobs
+      summary: List all jobs for an application
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - running
+          - succeeded
+          - failed
+          - unknown
+      responses:
+        '200':
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+  /applications/{appId}/jobs/{jobId}:
+    get:
+      operationId: getJob
+      summary: Get details for a specific job
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /applications/{appId}/stages:
+    get:
+      operationId: listStages
+      summary: List all stages for an application
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - active
+          - complete
+          - pending
+          - failed
+      - name: details
+        in: query
+        schema:
+          type: boolean
+      - name: taskStatus
+        in: query
+        schema:
+          type: string
+          enum:
+          - RUNNING
+          - SUCCESS
+          - FAILED
+          - KILLED
+          - PENDING
+      - name: withSummaries
+        in: query
+        schema:
+          type: boolean
+      - name: quantiles
+        in: query
+        schema:
+          type: string
+        example: 0.0,0.25,0.5,0.75,1.0
+      responses:
+        '200':
+          description: List of stages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StageData'
+  /applications/{appId}/stages/{stageId}:
+    get:
+      operationId: listStageAttempts
+      summary: List all attempts for a given stage
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - $ref: '#/components/parameters/stageId'
+      - name: details
+        in: query
+        schema:
+          type: boolean
+      - name: taskStatus
+        in: query
+        schema:
+          type: string
+          enum:
+          - RUNNING
+          - SUCCESS
+          - FAILED
+          - KILLED
+          - PENDING
+      - name: withSummaries
+        in: query
+        schema:
+          type: boolean
+      - name: quantiles
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: List of stage attempts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StageData'
+  /applications/{appId}/stages/{stageId}/{stageAttemptId}:
+    get:
+      operationId: getStageAttempt
+      summary: Get details for a specific stage attempt
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - $ref: '#/components/parameters/stageId'
+      - $ref: '#/components/parameters/stageAttemptId'
+      - name: details
+        in: query
+        schema:
+          type: boolean
+      - name: taskStatus
+        in: query
+        schema:
+          type: string
+          enum:
+          - RUNNING
+          - SUCCESS
+          - FAILED
+          - KILLED
+          - PENDING
+      - name: withSummaries
+        in: query
+        schema:
+          type: boolean
+      - name: quantiles
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Stage attempt details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageData'
+  /applications/{appId}/stages/{stageId}/{stageAttemptId}/taskSummary:
+    get:
+      operationId: getTaskSummary
+      summary: Summary metrics of all tasks in a stage attempt
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - $ref: '#/components/parameters/stageId'
+      - $ref: '#/components/parameters/stageAttemptId'
+      - name: quantiles
+        in: query
+        schema:
+          type: string
+        example: 0.01,0.5,0.99
+      responses:
+        '200':
+          description: Task metrics summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskMetricsSummary'
+  /applications/{appId}/stages/{stageId}/{stageAttemptId}/taskList:
+    get:
+      operationId: listTasks
+      summary: List tasks for a stage attempt
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - $ref: '#/components/parameters/stageId'
+      - $ref: '#/components/parameters/stageAttemptId'
+      - name: offset
+        in: query
+        schema:
+          type: integer
+      - name: length
+        in: query
+        schema:
+          type: integer
+      - name: sortBy
+        in: query
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - running
+          - success
+          - killed
+          - failed
+          - unknown
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+  /applications/{appId}/executors:
+    get:
+      operationId: listActiveExecutors
+      summary: List all active executors
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      responses:
+        '200':
+          description: List of active executors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Executor'
+  /applications/{appId}/executors/{executorId}/threads:
+    get:
+      operationId: getExecutorThreads
+      summary: Stack traces of all threads in an active executor (not available via history server)
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: executorId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Thread stack traces
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+        '503':
+          description: Not available via history server
+  /applications/{appId}/allexecutors:
+    get:
+      operationId: listAllExecutors
+      summary: List all executors (active and dead)
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      responses:
+        '200':
+          description: List of all executors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Executor'
+  /applications/{appId}/storage/rdd:
+    get:
+      operationId: listStorageRDDs
+      summary: List stored RDDs
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      responses:
+        '200':
+          description: List of stored RDDs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RDDStorageInfo'
+  /applications/{appId}/storage/rdd/{rddId}:
+    get:
+      operationId: getStorageRDD
+      summary: Get storage details for a specific RDD
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: rddId
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: RDD storage details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RDDStorageInfo'
+        '404':
+          description: RDD not found
+  /applications/{baseAppId}/logs:
+    get:
+      operationId: downloadLogs
+      summary: Download event logs for all attempts as a zip file
+      parameters:
+      - name: baseAppId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Zip file containing event logs
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+  /applications/{baseAppId}/{attemptId}/logs:
+    get:
+      operationId: downloadAttemptLogs
+      summary: Download event logs for a specific attempt as a zip file
+      parameters:
+      - name: baseAppId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Zip file containing event logs
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+  /applications/{appId}/streaming/statistics:
+    get:
+      operationId: getStreamingStatistics
+      summary: Get streaming context statistics
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      responses:
+        '200':
+          description: Streaming statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamingStatistics'
+  /applications/{appId}/streaming/receivers:
+    get:
+      operationId: listStreamingReceivers
+      summary: List all streaming receivers
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      responses:
+        '200':
+          description: List of streaming receivers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StreamingReceiver'
+  /applications/{appId}/streaming/receivers/{streamId}:
+    get:
+      operationId: getStreamingReceiver
+      summary: Get details of a specific streaming receiver
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: streamId
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Streaming receiver details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamingReceiver'
+  /applications/{appId}/streaming/batches:
+    get:
+      operationId: listStreamingBatches
+      summary: List all retained batches
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      responses:
+        '200':
+          description: List of streaming batches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StreamingBatch'
+  /applications/{appId}/streaming/batches/{batchId}:
+    get:
+      operationId: getStreamingBatch
+      summary: Get details of a specific batch
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Batch details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamingBatch'
+  /applications/{appId}/streaming/batches/{batchId}/operations:
+    get:
+      operationId: listStreamingBatchOperations
+      summary: List all output operations of a batch
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: List of output operations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StreamingOutputOperation'
+  /applications/{appId}/streaming/batches/{batchId}/operations/{outputOpId}:
+    get:
+      operationId: getStreamingBatchOperation
+      summary: Get details of a specific output operation
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: outputOpId
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Output operation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamingOutputOperation'
+  /applications/{appId}/sql:
+    get:
+      operationId: listSQLExecutions
+      summary: List all SQL query executions
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: details
+        in: query
+        schema:
+          type: boolean
+          default: true
+      - name: planDescription
+        in: query
+        schema:
+          type: boolean
+          default: true
+      - name: offset
+        in: query
+        schema:
+          type: integer
+      - name: length
+        in: query
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: List of SQL executions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SQLExecution'
+  /applications/{appId}/sql/{executionId}:
+    get:
+      operationId: getSQLExecution
+      summary: Get details for a specific SQL execution
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: executionId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: details
+        in: query
+        schema:
+          type: boolean
+          default: true
+      - name: planDescription
+        in: query
+        schema:
+          type: boolean
+          default: true
+      responses:
+        '200':
+          description: SQL execution details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SQLExecution'
+  /applications/{appId}/environment:
+    get:
+      operationId: getEnvironment
+      summary: Get environment details
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      responses:
+        '200':
+          description: Environment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Environment'
+components:
+  parameters:
+    appId:
+      name: appId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Application ID. On YARN cluster mode this is {base-app-id}/{attempt-id}.
+    stageId:
+      name: stageId
+      in: path
+      required: true
+      schema:
+        type: integer
+    stageAttemptId:
+      name: stageAttemptId
+      in: path
+      required: true
+      schema:
+        type: integer
+  schemas:
+    Version:
+      type: object
+      properties:
+        spark:
+          type: string
+      additionalProperties: true
+    Application:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        coresGranted:
+          type: integer
+        maxCores:
+          type: integer
+        coresPerExecutor:
+          type: integer
+        memoryPerExecutorMB:
+          type: integer
+        attempts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationAttempt'
+      additionalProperties: true
+    ApplicationAttempt:
+      type: object
+      properties:
+        attemptId:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        lastUpdated:
+          type: string
+        duration:
+          type: integer
+          format: int64
+        sparkUser:
+          type: string
+        completed:
+          type: boolean
+        appSparkVersion:
+          type: string
+        startTimeEpoch:
+          type: integer
+          format: int64
+        endTimeEpoch:
+          type: integer
+          format: int64
+        lastUpdatedEpoch:
+          type: integer
+          format: int64
+      additionalProperties: true
+    Job:
+      type: object
+      properties:
+        jobId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        submissionTime:
+          type: string
+        completionTime:
+          type: string
+        stageIds:
+          type: array
+          items:
+            type: integer
+        jobGroup:
+          type: string
+        jobTags:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum:
+          - RUNNING
+          - SUCCEEDED
+          - FAILED
+          - UNKNOWN
+        numTasks:
+          type: integer
+        numActiveTasks:
+          type: integer
+        numCompletedTasks:
+          type: integer
+        numSkippedTasks:
+          type: integer
+        numFailedTasks:
+          type: integer
+        numKilledTasks:
+          type: integer
+        numCompletedIndices:
+          type: integer
+        numActiveStages:
+          type: integer
+        numCompletedStages:
+          type: integer
+        numSkippedStages:
+          type: integer
+        numFailedStages:
+          type: integer
+        killedTasksSummary:
+          type: object
+          additionalProperties:
+            type: integer
+      additionalProperties: true
+    StageData:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+          - ACTIVE
+          - COMPLETE
+          - PENDING
+          - FAILED
+          - SKIPPED
+        stageId:
+          type: integer
+        attemptId:
+          type: integer
+        numTasks:
+          type: integer
+        numActiveTasks:
+          type: integer
+        numCompleteTasks:
+          type: integer
+        numFailedTasks:
+          type: integer
+        numKilledTasks:
+          type: integer
+        numCompletedIndices:
+          type: integer
+        submissionTime:
+          type: string
+        firstTaskLaunchedTime:
+          type: string
+        completionTime:
+          type: string
+        failureReason:
+          type: string
+        executorDeserializeTime:
+          type: integer
+          format: int64
+        executorDeserializeCpuTime:
+          type: integer
+          format: int64
+        executorRunTime:
+          type: integer
+          format: int64
+        executorCpuTime:
+          type: integer
+          format: int64
+        resultSize:
+          type: integer
+          format: int64
+        jvmGcTime:
+          type: integer
+          format: int64
+        resultSerializationTime:
+          type: integer
+          format: int64
+        memoryBytesSpilled:
+          type: integer
+          format: int64
+        diskBytesSpilled:
+          type: integer
+          format: int64
+        peakExecutionMemory:
+          type: integer
+          format: int64
+        inputBytes:
+          type: integer
+          format: int64
+        inputRecords:
+          type: integer
+          format: int64
+        outputBytes:
+          type: integer
+          format: int64
+        outputRecords:
+          type: integer
+          format: int64
+        shuffleRemoteBlocksFetched:
+          type: integer
+          format: int64
+        shuffleLocalBlocksFetched:
+          type: integer
+          format: int64
+        shuffleFetchWaitTime:
+          type: integer
+          format: int64
+        shuffleRemoteBytesRead:
+          type: integer
+          format: int64
+        shuffleRemoteBytesReadToDisk:
+          type: integer
+          format: int64
+        shuffleLocalBytesRead:
+          type: integer
+          format: int64
+        shuffleReadBytes:
+          type: integer
+          format: int64
+        shuffleReadRecords:
+          type: integer
+          format: int64
+        shuffleCorruptMergedBlockChunks:
+          type: integer
+          format: int64
+        shuffleMergedFetchFallbackCount:
+          type: integer
+          format: int64
+        shuffleMergedRemoteBlocksFetched:
+          type: integer
+          format: int64
+        shuffleMergedLocalBlocksFetched:
+          type: integer
+          format: int64
+        shuffleMergedRemoteChunksFetched:
+          type: integer
+          format: int64
+        shuffleMergedLocalChunksFetched:
+          type: integer
+          format: int64
+        shuffleMergedRemoteBytesRead:
+          type: integer
+          format: int64
+        shuffleMergedLocalBytesRead:
+          type: integer
+          format: int64
+        shuffleRemoteReqsDuration:
+          type: integer
+          format: int64
+        shuffleMergedRemoteReqsDuration:
+          type: integer
+          format: int64
+        shuffleWriteBytes:
+          type: integer
+          format: int64
+        shuffleWriteTime:
+          type: integer
+          format: int64
+        shuffleWriteRecords:
+          type: integer
+          format: int64
+        name:
+          type: string
+        description:
+          type: string
+        details:
+          type: string
+        schedulingPool:
+          type: string
+        rddIds:
+          type: array
+          items:
+            type: integer
+        accumulatorUpdates:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccumulatorUpdate'
+        tasks:
+          type: object
+          description: Map of task ID to task data. Present when details=true.
+          additionalProperties:
+            $ref: '#/components/schemas/Task'
+        executorSummary:
+          type: object
+          description: Map of executor ID to executor stage summary.
+          additionalProperties:
+            $ref: '#/components/schemas/ExecutorStageSummary'
+        speculationSummary:
+          $ref: '#/components/schemas/SpeculationStageSummary'
+        killedTasksSummary:
+          type: object
+          additionalProperties:
+            type: integer
+        resourceProfileId:
+          type: integer
+        peakExecutorMetrics:
+          $ref: '#/components/schemas/PeakMemoryMetrics'
+        taskMetricsDistributions:
+          $ref: '#/components/schemas/TaskMetricsSummary'
+        executorMetricsDistributions:
+          $ref: '#/components/schemas/ExecutorMetricsDistributions'
+        isShufflePushEnabled:
+          type: boolean
+        shuffleMergersCount:
+          type: integer
+      additionalProperties: true
+    AccumulatorUpdate:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        update:
+          type: string
+        value:
+          type: string
+      additionalProperties: true
+    SpeculationStageSummary:
+      type: object
+      properties:
+        numTasks:
+          type: integer
+        numActiveTasks:
+          type: integer
+        numCompletedTasks:
+          type: integer
+        numFailedTasks:
+          type: integer
+        numKilledTasks:
+          type: integer
+      additionalProperties: true
+    Task:
+      type: object
+      properties:
+        taskId:
+          type: integer
+          format: int64
+        index:
+          type: integer
+        attempt:
+          type: integer
+        partitionId:
+          type: integer
+        launchTime:
+          type: string
+        resultFetchStart:
+          type: string
+        duration:
+          type: integer
+          format: int64
+        executorId:
+          type: string
+        host:
+          type: string
+        status:
+          type: string
+        taskLocality:
+          type: string
+        speculative:
+          type: boolean
+        accumulatorUpdates:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccumulatorUpdate'
+        errorMessage:
+          type: string
+        taskMetrics:
+          $ref: '#/components/schemas/TaskMetrics'
+        executorLogs:
+          type: object
+          additionalProperties:
+            type: string
+        schedulerDelay:
+          type: integer
+          format: int64
+        gettingResultTime:
+          type: integer
+          format: int64
+      additionalProperties: true
+    TaskMetrics:
+      type: object
+      properties:
+        executorDeserializeTime:
+          type: integer
+          format: int64
+        executorDeserializeCpuTime:
+          type: integer
+          format: int64
+        executorRunTime:
+          type: integer
+          format: int64
+        executorCpuTime:
+          type: integer
+          format: int64
+        resultSize:
+          type: integer
+          format: int64
+        jvmGcTime:
+          type: integer
+          format: int64
+        resultSerializationTime:
+          type: integer
+          format: int64
+        memoryBytesSpilled:
+          type: integer
+          format: int64
+        diskBytesSpilled:
+          type: integer
+          format: int64
+        peakExecutionMemory:
+          type: integer
+          format: int64
+        inputMetrics:
+          $ref: '#/components/schemas/InputMetrics'
+        outputMetrics:
+          $ref: '#/components/schemas/OutputMetrics'
+        shuffleReadMetrics:
+          $ref: '#/components/schemas/ShuffleReadMetrics'
+        shuffleWriteMetrics:
+          $ref: '#/components/schemas/ShuffleWriteMetrics'
+      additionalProperties: true
+    InputMetrics:
+      type: object
+      properties:
+        bytesRead:
+          type: integer
+          format: int64
+        recordsRead:
+          type: integer
+          format: int64
+      additionalProperties: true
+    OutputMetrics:
+      type: object
+      properties:
+        bytesWritten:
+          type: integer
+          format: int64
+        recordsWritten:
+          type: integer
+          format: int64
+      additionalProperties: true
+    ShuffleReadMetrics:
+      type: object
+      properties:
+        remoteBlocksFetched:
+          type: integer
+          format: int64
+        localBlocksFetched:
+          type: integer
+          format: int64
+        fetchWaitTime:
+          type: integer
+          format: int64
+        remoteBytesRead:
+          type: integer
+          format: int64
+        remoteBytesReadToDisk:
+          type: integer
+          format: int64
+        localBytesRead:
+          type: integer
+          format: int64
+        recordsRead:
+          type: integer
+          format: int64
+        remoteReqsDuration:
+          type: integer
+          format: int64
+        shufflePushReadMetrics:
+          $ref: '#/components/schemas/ShufflePushReadMetrics'
+      additionalProperties: true
+    ShufflePushReadMetrics:
+      type: object
+      properties:
+        corruptMergedBlockChunks:
+          type: integer
+          format: int64
+        mergedFetchFallbackCount:
+          type: integer
+          format: int64
+        remoteMergedBlocksFetched:
+          type: integer
+          format: int64
+        localMergedBlocksFetched:
+          type: integer
+          format: int64
+        remoteMergedChunksFetched:
+          type: integer
+          format: int64
+        localMergedChunksFetched:
+          type: integer
+          format: int64
+        remoteMergedBytesRead:
+          type: integer
+          format: int64
+        localMergedBytesRead:
+          type: integer
+          format: int64
+        remoteMergedReqsDuration:
+          type: integer
+          format: int64
+      additionalProperties: true
+    ShuffleWriteMetrics:
+      type: object
+      properties:
+        bytesWritten:
+          type: integer
+          format: int64
+        writeTime:
+          type: integer
+          format: int64
+        recordsWritten:
+          type: integer
+          format: int64
+      additionalProperties: true
+    Executor:
+      type: object
+      properties:
+        id:
+          type: string
+        hostPort:
+          type: string
+        isActive:
+          type: boolean
+        rddBlocks:
+          type: integer
+        memoryUsed:
+          type: integer
+          format: int64
+        diskUsed:
+          type: integer
+          format: int64
+        totalCores:
+          type: integer
+        maxTasks:
+          type: integer
+        activeTasks:
+          type: integer
+        failedTasks:
+          type: integer
+        completedTasks:
+          type: integer
+        totalTasks:
+          type: integer
+        totalDuration:
+          type: integer
+          format: int64
+        totalGCTime:
+          type: integer
+          format: int64
+        totalInputBytes:
+          type: integer
+          format: int64
+        totalShuffleRead:
+          type: integer
+          format: int64
+        totalShuffleWrite:
+          type: integer
+          format: int64
+        isBlacklisted:
+          type: boolean
+        maxMemory:
+          type: integer
+          format: int64
+        addTime:
+          type: string
+        removeTime:
+          type: string
+        removeReason:
+          type: string
+        executorLogs:
+          type: object
+          additionalProperties:
+            type: string
+        memoryMetrics:
+          $ref: '#/components/schemas/MemoryMetrics'
+        blacklistedInStages:
+          type: array
+          items:
+            type: integer
+        peakMemoryMetrics:
+          $ref: '#/components/schemas/PeakMemoryMetrics'
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+        resources:
+          type: object
+          additionalProperties:
+            type: object
+        resourceProfileId:
+          type: integer
+        isExcluded:
+          type: boolean
+        excludedInStages:
+          type: array
+          items:
+            type: integer
+      additionalProperties: true
+    MemoryMetrics:
+      type: object
+      properties:
+        usedOnHeapStorageMemory:
+          type: integer
+          format: int64
+        usedOffHeapStorageMemory:
+          type: integer
+          format: int64
+        totalOnHeapStorageMemory:
+          type: integer
+          format: int64
+        totalOffHeapStorageMemory:
+          type: integer
+          format: int64
+      additionalProperties: true
+    PeakMemoryMetrics:
+      type: object
+      properties:
+        JVMHeapMemory:
+          type: integer
+          format: int64
+        JVMOffHeapMemory:
+          type: integer
+          format: int64
+        OnHeapExecutionMemory:
+          type: integer
+          format: int64
+        OffHeapExecutionMemory:
+          type: integer
+          format: int64
+        OnHeapStorageMemory:
+          type: integer
+          format: int64
+        OffHeapStorageMemory:
+          type: integer
+          format: int64
+        OnHeapUnifiedMemory:
+          type: integer
+          format: int64
+        OffHeapUnifiedMemory:
+          type: integer
+          format: int64
+        DirectPoolMemory:
+          type: integer
+          format: int64
+        MappedPoolMemory:
+          type: integer
+          format: int64
+        ProcessTreeJVMVMemory:
+          type: integer
+          format: int64
+        ProcessTreeJVMRSSMemory:
+          type: integer
+          format: int64
+        ProcessTreePythonVMemory:
+          type: integer
+          format: int64
+        ProcessTreePythonRSSMemory:
+          type: integer
+          format: int64
+        ProcessTreeOtherVMemory:
+          type: integer
+          format: int64
+        ProcessTreeOtherRSSMemory:
+          type: integer
+          format: int64
+        MinorGCCount:
+          type: integer
+          format: int64
+        MinorGCTime:
+          type: integer
+          format: int64
+        MajorGCCount:
+          type: integer
+          format: int64
+        MajorGCTime:
+          type: integer
+          format: int64
+        TotalGCTime:
+          type: integer
+          format: int64
+      additionalProperties: true
+    ExecutorStageSummary:
+      type: object
+      properties:
+        taskTime:
+          type: integer
+          format: int64
+        failedTasks:
+          type: integer
+        succeededTasks:
+          type: integer
+        killedTasks:
+          type: integer
+        inputBytes:
+          type: integer
+          format: int64
+        inputRecords:
+          type: integer
+          format: int64
+        outputBytes:
+          type: integer
+          format: int64
+        outputRecords:
+          type: integer
+          format: int64
+        shuffleRead:
+          type: integer
+          format: int64
+        shuffleReadRecords:
+          type: integer
+          format: int64
+        shuffleWrite:
+          type: integer
+          format: int64
+        shuffleWriteRecords:
+          type: integer
+          format: int64
+        memoryBytesSpilled:
+          type: integer
+          format: int64
+        diskBytesSpilled:
+          type: integer
+          format: int64
+        isBlacklistedForStage:
+          type: boolean
+        peakMemoryMetrics:
+          $ref: '#/components/schemas/PeakMemoryMetrics'
+        isExcludedForStage:
+          type: boolean
+      additionalProperties: true
+    TaskMetricsSummary:
+      type: object
+      description: Each metric field contains an array of values corresponding to the requested quantiles.
+      properties:
+        quantiles:
+          type: array
+          items:
+            type: number
+        duration:
+          type: array
+          items:
+            type: number
+        executorDeserializeTime:
+          type: array
+          items:
+            type: number
+        executorDeserializeCpuTime:
+          type: array
+          items:
+            type: number
+        executorRunTime:
+          type: array
+          items:
+            type: number
+        executorCpuTime:
+          type: array
+          items:
+            type: number
+        resultSize:
+          type: array
+          items:
+            type: number
+        jvmGcTime:
+          type: array
+          items:
+            type: number
+        resultSerializationTime:
+          type: array
+          items:
+            type: number
+        gettingResultTime:
+          type: array
+          items:
+            type: number
+        schedulerDelay:
+          type: array
+          items:
+            type: number
+        peakExecutionMemory:
+          type: array
+          items:
+            type: number
+        memoryBytesSpilled:
+          type: array
+          items:
+            type: number
+        diskBytesSpilled:
+          type: array
+          items:
+            type: number
+        inputMetrics:
+          type: object
+          properties:
+            bytesRead:
+              type: array
+              items:
+                type: number
+            recordsRead:
+              type: array
+              items:
+                type: number
+          additionalProperties: true
+        outputMetrics:
+          type: object
+          properties:
+            bytesWritten:
+              type: array
+              items:
+                type: number
+            recordsWritten:
+              type: array
+              items:
+                type: number
+          additionalProperties: true
+        shuffleReadMetrics:
+          type: object
+          properties:
+            readBytes:
+              type: array
+              items:
+                type: number
+            readRecords:
+              type: array
+              items:
+                type: number
+            remoteBlocksFetched:
+              type: array
+              items:
+                type: number
+            localBlocksFetched:
+              type: array
+              items:
+                type: number
+            fetchWaitTime:
+              type: array
+              items:
+                type: number
+            remoteBytesRead:
+              type: array
+              items:
+                type: number
+            remoteBytesReadToDisk:
+              type: array
+              items:
+                type: number
+            totalBlocksFetched:
+              type: array
+              items:
+                type: number
+            remoteReqsDuration:
+              type: array
+              items:
+                type: number
+            shufflePushReadMetricsDist:
+              type: object
+              properties:
+                corruptMergedBlockChunks:
+                  type: array
+                  items:
+                    type: number
+                mergedFetchFallbackCount:
+                  type: array
+                  items:
+                    type: number
+                remoteMergedBlocksFetched:
+                  type: array
+                  items:
+                    type: number
+                localMergedBlocksFetched:
+                  type: array
+                  items:
+                    type: number
+                remoteMergedChunksFetched:
+                  type: array
+                  items:
+                    type: number
+                localMergedChunksFetched:
+                  type: array
+                  items:
+                    type: number
+                remoteMergedBytesRead:
+                  type: array
+                  items:
+                    type: number
+                localMergedBytesRead:
+                  type: array
+                  items:
+                    type: number
+                remoteMergedReqsDuration:
+                  type: array
+                  items:
+                    type: number
+              additionalProperties: true
+          additionalProperties: true
+        shuffleWriteMetrics:
+          type: object
+          properties:
+            writeBytes:
+              type: array
+              items:
+                type: number
+            writeRecords:
+              type: array
+              items:
+                type: number
+            writeTime:
+              type: array
+              items:
+                type: number
+          additionalProperties: true
+      additionalProperties: true
+    ExecutorMetricsDistributions:
+      type: object
+      description: Quantile distributions of executor metrics.
+      properties:
+        quantiles:
+          type: array
+          items:
+            type: number
+        taskTime:
+          type: array
+          items:
+            type: number
+        failedTasks:
+          type: array
+          items:
+            type: number
+        succeededTasks:
+          type: array
+          items:
+            type: number
+        killedTasks:
+          type: array
+          items:
+            type: number
+        inputBytes:
+          type: array
+          items:
+            type: number
+        inputRecords:
+          type: array
+          items:
+            type: number
+        outputBytes:
+          type: array
+          items:
+            type: number
+        outputRecords:
+          type: array
+          items:
+            type: number
+        shuffleRead:
+          type: array
+          items:
+            type: number
+        shuffleReadRecords:
+          type: array
+          items:
+            type: number
+        shuffleWrite:
+          type: array
+          items:
+            type: number
+        shuffleWriteRecords:
+          type: array
+          items:
+            type: number
+        memoryBytesSpilled:
+          type: array
+          items:
+            type: number
+        diskBytesSpilled:
+          type: array
+          items:
+            type: number
+        peakMemoryMetrics:
+          type: object
+          properties:
+            quantiles:
+              type: array
+              items:
+                type: number
+          additionalProperties:
+            type: array
+            items:
+              type: number
+      additionalProperties: true
+    RDDStorageInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        numPartitions:
+          type: integer
+        numCachedPartitions:
+          type: integer
+        storageLevel:
+          type: string
+        memoryUsed:
+          type: integer
+          format: int64
+        diskUsed:
+          type: integer
+          format: int64
+        dataDistribution:
+          type: array
+          items:
+            type: object
+            properties:
+              address:
+                type: string
+              memoryUsed:
+                type: integer
+                format: int64
+              memoryRemaining:
+                type: integer
+                format: int64
+              diskUsed:
+                type: integer
+                format: int64
+              onHeapMemoryUsed:
+                type: integer
+                format: int64
+              offHeapMemoryUsed:
+                type: integer
+                format: int64
+              onHeapMemoryRemaining:
+                type: integer
+                format: int64
+              offHeapMemoryRemaining:
+                type: integer
+                format: int64
+            additionalProperties: true
+        partitions:
+          type: array
+          items:
+            type: object
+            properties:
+              blockName:
+                type: string
+              storageLevel:
+                type: string
+              memoryUsed:
+                type: integer
+                format: int64
+              diskUsed:
+                type: integer
+                format: int64
+              executors:
+                type: array
+                items:
+                  type: string
+            additionalProperties: true
+      additionalProperties: true
+    SQLExecution:
+      type: object
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+          enum:
+          - COMPLETED
+          - RUNNING
+          - FAILED
+        description:
+          type: string
+        planDescription:
+          type: string
+        submissionTime:
+          type: string
+        duration:
+          type: integer
+          format: int64
+        runningJobIds:
+          type: array
+          items:
+            type: integer
+        successJobIds:
+          type: array
+          items:
+            type: integer
+        failedJobIds:
+          type: array
+          items:
+            type: integer
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/SQLPlanNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/SQLPlanEdge'
+      additionalProperties: true
+    SQLPlanNode:
+      type: object
+      properties:
+        nodeId:
+          type: integer
+        nodeName:
+          type: string
+        wholeStageCodegenId:
+          type: integer
+          format: int64
+        metrics:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              value:
+                type: string
+            additionalProperties: true
+      additionalProperties: true
+    SQLPlanEdge:
+      type: object
+      properties:
+        fromId:
+          type: integer
+        toId:
+          type: integer
+      additionalProperties: true
+    Environment:
+      type: object
+      properties:
+        runtime:
+          type: object
+          properties:
+            javaVersion:
+              type: string
+            javaHome:
+              type: string
+            scalaVersion:
+              type: string
+          additionalProperties: true
+        sparkProperties:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        hadoopProperties:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        systemProperties:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        metricsProperties:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        classpathEntries:
+          type: array
+          items:
+            type: array
+            items:
+              type: string
+        resourceProfiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceProfile'
+      additionalProperties: true
+    ResourceProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        executorResources:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              resourceName:
+                type: string
+              amount:
+                type: integer
+                format: int64
+              discoveryScript:
+                type: string
+              vendor:
+                type: string
+            additionalProperties: true
+        taskResources:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              resourceName:
+                type: string
+              amount:
+                type: number
+            additionalProperties: true
+      additionalProperties: true
+    StreamingStatistics:
+      type: object
+      properties:
+        startTime:
+          type: string
+        batchDuration:
+          type: integer
+          format: int64
+        numReceivers:
+          type: integer
+        numActiveReceivers:
+          type: integer
+        numInactiveReceivers:
+          type: integer
+        numTotalCompletedBatches:
+          type: integer
+        numRetainedCompletedBatches:
+          type: integer
+        numActiveBatches:
+          type: integer
+        numProcessedRecords:
+          type: integer
+          format: int64
+        numReceivedRecords:
+          type: integer
+          format: int64
+        avgInputRate:
+          type: number
+        avgSchedulingDelay:
+          type: number
+        avgProcessingTime:
+          type: number
+        avgTotalDelay:
+          type: number
+      additionalProperties: true
+    StreamingReceiver:
+      type: object
+      properties:
+        streamId:
+          type: integer
+        streamName:
+          type: string
+        isActive:
+          type: boolean
+        executorId:
+          type: string
+        executorHost:
+          type: string
+        lastErrorTime:
+          type: string
+        lastErrorMessage:
+          type: string
+        lastError:
+          type: string
+        avgEventRate:
+          type: number
+        eventRates:
+          type: array
+          items:
+            type: array
+            items:
+              type: number
+      additionalProperties: true
+    StreamingBatch:
+      type: object
+      properties:
+        batchId:
+          type: integer
+        batchTime:
+          type: string
+        status:
+          type: string
+        batchDuration:
+          type: integer
+          format: int64
+        inputSize:
+          type: integer
+          format: int64
+        schedulingDelay:
+          type: integer
+          format: int64
+        processingTime:
+          type: integer
+          format: int64
+        totalDelay:
+          type: integer
+          format: int64
+        numActiveOutputOps:
+          type: integer
+        numCompletedOutputOps:
+          type: integer
+        numFailedOutputOps:
+          type: integer
+        numTotalOutputOps:
+          type: integer
+        firstFailureReason:
+          type: string
+      additionalProperties: true
+    StreamingOutputOperation:
+      type: object
+      properties:
+        outputOpId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        startTime:
+          type: string
+        endTime:
+          type: string
+        duration:
+          type: integer
+          format: int64
+        failureReason:
+          type: string
+        jobIds:
+          type: array
+          items:
+            type: integer
+      additionalProperties: true
