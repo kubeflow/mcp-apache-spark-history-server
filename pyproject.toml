@@ -59,7 +59,8 @@ Issues = "https://github.com/kubeflow/mcp-apache-spark-history-server/issues"
 [tool.ruff]
 target-version = "py312"
 line-length = 88
-exclude = ["src/spark_history_mcp/api_client"]
+# ignore generated api clients and cli (written in Go)
+exclude = ["src/spark_history_mcp/api_client", "skills/cli"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "B", "A", "S", "T20"]
