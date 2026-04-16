@@ -273,6 +273,7 @@ temp_events/
 
 # Project specific
 .bin/
+skills/cli/bin/
 kubeconfig.yaml
 
 # OpenAPI Generator metadata
