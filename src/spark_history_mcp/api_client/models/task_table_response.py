@@ -17,26 +17,22 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
+from spark_history_mcp.api_client.models.task import Task
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
-class StreamingOutputOperation(BaseModel):
+class TaskTableResponse(BaseModel):
     """
-    StreamingOutputOperation
+    TaskTableResponse
     """ # noqa: E501
-    output_op_id: Optional[StrictInt] = Field(default=None, alias="outputOpId")
-    name: Optional[StrictStr] = None
-    description: Optional[StrictStr] = None
-    start_time: Optional[StrictStr] = Field(default=None, alias="startTime")
-    end_time: Optional[StrictStr] = Field(default=None, alias="endTime")
-    duration: Optional[StrictInt] = None
-    failure_reason: Optional[StrictStr] = Field(default=None, alias="failureReason")
-    job_ids: Optional[List[StrictInt]] = Field(default=None, alias="jobIds")
+    aa_data: Optional[List[Task]] = Field(default=None, alias="aaData")
+    records_total: Optional[StrictStr] = Field(default=None, alias="recordsTotal")
+    records_filtered: Optional[StrictStr] = Field(default=None, alias="recordsFiltered")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["outputOpId", "name", "description", "startTime", "endTime", "duration", "failureReason", "jobIds"]
+    __properties: ClassVar[List[str]] = ["aaData", "recordsTotal", "recordsFiltered"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -56,7 +52,7 @@ class StreamingOutputOperation(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of StreamingOutputOperation from a JSON string"""
+        """Create an instance of TaskTableResponse from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -79,36 +75,23 @@ class StreamingOutputOperation(BaseModel):
             exclude=excluded_fields,
             exclude_none=True,
         )
+        # override the default output from pydantic by calling `to_dict()` of each item in aa_data (list)
+        _items = []
+        if self.aa_data:
+            for _item_aa_data in self.aa_data:
+                if _item_aa_data:
+                    _items.append(_item_aa_data.to_dict())
+            _dict['aaData'] = _items
         # puts key-value pairs in additional_properties in the top level
         if self.additional_properties is not None:
             for _key, _value in self.additional_properties.items():
                 _dict[_key] = _value
 
-        # set to None if start_time (nullable) is None
-        # and model_fields_set contains the field
-        if self.start_time is None and "start_time" in self.model_fields_set:
-            _dict['startTime'] = None
-
-        # set to None if end_time (nullable) is None
-        # and model_fields_set contains the field
-        if self.end_time is None and "end_time" in self.model_fields_set:
-            _dict['endTime'] = None
-
-        # set to None if duration (nullable) is None
-        # and model_fields_set contains the field
-        if self.duration is None and "duration" in self.model_fields_set:
-            _dict['duration'] = None
-
-        # set to None if failure_reason (nullable) is None
-        # and model_fields_set contains the field
-        if self.failure_reason is None and "failure_reason" in self.model_fields_set:
-            _dict['failureReason'] = None
-
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of StreamingOutputOperation from a dict"""
+        """Create an instance of TaskTableResponse from a dict"""
         if obj is None:
             return None
 
@@ -116,14 +99,9 @@ class StreamingOutputOperation(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "outputOpId": obj.get("outputOpId"),
-            "name": obj.get("name"),
-            "description": obj.get("description"),
-            "startTime": obj.get("startTime"),
-            "endTime": obj.get("endTime"),
-            "duration": obj.get("duration"),
-            "failureReason": obj.get("failureReason"),
-            "jobIds": obj.get("jobIds")
+            "aaData": [Task.from_dict(_item) for _item in obj["aaData"]] if obj.get("aaData") is not None else None,
+            "recordsTotal": obj.get("recordsTotal"),
+            "recordsFiltered": obj.get("recordsFiltered")
         })
         # store additional fields in additional_properties
         for _key in obj.keys():

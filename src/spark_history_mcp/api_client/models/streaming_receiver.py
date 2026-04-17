@@ -86,6 +86,41 @@ class StreamingReceiver(BaseModel):
             for _key, _value in self.additional_properties.items():
                 _dict[_key] = _value
 
+        # set to None if is_active (nullable) is None
+        # and model_fields_set contains the field
+        if self.is_active is None and "is_active" in self.model_fields_set:
+            _dict['isActive'] = None
+
+        # set to None if executor_id (nullable) is None
+        # and model_fields_set contains the field
+        if self.executor_id is None and "executor_id" in self.model_fields_set:
+            _dict['executorId'] = None
+
+        # set to None if executor_host (nullable) is None
+        # and model_fields_set contains the field
+        if self.executor_host is None and "executor_host" in self.model_fields_set:
+            _dict['executorHost'] = None
+
+        # set to None if last_error_time (nullable) is None
+        # and model_fields_set contains the field
+        if self.last_error_time is None and "last_error_time" in self.model_fields_set:
+            _dict['lastErrorTime'] = None
+
+        # set to None if last_error_message (nullable) is None
+        # and model_fields_set contains the field
+        if self.last_error_message is None and "last_error_message" in self.model_fields_set:
+            _dict['lastErrorMessage'] = None
+
+        # set to None if last_error (nullable) is None
+        # and model_fields_set contains the field
+        if self.last_error is None and "last_error" in self.model_fields_set:
+            _dict['lastError'] = None
+
+        # set to None if avg_event_rate (nullable) is None
+        # and model_fields_set contains the field
+        if self.avg_event_rate is None and "avg_event_rate" in self.model_fields_set:
+            _dict['avgEventRate'] = None
+
         return _dict
 
     @classmethod

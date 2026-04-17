@@ -38,9 +38,9 @@ class StreamingStatistics(BaseModel):
     num_processed_records: Optional[StrictInt] = Field(default=None, alias="numProcessedRecords")
     num_received_records: Optional[StrictInt] = Field(default=None, alias="numReceivedRecords")
     avg_input_rate: Optional[Union[StrictFloat, StrictInt]] = Field(default=None, alias="avgInputRate")
-    avg_scheduling_delay: Optional[Union[StrictFloat, StrictInt]] = Field(default=None, alias="avgSchedulingDelay")
-    avg_processing_time: Optional[Union[StrictFloat, StrictInt]] = Field(default=None, alias="avgProcessingTime")
-    avg_total_delay: Optional[Union[StrictFloat, StrictInt]] = Field(default=None, alias="avgTotalDelay")
+    avg_scheduling_delay: Optional[StrictInt] = Field(default=None, alias="avgSchedulingDelay")
+    avg_processing_time: Optional[StrictInt] = Field(default=None, alias="avgProcessingTime")
+    avg_total_delay: Optional[StrictInt] = Field(default=None, alias="avgTotalDelay")
     additional_properties: Dict[str, Any] = {}
     __properties: ClassVar[List[str]] = ["startTime", "batchDuration", "numReceivers", "numActiveReceivers", "numInactiveReceivers", "numTotalCompletedBatches", "numRetainedCompletedBatches", "numActiveBatches", "numProcessedRecords", "numReceivedRecords", "avgInputRate", "avgSchedulingDelay", "avgProcessingTime", "avgTotalDelay"]
 
@@ -89,6 +89,26 @@ class StreamingStatistics(BaseModel):
         if self.additional_properties is not None:
             for _key, _value in self.additional_properties.items():
                 _dict[_key] = _value
+
+        # set to None if avg_input_rate (nullable) is None
+        # and model_fields_set contains the field
+        if self.avg_input_rate is None and "avg_input_rate" in self.model_fields_set:
+            _dict['avgInputRate'] = None
+
+        # set to None if avg_scheduling_delay (nullable) is None
+        # and model_fields_set contains the field
+        if self.avg_scheduling_delay is None and "avg_scheduling_delay" in self.model_fields_set:
+            _dict['avgSchedulingDelay'] = None
+
+        # set to None if avg_processing_time (nullable) is None
+        # and model_fields_set contains the field
+        if self.avg_processing_time is None and "avg_processing_time" in self.model_fields_set:
+            _dict['avgProcessingTime'] = None
+
+        # set to None if avg_total_delay (nullable) is None
+        # and model_fields_set contains the field
+        if self.avg_total_delay is None and "avg_total_delay" in self.model_fields_set:
+            _dict['avgTotalDelay'] = None
 
         return _dict
 

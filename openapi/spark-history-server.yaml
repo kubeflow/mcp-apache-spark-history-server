@@ -63,6 +63,780 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Application'
+  /applications/{appId}:
+    get:
+      operationId: getApplication
+      summary: Get details for a specific application
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      responses:
+        '200':
+          description: Application details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+        '404':
+          description: Application not found
+  /applications/{appId}/{attemptId}:
+    get:
+      operationId: getApplicationAttempt
+      summary: Get details for a specific application attempt
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Application attempt details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationAttempt'
+        '404':
+          description: Application or attempt not found
+  /applications/{appId}/{attemptId}/jobs:
+    get:
+      operationId: listJobsWithAttempt
+      summary: List all jobs for an application
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - running
+          - succeeded
+          - failed
+          - unknown
+      responses:
+        '200':
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Job'
+  /applications/{appId}/{attemptId}/jobs/{jobId}:
+    get:
+      operationId: getJobWithAttempt
+      summary: Get details for a specific job
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: jobId
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+  /applications/{appId}/{attemptId}/stages:
+    get:
+      operationId: listStagesWithAttempt
+      summary: List all stages for an application
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - active
+          - complete
+          - pending
+          - failed
+      - name: details
+        in: query
+        schema:
+          type: boolean
+      - name: taskStatus
+        in: query
+        schema:
+          type: string
+          enum:
+          - RUNNING
+          - SUCCESS
+          - FAILED
+          - KILLED
+          - PENDING
+      - name: withSummaries
+        in: query
+        schema:
+          type: boolean
+      - name: quantiles
+        in: query
+        schema:
+          type: string
+        example: 0.0,0.25,0.5,0.75,1.0
+      responses:
+        '200':
+          description: List of stages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StageData'
+  /applications/{appId}/{attemptId}/stages/{stageId}:
+    get:
+      operationId: listStageAttemptsWithAttempt
+      summary: List all attempts for a given stage
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/stageId'
+      - name: details
+        in: query
+        schema:
+          type: boolean
+      - name: taskStatus
+        in: query
+        schema:
+          type: string
+          enum:
+          - RUNNING
+          - SUCCESS
+          - FAILED
+          - KILLED
+          - PENDING
+      - name: withSummaries
+        in: query
+        schema:
+          type: boolean
+      - name: quantiles
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: List of stage attempts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StageData'
+  /applications/{appId}/{attemptId}/stages/{stageId}/{stageAttemptId}:
+    get:
+      operationId: getStageAttemptWithAttempt
+      summary: Get details for a specific stage attempt
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/stageId'
+      - $ref: '#/components/parameters/stageAttemptId'
+      - name: details
+        in: query
+        schema:
+          type: boolean
+      - name: taskStatus
+        in: query
+        schema:
+          type: string
+          enum:
+          - RUNNING
+          - SUCCESS
+          - FAILED
+          - KILLED
+          - PENDING
+      - name: withSummaries
+        in: query
+        schema:
+          type: boolean
+      - name: quantiles
+        in: query
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Stage attempt details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StageData'
+  /applications/{appId}/{attemptId}/stages/{stageId}/{stageAttemptId}/taskSummary:
+    get:
+      operationId: getTaskSummaryWithAttempt
+      summary: Summary metrics of all tasks in a stage attempt
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/stageId'
+      - $ref: '#/components/parameters/stageAttemptId'
+      - name: quantiles
+        in: query
+        schema:
+          type: string
+        example: 0.01,0.5,0.99
+      responses:
+        '200':
+          description: Task metrics summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskMetricsSummary'
+  /applications/{appId}/{attemptId}/stages/{stageId}/{stageAttemptId}/taskList:
+    get:
+      operationId: listTasksWithAttempt
+      summary: List tasks for a stage attempt
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/stageId'
+      - $ref: '#/components/parameters/stageAttemptId'
+      - name: offset
+        in: query
+        schema:
+          type: integer
+      - name: length
+        in: query
+        schema:
+          type: integer
+      - name: sortBy
+        in: query
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - running
+          - success
+          - killed
+          - failed
+          - unknown
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+  /applications/{appId}/{attemptId}/stages/{stageId}/{stageAttemptId}/taskTable:
+    get:
+      operationId: getTaskTableWithAttempt
+      summary: Server-side paginated task table for the Spark UI datatables
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - $ref: '#/components/parameters/stageId'
+      - $ref: '#/components/parameters/stageAttemptId'
+      - name: details
+        in: query
+        schema:
+          type: boolean
+          default: true
+      - name: numTasks
+        in: query
+        required: true
+        schema:
+          type: integer
+        description: Total number of tasks in the stage attempt
+      - name: start
+        in: query
+        schema:
+          type: integer
+          default: 0
+        description: Pagination start index
+      - name: length
+        in: query
+        schema:
+          type: integer
+        description: Page length
+      - name: search[value]
+        in: query
+        schema:
+          type: string
+        description: Search filter value
+      - name: columnNameToSort
+        in: query
+        schema:
+          type: string
+          default: Index
+        description: Column name to sort by
+      - name: order[0][dir]
+        in: query
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: asc
+        description: Sort direction
+      responses:
+        '200':
+          description: Paginated task table data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTableResponse'
+  /applications/{appId}/{attemptId}/executors:
+    get:
+      operationId: listActiveExecutorsWithAttempt
+      summary: List all active executors
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: List of active executors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Executor'
+  /applications/{appId}/{attemptId}/executors/{executorId}/threads:
+    get:
+      operationId: getExecutorThreadsWithAttempt
+      summary: Stack traces of all threads in an active executor (not available via history server)
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: executorId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Thread stack traces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ThreadStackTrace'
+        '503':
+          description: Not available via history server
+  /applications/{appId}/{attemptId}/threads:
+    get:
+      operationId: getTaskThreadDumpWithAttempt
+      summary: Get thread dump for a running task (not available via history server)
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: taskId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: executorId
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Task thread stack trace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadStackTrace'
+        '404':
+          description: Task not running on executor
+        '503':
+          description: Not available via history server
+  /applications/{appId}/{attemptId}/allmiscellaneousprocess:
+    get:
+      operationId: listAllMiscellaneousProcessWithAttempt
+      summary: List all miscellaneous processes
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: List of miscellaneous processes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProcessSummary'
+  /applications/{appId}/{attemptId}/allexecutors:
+    get:
+      operationId: listAllExecutorsWithAttempt
+      summary: List all executors (active and dead)
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: List of all executors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Executor'
+  /applications/{appId}/{attemptId}/storage/rdd:
+    get:
+      operationId: listStorageRDDsWithAttempt
+      summary: List stored RDDs
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: List of stored RDDs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RDDStorageInfo'
+  /applications/{appId}/{attemptId}/storage/rdd/{rddId}:
+    get:
+      operationId: getStorageRDDWithAttempt
+      summary: Get storage details for a specific RDD
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: rddId
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: RDD storage details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RDDStorageInfo'
+        '404':
+          description: RDD not found
+  /applications/{appId}/{attemptId}/streaming/statistics:
+    get:
+      operationId: getStreamingStatisticsWithAttempt
+      summary: Get streaming context statistics
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Streaming statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamingStatistics'
+  /applications/{appId}/{attemptId}/streaming/receivers:
+    get:
+      operationId: listStreamingReceiversWithAttempt
+      summary: List all streaming receivers
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: List of streaming receivers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StreamingReceiver'
+  /applications/{appId}/{attemptId}/streaming/receivers/{streamId}:
+    get:
+      operationId: getStreamingReceiverWithAttempt
+      summary: Get details of a specific streaming receiver
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: streamId
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Streaming receiver details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamingReceiver'
+  /applications/{appId}/{attemptId}/streaming/batches:
+    get:
+      operationId: listStreamingBatchesWithAttempt
+      summary: List all retained batches
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - COMPLETED
+          - QUEUED
+          - PROCESSING
+      responses:
+        '200':
+          description: List of streaming batches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StreamingBatch'
+  /applications/{appId}/{attemptId}/streaming/batches/{batchId}:
+    get:
+      operationId: getStreamingBatchWithAttempt
+      summary: Get details of a specific batch
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Batch details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamingBatch'
+  /applications/{appId}/{attemptId}/streaming/batches/{batchId}/operations:
+    get:
+      operationId: listStreamingBatchOperationsWithAttempt
+      summary: List all output operations of a batch
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: List of output operations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StreamingOutputOperation'
+  /applications/{appId}/{attemptId}/streaming/batches/{batchId}/operations/{outputOpId}:
+    get:
+      operationId: getStreamingBatchOperationWithAttempt
+      summary: Get details of a specific output operation
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: batchId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: outputOpId
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: Output operation details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamingOutputOperation'
+  /applications/{appId}/{attemptId}/sql:
+    get:
+      operationId: listSQLExecutionsWithAttempt
+      summary: List all SQL query executions
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: details
+        in: query
+        schema:
+          type: boolean
+          default: true
+      - name: planDescription
+        in: query
+        schema:
+          type: boolean
+          default: true
+      - name: offset
+        in: query
+        schema:
+          type: integer
+      - name: length
+        in: query
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: List of SQL executions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SQLExecution'
+  /applications/{appId}/{attemptId}/sql/{executionId}:
+    get:
+      operationId: getSQLExecutionWithAttempt
+      summary: Get details for a specific SQL execution
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: executionId
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: details
+        in: query
+        schema:
+          type: boolean
+          default: true
+      - name: planDescription
+        in: query
+        schema:
+          type: boolean
+          default: true
+      responses:
+        '200':
+          description: SQL execution details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SQLExecution'
+  /applications/{appId}/{attemptId}/environment:
+    get:
+      operationId: getEnvironmentWithAttempt
+      summary: Get environment details
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: attemptId
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Environment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Environment'
   /applications/{appId}/jobs:
     get:
       operationId: listJobs
@@ -286,6 +1060,63 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Task'
+  /applications/{appId}/stages/{stageId}/{stageAttemptId}/taskTable:
+    get:
+      operationId: getTaskTable
+      summary: Server-side paginated task table for the Spark UI datatables
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - $ref: '#/components/parameters/stageId'
+      - $ref: '#/components/parameters/stageAttemptId'
+      - name: details
+        in: query
+        schema:
+          type: boolean
+          default: true
+      - name: numTasks
+        in: query
+        required: true
+        schema:
+          type: integer
+        description: Total number of tasks in the stage attempt
+      - name: start
+        in: query
+        schema:
+          type: integer
+          default: 0
+        description: Pagination start index
+      - name: length
+        in: query
+        schema:
+          type: integer
+        description: Page length
+      - name: search[value]
+        in: query
+        schema:
+          type: string
+        description: Search filter value
+      - name: columnNameToSort
+        in: query
+        schema:
+          type: string
+          default: Index
+        description: Column name to sort by
+      - name: order[0][dir]
+        in: query
+        schema:
+          type: string
+          enum:
+          - asc
+          - desc
+          default: asc
+        description: Sort direction
+      responses:
+        '200':
+          description: Paginated task table data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskTableResponse'
   /applications/{appId}/executors:
     get:
       operationId: listActiveExecutors
@@ -318,11 +1149,54 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties:
-                  type: string
+                type: array
+                items:
+                  $ref: '#/components/schemas/ThreadStackTrace'
         '503':
           description: Not available via history server
+  /applications/{appId}/threads:
+    get:
+      operationId: getTaskThreadDump
+      summary: Get thread dump for a running task (not available via history server)
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      - name: taskId
+        in: query
+        required: true
+        schema:
+          type: integer
+          format: int64
+      - name: executorId
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Task thread stack trace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadStackTrace'
+        '404':
+          description: Task not running on executor
+        '503':
+          description: Not available via history server
+  /applications/{appId}/allmiscellaneousprocess:
+    get:
+      operationId: listAllMiscellaneousProcess
+      summary: List all miscellaneous processes
+      parameters:
+      - $ref: '#/components/parameters/appId'
+      responses:
+        '200':
+          description: List of miscellaneous processes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProcessSummary'
   /applications/{appId}/allexecutors:
     get:
       operationId: listAllExecutors
@@ -466,6 +1340,14 @@ paths:
       summary: List all retained batches
       parameters:
       - $ref: '#/components/parameters/appId'
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - COMPLETED
+          - QUEUED
+          - PROCESSING
       responses:
         '200':
           description: List of streaming batches
@@ -1307,6 +2189,12 @@ components:
         TotalGCTime:
           type: integer
           format: int64
+        ConcurrentGCCount:
+          type: integer
+          format: int64
+        ConcurrentGCTime:
+          type: integer
+          format: int64
       additionalProperties: true
     ExecutorStageSummary:
       type: object
@@ -1860,12 +2748,19 @@ components:
           format: int64
         avgInputRate:
           type: number
+          nullable: true
         avgSchedulingDelay:
-          type: number
+          type: integer
+          format: int64
+          nullable: true
         avgProcessingTime:
-          type: number
+          type: integer
+          format: int64
+          nullable: true
         avgTotalDelay:
-          type: number
+          type: integer
+          format: int64
+          nullable: true
       additionalProperties: true
     StreamingReceiver:
       type: object
@@ -1876,18 +2771,25 @@ components:
           type: string
         isActive:
           type: boolean
+          nullable: true
         executorId:
           type: string
+          nullable: true
         executorHost:
           type: string
+          nullable: true
         lastErrorTime:
           type: string
+          nullable: true
         lastErrorMessage:
           type: string
+          nullable: true
         lastError:
           type: string
+          nullable: true
         avgEventRate:
           type: number
+          nullable: true
         eventRates:
           type: array
           items:
@@ -1913,12 +2815,15 @@ components:
         schedulingDelay:
           type: integer
           format: int64
+          nullable: true
         processingTime:
           type: integer
           format: int64
+          nullable: true
         totalDelay:
           type: integer
           format: int64
+          nullable: true
         numActiveOutputOps:
           type: integer
         numCompletedOutputOps:
@@ -1929,6 +2834,7 @@ components:
           type: integer
         firstFailureReason:
           type: string
+          nullable: true
       additionalProperties: true
     StreamingOutputOperation:
       type: object
@@ -1941,15 +2847,103 @@ components:
           type: string
         startTime:
           type: string
+          nullable: true
         endTime:
           type: string
+          nullable: true
         duration:
           type: integer
           format: int64
+          nullable: true
         failureReason:
           type: string
+          nullable: true
         jobIds:
           type: array
           items:
             type: integer
+      additionalProperties: true
+    ThreadStackTrace:
+      type: object
+      properties:
+        threadId:
+          type: integer
+          format: int64
+        threadName:
+          type: string
+        threadState:
+          type: string
+        stackTrace:
+          type: object
+          properties:
+            elems:
+              type: array
+              items:
+                type: string
+        blockedByThreadId:
+          type: integer
+          format: int64
+          nullable: true
+        blockedByLock:
+          type: string
+        holdingLocks:
+          type: array
+          items:
+            type: string
+          deprecated: true
+        synchronizers:
+          type: array
+          items:
+            type: string
+        monitors:
+          type: array
+          items:
+            type: string
+        lockName:
+          type: string
+          nullable: true
+        lockOwnerName:
+          type: string
+          nullable: true
+        suspended:
+          type: boolean
+        inNative:
+          type: boolean
+        isDaemon:
+          type: boolean
+        priority:
+          type: integer
+      additionalProperties: true
+    ProcessSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        hostPort:
+          type: string
+        isActive:
+          type: boolean
+        totalCores:
+          type: integer
+        addTime:
+          type: string
+        removeTime:
+          type: string
+          nullable: true
+        processLogs:
+          type: object
+          additionalProperties:
+            type: string
+      additionalProperties: true
+    TaskTableResponse:
+      type: object
+      properties:
+        aaData:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        recordsTotal:
+          type: string
+        recordsFiltered:
+          type: string
       additionalProperties: true

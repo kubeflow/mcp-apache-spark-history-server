@@ -89,6 +89,26 @@ class StreamingBatch(BaseModel):
             for _key, _value in self.additional_properties.items():
                 _dict[_key] = _value
 
+        # set to None if scheduling_delay (nullable) is None
+        # and model_fields_set contains the field
+        if self.scheduling_delay is None and "scheduling_delay" in self.model_fields_set:
+            _dict['schedulingDelay'] = None
+
+        # set to None if processing_time (nullable) is None
+        # and model_fields_set contains the field
+        if self.processing_time is None and "processing_time" in self.model_fields_set:
+            _dict['processingTime'] = None
+
+        # set to None if total_delay (nullable) is None
+        # and model_fields_set contains the field
+        if self.total_delay is None and "total_delay" in self.model_fields_set:
+            _dict['totalDelay'] = None
+
+        # set to None if first_failure_reason (nullable) is None
+        # and model_fields_set contains the field
+        if self.first_failure_reason is None and "first_failure_reason" in self.model_fields_set:
+            _dict['firstFailureReason'] = None
+
         return _dict
 
     @classmethod
