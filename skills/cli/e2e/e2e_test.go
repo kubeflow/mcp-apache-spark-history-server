@@ -19,9 +19,14 @@ type appInfo struct {
 	Name string `yaml:"name"`
 }
 
+type yarnInfo struct {
+	ID string `yaml:"id"`
+}
+
 type fixtures struct {
-	App1           appInfo `yaml:"app1"`
-	App2           appInfo `yaml:"app2"`
+	App1           appInfo  `yaml:"app1"`
+	App2           appInfo  `yaml:"app2"`
+	Yarn           yarnInfo `yaml:"yarn"`
 	Apps           string  `yaml:"apps"`
 	JobsApp1       string  `yaml:"jobs_app1"`
 	JobsApp2       string  `yaml:"jobs_app2"`
@@ -40,7 +45,11 @@ type fixtures struct {
 	SQL6SumApp2    string  `yaml:"sql6_summary_app2"`
 	SQL6PlanApp1   string  `yaml:"sql6_plan_sha256_app1"`
 	SQL6PlanApp2   string  `yaml:"sql6_plan_sha256_app2"`
-	AppsAllServers string  `yaml:"apps_all_servers"`
+	AppsAllServers    string `yaml:"apps_all_servers"`
+	YarnAttempts      string `yaml:"yarn_attempts"`
+	YarnJobsAttempt1  string `yaml:"yarn_jobs_attempt1"`
+	YarnJobsAttempt2  string `yaml:"yarn_jobs_attempt2"`
+	YarnStagesAttempt1 string `yaml:"yarn_stages_attempt1"`
 }
 
 var fix fixtures
@@ -241,4 +250,33 @@ func TestSQLPlan(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestYarnAttempts(t *testing.T) {
+	app := fix.Yarn.ID
+
+	t.Run("list_attempts", func(t *testing.T) {
+		got := shs(t, "apps", "-a", app, "--attempts")
+		if diff := cmp.Diff(fix.YarnAttempts, got); diff != "" {
+			t.Errorf("mismatch (-want +got):\n%s", diff)
+		}
+	})
+	t.Run("jobs_attempt1", func(t *testing.T) {
+		got := shs(t, "jobs", "-a", app, "--attempt", "1", "--limit", "0")
+		if diff := cmp.Diff(fix.YarnJobsAttempt1, got); diff != "" {
+			t.Errorf("mismatch (-want +got):\n%s", diff)
+		}
+	})
+	t.Run("jobs_attempt2", func(t *testing.T) {
+		got := shs(t, "jobs", "-a", app, "--attempt", "2", "--limit", "0")
+		if diff := cmp.Diff(fix.YarnJobsAttempt2, got); diff != "" {
+			t.Errorf("mismatch (-want +got):\n%s", diff)
+		}
+	})
+	t.Run("stages_attempt1", func(t *testing.T) {
+		got := shs(t, "stages", "-a", app, "--attempt", "1", "--limit", "0")
+		if diff := cmp.Diff(fix.YarnStagesAttempt1, got); diff != "" {
+			t.Errorf("mismatch (-want +got):\n%s", diff)
+		}
+	})
 }

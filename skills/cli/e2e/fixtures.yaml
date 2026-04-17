@@ -4,11 +4,14 @@ app1:
 app2:
   id: local-1776286804625
   name: shs-e2e-app2
+yarn:
+  id: application_1713000000000_0001
 
 apps: |
-  ID                   NAME          DURATION  ATTEMPTS
-  local-1776286804625  shs-e2e-app2  13.159s   1
-  local-1776286786993  shs-e2e-app1  14.47s    1
+  ID                              NAME          DURATION  ATTEMPTS
+  application_1713000000000_0001  shs-e2e-yarn  13.07s    2
+  local-1776286804625             shs-e2e-app2  13.159s   1
+  local-1776286786993             shs-e2e-app1  14.47s    1
 
 jobs_app1: |
   ID  STATUS     DESCRIPTION                                                        DURATION  TASKS  FAILED_TASKS  STAGES
@@ -241,8 +244,58 @@ sql6_plan_sha256_app1: "5e974bc43353b93932fb75a7f1b8c0805c53af403be6cabe43085f22
 sql6_plan_sha256_app2: "cea73570506d19c176adff6f9bebba0ab1d689afd24330d4f1f42a3930ebb486"
 
 apps_all_servers: |
-  SERVER     ID                   NAME          DURATION  ATTEMPTS
-  default    local-1776286804625  shs-e2e-app2  13.159s   1
-  default    local-1776286786993  shs-e2e-app1  14.47s    1
-  secondary  local-1776286804625  shs-e2e-app2  13.159s   1
-  secondary  local-1776286786993  shs-e2e-app1  14.47s    1
+  SERVER     ID                              NAME          DURATION  ATTEMPTS
+  default    application_1713000000000_0001  shs-e2e-yarn  13.07s    2
+  default    local-1776286804625             shs-e2e-app2  13.159s   1
+  default    local-1776286786993             shs-e2e-app1  14.47s    1
+  secondary  application_1713000000000_0001  shs-e2e-yarn  13.07s    2
+  secondary  local-1776286804625             shs-e2e-app2  13.159s   1
+  secondary  local-1776286786993             shs-e2e-app1  14.47s    1
+
+yarn_attempts: |
+  ATTEMPT  STATUS      DURATION  START                       END
+  2        COMPLETED   13.07s    2026-04-17T21:55:45.821GMT  2026-04-17T21:55:58.891GMT
+  1        INCOMPLETE  -         2026-04-17T21:55:35.276GMT  -
+
+yarn_jobs_attempt1: |
+  ID  STATUS     DESCRIPTION                                                        DURATION  TASKS  FAILED_TASKS  STAGES
+  4   FAILED     collect at /app/generate_events.py:62                              1.043s    2      8             5
+  3   SUCCEEDED  collect at /app/generate_events.py:49                              1.074s    4      4             4
+  0   SUCCEEDED  parquet at NativeMethodAccessorImpl.java:0                         699ms     2      0             0
+  1   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  160ms     2      0             1
+  2   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  149ms     3      0             2,3
+
+yarn_jobs_attempt2: |
+  ID  STATUS     DESCRIPTION                                                        DURATION  TASKS  FAILED_TASKS  STAGES
+  4   FAILED     collect at /app/generate_events.py:62                              1.088s    2      8             5
+  20  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  1.492s    5      0             32,33
+  3   SUCCEEDED  collect at /app/generate_events.py:49                              1.065s    4      4             4
+  0   SUCCEEDED  parquet at NativeMethodAccessorImpl.java:0                         713ms     2      0             0
+  19  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  496ms     2      0             31
+  5   SUCCEEDED  count at NativeMethodAccessorImpl.java:0                           401ms     2      0             6
+  15  SUCCEEDED  collect at /app/generate_events.py:111                             229ms     2      0             25
+  9   SUCCEEDED  collect at /app/generate_events.py:102                             215ms     2      0             11
+  1   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  192ms     2      0             1
+  18  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  182ms     2      0             30
+  14  SUCCEEDED  collect at /app/generate_events.py:111                             171ms     2      0             24
+  2   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  152ms     3      0             2,3
+  11  SUCCEEDED  collect at /app/generate_events.py:102                             122ms     4      0             16,14,15
+  6   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  120ms     2      0             7
+  17  SUCCEEDED  collect at /app/generate_events.py:111                             75ms      3      0             28,29
+  10  SUCCEEDED  collect at /app/generate_events.py:102                             71ms      3      0             12,13
+  22  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  64ms      3      0             35,36
+  21  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  51ms      2      0             34
+  16  SUCCEEDED  collect at /app/generate_events.py:111                             50ms      3      0             26,27
+  12  SUCCEEDED  collect at /app/generate_events.py:102                             46ms      4      0             17,18,19
+  13  SUCCEEDED  collect at /app/generate_events.py:102                             36ms      5      0             20,21,22,23
+  7   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  30ms      3      0             8,9
+  8   SUCCEEDED  collect at /app/generate_events.py:102                             22ms      2      0             10
+
+yarn_stages_attempt1: |
+  ID  ATTEMPT  STATUS    DESCRIPTION                                                        TASKS  FAILED  DURATION  INPUT  SHUFFLE_READ  SHUFFLE_WRITE
+  5   0        FAILED    collect at /app/generate_events.py:62                              2      8       1.042s    0 B    0 B           0 B
+  4   0        COMPLETE  collect at /app/generate_events.py:49                              4      4       1.072s    0 B    0 B           0 B
+  0   0        COMPLETE  parquet at NativeMethodAccessorImpl.java:0                         2      0       681ms     0 B    0 B           0 B
+  1   0        COMPLETE  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  2      0       154ms     0 B    0 B           496 B
+  3   0        COMPLETE  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  1      0       143ms     0 B    496 B         0 B
+  2   0        SKIPPED   $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  2      0       0s        0 B    0 B           0 B
