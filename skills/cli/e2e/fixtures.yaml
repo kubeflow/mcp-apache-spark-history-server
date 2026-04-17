@@ -1,0 +1,321 @@
+app1:
+  id: local-1776286786993
+  name: shs-e2e-app1
+app2:
+  id: local-1776286804625
+  name: shs-e2e-app2
+yarn:
+  id: application_1713000000000_0001
+
+apps: |
+  ID                              NAME          DURATION  ATTEMPTS
+  application_1713000000000_0001  shs-e2e-yarn  13.07s    2
+  local-1776286804625             shs-e2e-app2  13.159s   1
+  local-1776286786993             shs-e2e-app1  14.47s    1
+
+jobs_app1: |
+  ID  STATUS     DESCRIPTION                                                        DURATION  TASKS  FAILED_TASKS  STAGES
+  4   FAILED     collect at /app/generate_events.py:53                              1.065s    2      7             5
+  20  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  2.085s    5      0             42,43
+  3   SUCCEEDED  collect at /app/generate_events.py:40                              1.019s    4      4             4
+  0   SUCCEEDED  parquet at NativeMethodAccessorImpl.java:0                         791ms     2      0             0
+  10  SUCCEEDED  collect at /app/generate_events.py:86                              712ms     7      0             12,13,14
+  19  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  339ms     2      0             41
+  5   SUCCEEDED  count at NativeMethodAccessorImpl.java:0                           319ms     2      0             6
+  9   SUCCEEDED  collect at /app/generate_events.py:86                              197ms     2      0             11
+  1   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  192ms     2      0             1
+  16  SUCCEEDED  collect at /app/generate_events.py:95                              177ms     2      0             36
+  18  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  166ms     2      0             40
+  2   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  160ms     3      0             2,3
+  15  SUCCEEDED  collect at /app/generate_events.py:95                              124ms     2      0             35
+  12  SUCCEEDED  collect at /app/generate_events.py:86                              109ms     9      0             19,20,21,22,23
+  17  SUCCEEDED  collect at /app/generate_events.py:95                              101ms     5      0             37,38,39
+  22  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  79ms      3      0             45,46
+  6   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  77ms      2      0             7
+  21  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  61ms      2      0             44
+  13  SUCCEEDED  collect at /app/generate_events.py:86                              58ms      9      0             24,25,26,27,28
+  11  SUCCEEDED  collect at /app/generate_events.py:86                              51ms      8      0             16,17,18,15
+  8   SUCCEEDED  collect at /app/generate_events.py:86                              43ms      2      0             10
+  14  SUCCEEDED  collect at /app/generate_events.py:86                              37ms      10     0             32,33,34,29,30,31
+  7   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  24ms      3      0             8,9
+
+jobs_app2: |
+  ID  STATUS     DESCRIPTION                                                        DURATION  TASKS  FAILED_TASKS  STAGES
+  4   FAILED     collect at /app/generate_events.py:53                              1.1s      2      8             5
+  20  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  1.408s    5      0             32,33
+  3   SUCCEEDED  collect at /app/generate_events.py:40                              1.083s    4      4             4
+  0   SUCCEEDED  parquet at NativeMethodAccessorImpl.java:0                         716ms     2      0             0
+  19  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  495ms     2      0             31
+  5   SUCCEEDED  count at NativeMethodAccessorImpl.java:0                           271ms     2      0             6
+  15  SUCCEEDED  collect at /app/generate_events.py:95                              240ms     2      0             25
+  9   SUCCEEDED  collect at /app/generate_events.py:86                              231ms     2      0             11
+  18  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  217ms     2      0             30
+  1   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  209ms     2      0             1
+  2   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  171ms     3      0             2,3
+  6   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  120ms     2      0             7
+  14  SUCCEEDED  collect at /app/generate_events.py:95                              116ms     2      0             24
+  11  SUCCEEDED  collect at /app/generate_events.py:86                              114ms     4      0             16,14,15
+  16  SUCCEEDED  collect at /app/generate_events.py:95                              91ms      3      0             26,27
+  21  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  81ms      2      0             34
+  22  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  70ms      3      0             35,36
+  10  SUCCEEDED  collect at /app/generate_events.py:86                              68ms      3      0             12,13
+  12  SUCCEEDED  collect at /app/generate_events.py:86                              52ms      4      0             17,18,19
+  13  SUCCEEDED  collect at /app/generate_events.py:86                              36ms      5      0             20,21,22,23
+  8   SUCCEEDED  collect at /app/generate_events.py:86                              34ms      2      0             10
+  17  SUCCEEDED  collect at /app/generate_events.py:95                              33ms      3      0             28,29
+  7   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  24ms      3      0             8,9
+
+stage5_errors_app1: |
+  TASK  ATTEMPT  EXECUTOR  STATUS  ERROR
+  13    0        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+  14    0        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+  15    1        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+  16    1        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+  17    2        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+  18    2        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+  19    3        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+
+stage5_errors_app2: |
+  TASK  ATTEMPT  EXECUTOR  STATUS  ERROR
+  13    0        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+  14    0        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+  15    1        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+  16    1        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+  17    2        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+  18    2        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+  19    3        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+  20    3        driver    FAILED  org.apache.spark.api.python.PythonException: Traceback (most recent call last):
+
+sql_app1: |
+  ID  STATUS     DESCRIPTION                                                 DURATION  FAILED_JOBS  SUCCESS_JOBS        RUNNING_JOBS
+  2   FAILED     collect at /app/generate_events.py:53                       1.126s    4                                
+  8   COMPLETED  parquet at NativeMethodAccessorImpl.java:0                  2.689s                 18,19,20            
+  6   COMPLETED  collect at /app/generate_events.py:86                       1.659s                 10,14,9,13,12,11,8  
+  0   COMPLETED  parquet at NativeMethodAccessorImpl.java:0                  1.58s                  0                   
+  1   COMPLETED  parquet at NativeMethodAccessorImpl.java:0                  738ms                  1,2                 
+  3   COMPLETED  count at NativeMethodAccessorImpl.java:0                    557ms                  5,6,7               
+  7   COMPLETED  collect at /app/generate_events.py:95                       482ms                  15,16,17            
+  9   COMPLETED  parquet at NativeMethodAccessorImpl.java:0                  227ms                  21,22               
+  4   COMPLETED  createOrReplaceTempView at NativeMethodAccessorImpl.java:0  12ms                                       
+  5   COMPLETED  createOrReplaceTempView at NativeMethodAccessorImpl.java:0  4ms                                        
+
+sql_app2: |
+  ID  STATUS     DESCRIPTION                                                 DURATION  FAILED_JOBS  SUCCESS_JOBS     RUNNING_JOBS
+  2   FAILED     collect at /app/generate_events.py:53                       1.157s    4                             
+  8   COMPLETED  parquet at NativeMethodAccessorImpl.java:0                  2.217s                 18,19,20         
+  0   COMPLETED  parquet at NativeMethodAccessorImpl.java:0                  1.488s                 0                
+  6   COMPLETED  collect at /app/generate_events.py:86                       999ms                  10,9,13,12,11,8  
+  1   COMPLETED  parquet at NativeMethodAccessorImpl.java:0                  732ms                  1,2              
+  3   COMPLETED  count at NativeMethodAccessorImpl.java:0                    548ms                  5,6,7            
+  7   COMPLETED  collect at /app/generate_events.py:95                       454ms                  14,15,16,17      
+  9   COMPLETED  parquet at NativeMethodAccessorImpl.java:0                  255ms                  21,22            
+  4   COMPLETED  createOrReplaceTempView at NativeMethodAccessorImpl.java:0  11ms                                    
+  5   COMPLETED  createOrReplaceTempView at NativeMethodAccessorImpl.java:0  3ms                                     
+
+jobs_app1_sort_id: |
+  ID  STATUS     DESCRIPTION                                                        DURATION  TASKS  FAILED_TASKS  STAGES
+  22  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  79ms      3      0             45,46
+  21  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  61ms      2      0             44
+  20  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  2.085s    5      0             42,43
+  19  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  339ms     2      0             41
+  18  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  166ms     2      0             40
+
+  Showing 5 of 23 jobs. Use --limit 0 to list all.
+
+sql_app1_sort_id: |
+  ID  STATUS     DESCRIPTION                                                 DURATION  FAILED_JOBS  SUCCESS_JOBS        RUNNING_JOBS
+  9   COMPLETED  parquet at NativeMethodAccessorImpl.java:0                  227ms                  21,22               
+  8   COMPLETED  parquet at NativeMethodAccessorImpl.java:0                  2.689s                 18,19,20            
+  7   COMPLETED  collect at /app/generate_events.py:95                       482ms                  15,16,17            
+  6   COMPLETED  collect at /app/generate_events.py:86                       1.659s                 10,14,9,13,12,11,8  
+  5   COMPLETED  createOrReplaceTempView at NativeMethodAccessorImpl.java:0  4ms                                        
+
+  Showing 5 of 10 executions. Use --limit 0 to list all.
+
+compare_sql6: |
+  App A:  local-1776286786993  (SQL 6)
+  App B:  local-1776286804625  (SQL 6)
+  Query:  A=collect at /app/generate_events.py:86  B=collect at /app/generate_events.py:86
+  Status: A=COMPLETED  B=COMPLETED
+
+                  A       B        Delta
+  Duration:       1.659s  999ms    -660ms
+  Jobs:           7       6        -1
+  Stages:         25      14       -11
+  Tasks:          47      20       -27
+  Stage Time:     1.188s  522ms    -666ms
+  Input:          5.3 MB  5.3 MB   +0 B
+  Shuffle Read:   7.2 MB  53.4 KB  -7.2 MB
+  Shuffle Write:  7.2 MB  42.0 KB  -7.2 MB
+  Spill (Disk):   4.0 MB  0 B      -4.0 MB
+  GC Time:        66ms    20ms     -46ms
+
+compare_sql8: |
+  App A:  local-1776286786993  (SQL 8)
+  App B:  local-1776286804625  (SQL 8)
+  Query:  A=parquet at NativeMethodAccessorImpl.java:0  B=parquet at NativeMethodAccessorImpl.java:0
+  Status: A=COMPLETED  B=COMPLETED
+
+                  A        B        Delta
+  Duration:       2.689s   2.217s   -472ms
+  Jobs:           3        3        +0
+  Stages:         4        4        +0
+  Tasks:          9        9        +0
+  Stage Time:     2.584s   2.115s   -469ms
+  Input:          0 B      0 B      +0 B
+  Shuffle Read:   57.8 MB  57.8 MB  +23.7 KB
+  Shuffle Write:  57.8 MB  57.8 MB  +23.7 KB
+  Spill (Disk):   67.1 MB  0 B      -67.1 MB
+  GC Time:        127ms    125ms    -2ms
+
+executors_app1: |
+  ID      ACTIVE  HOST                TASKS  FAILED  TASK_TIME  GC_TIME  INPUT    SHUFFLE_READ  SHUFFLE_WRITE
+  driver  true    71cc0a0f2562:40645  52     11      14.47s     0s       26.4 MB  65.0 MB       65.0 MB
+
+executors_app2: |
+  ID      ACTIVE  HOST                TASKS  FAILED  TASK_TIME  GC_TIME  INPUT    SHUFFLE_READ  SHUFFLE_WRITE
+  driver  true    182cfde53e01:45243  50     12      13.159s    0s       26.4 MB  57.8 MB       57.8 MB
+
+executors_summary_app1: |
+  ID      ACTIVE  ADDED     REMOVED  TASKS  PEAK_RSS  PEAK_HEAP  PEAK_DIRECT  PEAK_OFFHEAP  GC_TIME  REMOVE_REASON
+  driver  true    20:59:47           52     0 B       0 B        0 B          0 B           0s       
+
+sql6_summary_app1: |
+  Execution ID:  6
+  Status:        COMPLETED
+  Description:   collect at /app/generate_events.py:86
+  Submitted:     2026-04-15T20:59:55.511GMT
+  Duration:      1.659s
+  Success Jobs:  10,14,9,13,12,11,8
+  Failed Jobs:   
+  Running Jobs:  
+
+  Jobs (7):
+  ID  STATUS     DURATION  TASKS  FAILED  STAGES
+  10  SUCCEEDED  712ms     7      0       12,13,14
+  9   SUCCEEDED  197ms     2      0       11
+  12  SUCCEEDED  109ms     9      0       19,20,21,22,23
+  13  SUCCEEDED  58ms      9      0       24,25,26,27,28
+  11  SUCCEEDED  51ms      8      0       16,17,18,15
+  8   SUCCEEDED  43ms      2      0       10
+  14  SUCCEEDED  37ms      10     0       32,33,34,29,30,31
+
+  Aggregate Stage Metrics:
+    Stages:        25
+    Tasks:         47
+    Input:         5.3 MB
+    Shuffle Read:  7.2 MB
+    Shuffle Write: 7.2 MB
+    Spill (Disk):  4.0 MB
+    GC Time:       66ms
+
+sql6_summary_app2: |
+  Execution ID:  6
+  Status:        COMPLETED
+  Description:   collect at /app/generate_events.py:86
+  Submitted:     2026-04-15T21:00:12.920GMT
+  Duration:      999ms
+  Success Jobs:  10,9,13,12,11,8
+  Failed Jobs:   
+  Running Jobs:  
+
+  Jobs (6):
+  ID  STATUS     DURATION  TASKS  FAILED  STAGES
+  9   SUCCEEDED  231ms     2      0       11
+  11  SUCCEEDED  114ms     4      0       16,14,15
+  10  SUCCEEDED  68ms      3      0       12,13
+  12  SUCCEEDED  52ms      4      0       17,18,19
+  13  SUCCEEDED  36ms      5      0       20,21,22,23
+  8   SUCCEEDED  34ms      2      0       10
+
+  Aggregate Stage Metrics:
+    Stages:        14
+    Tasks:         20
+    Input:         5.3 MB
+    Shuffle Read:  53.4 KB
+    Shuffle Write: 42.0 KB
+    Spill (Disk):  0 B
+    GC Time:       20ms
+
+# SHA256 hashes of `shs sql -a APP 6 --initial-plan` output (includes both final and initial plans).
+# Plans are too large to embed; hashes verify they haven't changed.
+# To update: shs sql -a APP 6 --initial-plan | sha256sum
+sql6_plan_sha256_app1: "5e974bc43353b93932fb75a7f1b8c0805c53af403be6cabe43085f22c6c1ba19"
+sql6_plan_sha256_app2: "cea73570506d19c176adff6f9bebba0ab1d689afd24330d4f1f42a3930ebb486"
+
+stages_app1: |
+  ID  ATTEMPT  STATUS    DESCRIPTION                                                        TASKS  FAILED  DURATION  INPUT  SHUFFLE_READ  SHUFFLE_WRITE
+  5   0        FAILED    collect at /app/generate_events.py:53                              2      7       1.063s    0 B    0 B           0 B
+  43  0        COMPLETE  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  3      0       2.083s    0 B    57.8 MB       0 B
+  4   0        COMPLETE  collect at /app/generate_events.py:40                              4      4       1.018s    0 B    0 B           0 B
+  0   0        COMPLETE  parquet at NativeMethodAccessorImpl.java:0                         2      0       778ms     0 B    0 B           0 B
+  14  0        COMPLETE  collect at /app/generate_events.py:86                              3      0       710ms     0 B    7.2 MB        8.9 KB
+
+  Showing 5 of 47 stages. Use --limit 0 to list all.
+
+stages_app2: |
+  ID  ATTEMPT  STATUS    DESCRIPTION                                                        TASKS  FAILED  DURATION  INPUT  SHUFFLE_READ  SHUFFLE_WRITE
+  5   0        FAILED    collect at /app/generate_events.py:53                              2      8       1.097s    0 B    0 B           0 B
+  33  0        COMPLETE  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  3      0       1.407s    0 B    57.8 MB       0 B
+  4   0        COMPLETE  collect at /app/generate_events.py:40                              4      4       1.082s    0 B    0 B           0 B
+  0   0        COMPLETE  parquet at NativeMethodAccessorImpl.java:0                         2      0       704ms     0 B    0 B           0 B
+  31  0        COMPLETE  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  2      0       492ms     0 B    0 B           57.8 MB
+
+  Showing 5 of 37 stages. Use --limit 0 to list all.
+
+apps_all_servers: |
+  SERVER     ID                              NAME          DURATION  ATTEMPTS
+  default    application_1713000000000_0001  shs-e2e-yarn  13.07s    2
+  default    local-1776286804625             shs-e2e-app2  13.159s   1
+  default    local-1776286786993             shs-e2e-app1  14.47s    1
+  secondary  application_1713000000000_0001  shs-e2e-yarn  13.07s    2
+  secondary  local-1776286804625             shs-e2e-app2  13.159s   1
+  secondary  local-1776286786993             shs-e2e-app1  14.47s    1
+
+yarn_attempts: |
+  ATTEMPT  STATUS      DURATION  START                       END
+  2        COMPLETED   13.07s    2026-04-17T21:55:45.821GMT  2026-04-17T21:55:58.891GMT
+  1        INCOMPLETE  -         2026-04-17T21:55:35.276GMT  -
+
+yarn_jobs_attempt1: |
+  ID  STATUS     DESCRIPTION                                                        DURATION  TASKS  FAILED_TASKS  STAGES
+  4   FAILED     collect at /app/generate_events.py:62                              1.043s    2      8             5
+  3   SUCCEEDED  collect at /app/generate_events.py:49                              1.074s    4      4             4
+  0   SUCCEEDED  parquet at NativeMethodAccessorImpl.java:0                         699ms     2      0             0
+  1   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  160ms     2      0             1
+  2   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  149ms     3      0             2,3
+
+yarn_jobs_attempt2: |
+  ID  STATUS     DESCRIPTION                                                        DURATION  TASKS  FAILED_TASKS  STAGES
+  4   FAILED     collect at /app/generate_events.py:62                              1.088s    2      8             5
+  20  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  1.492s    5      0             32,33
+  3   SUCCEEDED  collect at /app/generate_events.py:49                              1.065s    4      4             4
+  0   SUCCEEDED  parquet at NativeMethodAccessorImpl.java:0                         713ms     2      0             0
+  19  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  496ms     2      0             31
+  5   SUCCEEDED  count at NativeMethodAccessorImpl.java:0                           401ms     2      0             6
+  15  SUCCEEDED  collect at /app/generate_events.py:111                             229ms     2      0             25
+  9   SUCCEEDED  collect at /app/generate_events.py:102                             215ms     2      0             11
+  1   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  192ms     2      0             1
+  18  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  182ms     2      0             30
+  14  SUCCEEDED  collect at /app/generate_events.py:111                             171ms     2      0             24
+  2   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  152ms     3      0             2,3
+  11  SUCCEEDED  collect at /app/generate_events.py:102                             122ms     4      0             16,14,15
+  6   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  120ms     2      0             7
+  17  SUCCEEDED  collect at /app/generate_events.py:111                             75ms      3      0             28,29
+  10  SUCCEEDED  collect at /app/generate_events.py:102                             71ms      3      0             12,13
+  22  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  64ms      3      0             35,36
+  21  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  51ms      2      0             34
+  16  SUCCEEDED  collect at /app/generate_events.py:111                             50ms      3      0             26,27
+  12  SUCCEEDED  collect at /app/generate_events.py:102                             46ms      4      0             17,18,19
+  13  SUCCEEDED  collect at /app/generate_events.py:102                             36ms      5      0             20,21,22,23
+  7   SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  30ms      3      0             8,9
+  8   SUCCEEDED  collect at /app/generate_events.py:102                             22ms      2      0             10
+
+yarn_stages_attempt1: |
+  ID  ATTEMPT  STATUS    DESCRIPTION                                                        TASKS  FAILED  DURATION  INPUT  SHUFFLE_READ  SHUFFLE_WRITE
+  5   0        FAILED    collect at /app/generate_events.py:62                              2      8       1.042s    0 B    0 B           0 B
+  4   0        COMPLETE  collect at /app/generate_events.py:49                              4      4       1.072s    0 B    0 B           0 B
+  0   0        COMPLETE  parquet at NativeMethodAccessorImpl.java:0                         2      0       681ms     0 B    0 B           0 B
+  1   0        COMPLETE  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  2      0       154ms     0 B    0 B           496 B
+  3   0        COMPLETE  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  1      0       143ms     0 B    496 B         0 B
+  2   0        SKIPPED   $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  2      0       0s        0 B    0 B           0 B

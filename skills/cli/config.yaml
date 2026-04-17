@@ -1,0 +1,4 @@
+servers:
+  local:
+    default: true  # if server name is not provided, this Spark History Server is used
+    url: "http://localhost:18080"

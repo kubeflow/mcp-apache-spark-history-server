@@ -1,3 +1,4 @@
+exclude: ^skills/cli/e2e/fixtures\.yaml$
 repos:
   # Pre-commit hooks for general file hygiene
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -26,11 +27,11 @@ repos:
       - id: ruff-check
         types_or: [python, pyi]
         args: [--fix]
-        exclude: ^src/spark_history_mcp/api_client/
+        exclude: ^(src/spark_history_mcp/api_client/|skills/cli/)  # skills/cli is a Go project; Python files there are test helpers only
       # Run the formatter
       - id: ruff-format
         types_or: [python, pyi]
-        exclude: ^src/spark_history_mcp/api_client/
+        exclude: ^(src/spark_history_mcp/api_client/|skills/cli/)  # skills/cli is a Go project; Python files there are test helpers only
 
   # Type checking with mypy (temporarily disabled - TODO: fix type annotations)
   # - repo: https://github.com/pre-commit/mirrors-mypy
@@ -46,7 +47,7 @@ repos:
     hooks:
       - id: bandit
         args: [--recursive, --format, json, --output, bandit-report.json]
-        exclude: ^(tests/|src/spark_history_mcp/api_client/)
+        exclude: ^(tests/|src/spark_history_mcp/api_client/|skills/cli/)  # skills/cli is a Go project; Python files there are test helpers only
 
   # Custom security check for config files
   - repo: local

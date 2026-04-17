@@ -6,6 +6,9 @@ includes:
   k8s:
     taskfile: taskfiles/kind.yaml
     flatten: true
+  cli:
+    taskfile: skills/cli/Taskfile.yaml
+    dir: skills/cli
 
 vars:
   PROJECT_NAME: mcp-apache-spark-history-server
