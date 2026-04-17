@@ -17,6 +17,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type sqlRow struct {
+	ID          int    `col:"ID"`
+	Status      string `col:"STATUS"`
+	Description string `col:"DESCRIPTION"`
+	Duration    string `col:"DURATION"`
+	FailedJobs  string `col:"FAILED_JOBS"`
+	SuccessJobs string `col:"SUCCESS_JOBS"`
+	RunningJobs string `col:"RUNNING_JOBS"`
+}
+
 func newSQLCmd() *cobra.Command {
 	var status string
 	var limit int
@@ -138,24 +148,19 @@ func listSQLExecutions(cmd *cobra.Command, c client.ClientWithResponsesInterface
 	execs, total := util.ApplyLimit(execs, limit)
 
 	return util.PrintOutput(cmd.OutOrStdout(), execs, outputFmt, func(w io.Writer) error {
-		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "ID\tSTATUS\tDESCRIPTION\tDURATION\tFAILED_JOBS\tSUCCESS_JOBS\tRUNNING_JOBS")
-		for _, e := range execs {
+		rows := make([]sqlRow, len(execs))
+		for i, e := range execs {
 			desc := util.Deref(e.Description)
 			if len(desc) > 80 {
 				desc = desc[:77] + "..."
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
-				util.Deref(e.Id),
-				util.Deref(e.Status),
-				desc,
-				sqlDuration(e).Truncate(time.Millisecond),
-				util.FormatIntSlice(e.FailedJobIds),
-				util.FormatIntSlice(e.SuccessJobIds),
-				util.FormatIntSlice(e.RunningJobIds),
-			)
+			rows[i] = sqlRow{
+				util.Deref(e.Id), string(util.Deref(e.Status)), desc,
+				sqlDuration(e).Truncate(time.Millisecond).String(),
+				util.FormatIntSlice(e.FailedJobIds), util.FormatIntSlice(e.SuccessJobIds), util.FormatIntSlice(e.RunningJobIds),
+			}
 		}
-		if err := tw.Flush(); err != nil {
+		if err := util.PrintTable(w, rows); err != nil {
 			return err
 		}
 		util.PrintLimitFooter(w, limit, total, "executions")

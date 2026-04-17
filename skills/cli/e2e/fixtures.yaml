@@ -243,6 +243,26 @@ sql6_summary_app2: |
 sql6_plan_sha256_app1: "5e974bc43353b93932fb75a7f1b8c0805c53af403be6cabe43085f22c6c1ba19"
 sql6_plan_sha256_app2: "cea73570506d19c176adff6f9bebba0ab1d689afd24330d4f1f42a3930ebb486"
 
+stages_app1: |
+  ID  ATTEMPT  STATUS    DESCRIPTION                                                        TASKS  FAILED  DURATION  INPUT  SHUFFLE_READ  SHUFFLE_WRITE
+  5   0        FAILED    collect at /app/generate_events.py:53                              2      7       1.063s    0 B    0 B           0 B
+  43  0        COMPLETE  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  3      0       2.083s    0 B    57.8 MB       0 B
+  4   0        COMPLETE  collect at /app/generate_events.py:40                              4      4       1.018s    0 B    0 B           0 B
+  0   0        COMPLETE  parquet at NativeMethodAccessorImpl.java:0                         2      0       778ms     0 B    0 B           0 B
+  14  0        COMPLETE  collect at /app/generate_events.py:86                              3      0       710ms     0 B    7.2 MB        8.9 KB
+
+  Showing 5 of 47 stages. Use --limit 0 to list all.
+
+stages_app2: |
+  ID  ATTEMPT  STATUS    DESCRIPTION                                                        TASKS  FAILED  DURATION  INPUT  SHUFFLE_READ  SHUFFLE_WRITE
+  5   0        FAILED    collect at /app/generate_events.py:53                              2      8       1.097s    0 B    0 B           0 B
+  33  0        COMPLETE  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  3      0       1.407s    0 B    57.8 MB       0 B
+  4   0        COMPLETE  collect at /app/generate_events.py:40                              4      4       1.082s    0 B    0 B           0 B
+  0   0        COMPLETE  parquet at NativeMethodAccessorImpl.java:0                         2      0       704ms     0 B    0 B           0 B
+  31  0        COMPLETE  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  2      0       492ms     0 B    0 B           57.8 MB
+
+  Showing 5 of 37 stages. Use --limit 0 to list all.
+
 apps_all_servers: |
   SERVER     ID                              NAME          DURATION  ATTEMPTS
   default    application_1713000000000_0001  shs-e2e-yarn  13.07s    2

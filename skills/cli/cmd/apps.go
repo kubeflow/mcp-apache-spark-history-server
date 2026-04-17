@@ -5,13 +5,35 @@ import (
 	"fmt"
 	"io"
 	"slices"
-	"text/tabwriter"
 
 	"github.com/kubeflow/mcp-apache-spark-history-server/skills/cli/client"
 	"github.com/kubeflow/mcp-apache-spark-history-server/skills/cli/config"
 	"github.com/kubeflow/mcp-apache-spark-history-server/skills/cli/util"
 	"github.com/spf13/cobra"
 )
+
+type appRow struct {
+	ID       string `col:"ID"`
+	Name     string `col:"NAME"`
+	Duration string `col:"DURATION"`
+	Attempts int    `col:"ATTEMPTS"`
+}
+
+type appServerRow struct {
+	Server   string `col:"SERVER"`
+	ID       string `col:"ID"`
+	Name     string `col:"NAME"`
+	Duration string `col:"DURATION"`
+	Attempts int    `col:"ATTEMPTS"`
+}
+
+type attemptRow struct {
+	Attempt  string `col:"ATTEMPT"`
+	Status   string `col:"STATUS"`
+	Duration string `col:"DURATION"`
+	Start    string `col:"START"`
+	End      string `col:"END"`
+}
 
 func newAppsCmd() *cobra.Command {
 	var status string
@@ -103,6 +125,13 @@ func latestAttemptDuration(a client.Application) int64 {
 	return 0
 }
 
+func appAttemptCount(a client.Application) int {
+	if a.Attempts == nil {
+		return 0
+	}
+	return len(*a.Attempts)
+}
+
 type appEntry struct {
 	App    client.Application
 	Server string
@@ -165,19 +194,12 @@ func listAppsAllServers(cmd *cobra.Command, status string, limit int, sortBy str
 
 	entries, total := util.ApplyLimit(entries, limit)
 
+	rows := make([]appServerRow, len(entries))
+	for i, e := range entries {
+		rows[i] = appServerRow{e.Server, util.Deref(e.App.Id), util.Deref(e.App.Name), util.FormatMsVal(latestAttemptDuration(e.App)), appAttemptCount(e.App)}
+	}
 	return util.PrintOutput(cmd.OutOrStdout(), entries, outputFmt, func(w io.Writer) error {
-		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "SERVER\tID\tNAME\tDURATION\tATTEMPTS")
-		for _, e := range entries {
-			name, id := util.Deref(e.App.Name), util.Deref(e.App.Id)
-			attempts := 0
-			if e.App.Attempts != nil {
-				attempts = len(*e.App.Attempts)
-			}
-			dur := util.FormatMsVal(latestAttemptDuration(e.App))
-			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%d\n", e.Server, id, name, dur, attempts)
-		}
-		if err := tw.Flush(); err != nil {
+		if err := util.PrintTable(w, rows); err != nil {
 			return err
 		}
 		util.PrintLimitFooter(w, limit, total, "applications")
@@ -201,25 +223,12 @@ func listApps(cmd *cobra.Command, c client.ClientWithResponsesInterface, params 
 		sortApps(apps, sortBy, desc)
 	}
 
+	rows := make([]appRow, len(apps))
+	for i, app := range apps {
+		rows[i] = appRow{util.Deref(app.Id), util.Deref(app.Name), util.FormatMsVal(latestAttemptDuration(app)), appAttemptCount(app)}
+	}
 	return util.PrintOutput(cmd.OutOrStdout(), apps, outputFmt, func(w io.Writer) error {
-		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "ID\tNAME\tDURATION\tATTEMPTS")
-		for _, app := range apps {
-			name, id := "", ""
-			if app.Name != nil {
-				name = *app.Name
-			}
-			if app.Id != nil {
-				id = *app.Id
-			}
-			attempts := 0
-			if app.Attempts != nil {
-				attempts = len(*app.Attempts)
-			}
-			dur := util.FormatMsVal(latestAttemptDuration(app))
-			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%d\n", id, name, dur, attempts)
-		}
-		if err := tw.Flush(); err != nil {
+		if err := util.PrintTable(w, rows); err != nil {
 			return err
 		}
 		util.PrintLimitFooter(w, limit, len(apps), "applications")
@@ -245,26 +254,24 @@ func listAttempts(cmd *cobra.Command) error {
 		return nil
 	}
 	attempts := *body.Attempts
-	return util.PrintOutput(cmd.OutOrStdout(), attempts, outputFmt, func(w io.Writer) error {
-		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "ATTEMPT\tSTATUS\tDURATION\tSTART\tEND")
-		for _, a := range attempts {
-			status := "INCOMPLETE"
-			if util.Deref(a.Completed) {
-				status = "COMPLETED"
-			}
-			dur := util.FormatMsVal(util.Deref(a.Duration))
-			if dur == "0s" && !util.Deref(a.Completed) {
-				dur = "-"
-			}
-			start := util.Deref(a.StartTime)
-			end := util.Deref(a.EndTime)
-			if !util.Deref(a.Completed) {
-				end = "-"
-			}
-			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
-				util.Deref(a.AttemptId), status, dur, start, end)
+
+	rows := make([]attemptRow, len(attempts))
+	for i, a := range attempts {
+		status := "INCOMPLETE"
+		if util.Deref(a.Completed) {
+			status = "COMPLETED"
 		}
-		return tw.Flush()
+		dur := util.FormatMsVal(util.Deref(a.Duration))
+		if dur == "0s" && !util.Deref(a.Completed) {
+			dur = "-"
+		}
+		end := util.Deref(a.EndTime)
+		if !util.Deref(a.Completed) {
+			end = "-"
+		}
+		rows[i] = attemptRow{util.Deref(a.AttemptId), status, dur, util.Deref(a.StartTime), end}
+	}
+	return util.PrintOutput(cmd.OutOrStdout(), attempts, outputFmt, func(w io.Writer) error {
+		return util.PrintTable(w, rows)
 	})
 }

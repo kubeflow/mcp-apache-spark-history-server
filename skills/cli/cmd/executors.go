@@ -28,6 +28,40 @@ type rawEvent struct {
 	kind string
 }
 
+type executorRow struct {
+	ID           string `col:"ID"`
+	Active       bool   `col:"ACTIVE"`
+	Host         string `col:"HOST"`
+	Tasks        int    `col:"TASKS"`
+	Failed       int    `col:"FAILED"`
+	TaskTime     string `col:"TASK_TIME"`
+	GCTime       string `col:"GC_TIME"`
+	Input        string `col:"INPUT"`
+	ShuffleRead  string `col:"SHUFFLE_READ"`
+	ShuffleWrite string `col:"SHUFFLE_WRITE"`
+}
+
+type executorSummaryRow struct {
+	ID           string `col:"ID"`
+	Active       bool   `col:"ACTIVE"`
+	Added        string `col:"ADDED"`
+	Removed      string `col:"REMOVED"`
+	Tasks        int    `col:"TASKS"`
+	PeakRSS      string `col:"PEAK_RSS"`
+	PeakHeap     string `col:"PEAK_HEAP"`
+	PeakDirect   string `col:"PEAK_DIRECT"`
+	PeakOffheap  string `col:"PEAK_OFFHEAP"`
+	GCTime       string `col:"GC_TIME"`
+	RemoveReason string `col:"REMOVE_REASON"`
+}
+
+type executorTimelineRow struct {
+	Time      string `col:"TIME"`
+	Event     string `col:"EVENT"`
+	Executors string `col:"EXECUTORS"`
+	Count     int    `col:"COUNT"`
+}
+
 func newExecutorsCmd() *cobra.Command {
 	var all bool
 	var summary bool
@@ -134,23 +168,16 @@ func listExecutors(cmd *cobra.Command, c client.ClientWithResponsesInterface, al
 	execs, total := util.ApplyLimit(execs, limit)
 
 	return util.PrintOutput(cmd.OutOrStdout(), execs, outputFmt, func(w io.Writer) error {
-		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "ID\tACTIVE\tHOST\tTASKS\tFAILED\tTASK_TIME\tGC_TIME\tINPUT\tSHUFFLE_READ\tSHUFFLE_WRITE")
-		for _, e := range execs {
-			_, _ = fmt.Fprintf(tw, "%s\t%v\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\n",
-				util.Deref(e.Id),
-				util.Deref(e.IsActive),
-				util.Deref(e.HostPort),
-				util.Deref(e.TotalTasks),
-				util.Deref(e.FailedTasks),
-				util.FormatMs(e.TotalDuration),
-				util.FormatMs(e.TotalGCTime),
-				util.DerefBytes(e.TotalInputBytes),
-				util.DerefBytes(e.TotalShuffleRead),
-				util.DerefBytes(e.TotalShuffleWrite),
-			)
+		rows := make([]executorRow, len(execs))
+		for i, e := range execs {
+			rows[i] = executorRow{
+				util.Deref(e.Id), util.Deref(e.IsActive), util.Deref(e.HostPort),
+				util.Deref(e.TotalTasks), util.Deref(e.FailedTasks),
+				util.FormatMs(e.TotalDuration), util.FormatMs(e.TotalGCTime),
+				util.DerefBytes(e.TotalInputBytes), util.DerefBytes(e.TotalShuffleRead), util.DerefBytes(e.TotalShuffleWrite),
+			}
 		}
-		if err := tw.Flush(); err != nil {
+		if err := util.PrintTable(w, rows); err != nil {
 			return err
 		}
 		util.PrintLimitFooter(w, limit, total, "executors")
@@ -229,21 +256,18 @@ func listExecutorsSummary(cmd *cobra.Command, c client.ClientWithResponsesInterf
 	execs, total := util.ApplyLimit(execs, limit)
 
 	return util.PrintOutput(cmd.OutOrStdout(), execs, outputFmt, func(w io.Writer) error {
-		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "ID\tACTIVE\tADDED\tREMOVED\tTASKS\tPEAK_RSS\tPEAK_HEAP\tPEAK_DIRECT\tPEAK_OFFHEAP\tGC_TIME\tREMOVE_REASON")
-		for _, e := range execs {
+		rows := make([]executorSummaryRow, len(execs))
+		for i, e := range execs {
 			reason := ""
 			if e.RemoveReason != nil {
 				reason = strings.TrimSpace(*e.RemoveReason)
-				if i := strings.IndexByte(reason, '\n'); i != -1 {
-					reason = reason[:i]
+				if j := strings.IndexByte(reason, '\n'); j != -1 {
+					reason = reason[:j]
 				}
 			}
-			_, _ = fmt.Fprintf(tw, "%s\t%v\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
-				util.Deref(e.Id),
-				util.Deref(e.IsActive),
-				formatSparkTimeShort(e.AddTime),
-				formatSparkTimeShort(e.RemoveTime),
+			rows[i] = executorSummaryRow{
+				util.Deref(e.Id), util.Deref(e.IsActive),
+				formatSparkTimeShort(e.AddTime), formatSparkTimeShort(e.RemoveTime),
 				util.Deref(e.TotalTasks),
 				util.FormatBytes(peakMetric(e, func(p *client.PeakMemoryMetrics) *int64 { return p.ProcessTreeJVMRSSMemory })),
 				util.FormatBytes(peakMetric(e, func(p *client.PeakMemoryMetrics) *int64 { return p.JVMHeapMemory })),
@@ -251,9 +275,9 @@ func listExecutorsSummary(cmd *cobra.Command, c client.ClientWithResponsesInterf
 				util.FormatBytes(peakMetric(e, func(p *client.PeakMemoryMetrics) *int64 { return p.JVMOffHeapMemory })),
 				util.FormatMs(e.TotalGCTime),
 				reason,
-			)
+			}
 		}
-		if err := tw.Flush(); err != nil {
+		if err := util.PrintTable(w, rows); err != nil {
 			return err
 		}
 		util.PrintLimitFooter(w, limit, total, "executors")
@@ -311,17 +335,11 @@ func listExecutorsTimeline(cmd *cobra.Command, c client.ClientWithResponsesInter
 	}
 
 	return util.PrintOutput(cmd.OutOrStdout(), grouped, outputFmt, func(w io.Writer) error {
-		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "TIME\tEVENT\tEXECUTORS\tCOUNT")
-		for _, g := range grouped {
-			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%d\n",
-				g.Time.Format("15:04"),
-				g.Kind,
-				formatIDRange(g.IDs),
-				len(g.IDs),
-			)
+		rows := make([]executorTimelineRow, len(grouped))
+		for i, g := range grouped {
+			rows[i] = executorTimelineRow{g.Time.Format("15:04"), g.Kind, formatIDRange(g.IDs), len(g.IDs)}
 		}
-		return tw.Flush()
+		return util.PrintTable(w, rows)
 	})
 }
 

@@ -4,6 +4,7 @@ package e2e
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -46,6 +47,8 @@ type fixtures struct {
 	SQL6PlanApp1   string  `yaml:"sql6_plan_sha256_app1"`
 	SQL6PlanApp2   string  `yaml:"sql6_plan_sha256_app2"`
 	AppsAllServers    string `yaml:"apps_all_servers"`
+	StagesApp1        string `yaml:"stages_app1"`
+	StagesApp2        string `yaml:"stages_app2"`
 	YarnAttempts      string `yaml:"yarn_attempts"`
 	YarnJobsAttempt1  string `yaml:"yarn_jobs_attempt1"`
 	YarnJobsAttempt2  string `yaml:"yarn_jobs_attempt2"`
@@ -279,4 +282,72 @@ func TestYarnAttempts(t *testing.T) {
 			t.Errorf("mismatch (-want +got):\n%s", diff)
 		}
 	})
+}
+
+func TestStages(t *testing.T) {
+	tests := []struct {
+		name string
+		app  string
+		want string
+	}{
+		{"app1", fix.App1.ID, fix.StagesApp1},
+		{"app2", fix.App2.ID, fix.StagesApp2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := shs(t, "stages", "-a", tt.app, "--limit", "5")
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestJSONOutput(t *testing.T) {
+	tests := []struct {
+		name  string
+		args  []string
+		count int
+	}{
+		{"apps", []string{"apps", "-o", "json"}, 3},
+		{"jobs", []string{"jobs", "-a", fix.App1.ID, "--limit", "5", "-o", "json"}, 5},
+		{"stages", []string{"stages", "-a", fix.App1.ID, "--limit", "5", "-o", "json"}, 5},
+		{"sql", []string{"sql", "-a", fix.App1.ID, "-o", "json"}, 10},
+		{"executors", []string{"executors", "-a", fix.App1.ID, "-o", "json"}, 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := shs(t, tt.args...)
+			var arr []json.RawMessage
+			if err := json.Unmarshal([]byte(out), &arr); err != nil {
+				t.Fatalf("invalid JSON: %v\n%s", err, out)
+			}
+			if len(arr) != tt.count {
+				t.Errorf("expected %d items, got %d", tt.count, len(arr))
+			}
+		})
+	}
+
+	// Compare JSON golden file tests
+	goldenTests := []struct {
+		name string
+		args []string
+		file string
+	}{
+		{"compare", []string{"compare", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "6", "6", "-o", "json"}, "compare.json"},
+		{"compare_env", []string{"compare", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "--env", "-o", "json"}, "compare_env.json"},
+		{"compare_plans", []string{"compare", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "--plans", "6", "6", "-o", "json"}, "compare_plans.json"},
+	}
+	for _, tt := range goldenTests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := shs(t, tt.args...)
+			want, err := os.ReadFile(tt.file)
+			if err != nil {
+				t.Fatalf("read golden file: %v", err)
+			}
+			if diff := cmp.Diff(string(want), got); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
 }

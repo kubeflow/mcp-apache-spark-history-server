@@ -1,0 +1,61 @@
+{
+  "appA": "local-1776286786993",
+  "appB": "local-1776286804625",
+  "execIdA": 6,
+  "execIdB": 6,
+  "nodeCount": {
+    "a": 37,
+    "b": 29
+  },
+  "edgeCount": {
+    "a": 26,
+    "b": 21
+  },
+  "nodeTypeDiffs": [
+    {
+      "nodeType": "AQEShuffleRead",
+      "a": 5,
+      "b": 3
+    },
+    {
+      "nodeType": "BroadcastExchange",
+      "a": 0,
+      "b": 1
+    },
+    {
+      "nodeType": "BroadcastHashJoin",
+      "a": 0,
+      "b": 1
+    },
+    {
+      "nodeType": "Exchange",
+      "a": 5,
+      "b": 3
+    },
+    {
+      "nodeType": "Sort",
+      "a": 4,
+      "b": 2
+    },
+    {
+      "nodeType": "SortMergeJoin",
+      "a": 1,
+      "b": 0
+    },
+    {
+      "nodeType": "WholeStageCodegen (7)",
+      "a": 1,
+      "b": 0
+    },
+    {
+      "nodeType": "WholeStageCodegen (8)",
+      "a": 1,
+      "b": 0
+    },
+    {
+      "nodeType": "WholeStageCodegen (9)",
+      "a": 1,
+      "b": 0
+    }
+  ]
+}

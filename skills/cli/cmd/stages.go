@@ -15,6 +15,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type stageRow struct {
+	ID           int    `col:"ID"`
+	Attempt      int    `col:"ATTEMPT"`
+	Status       string `col:"STATUS"`
+	Description  string `col:"DESCRIPTION"`
+	Tasks        int    `col:"TASKS"`
+	Failed       int    `col:"FAILED"`
+	Duration     string `col:"DURATION"`
+	Input        string `col:"INPUT"`
+	ShuffleRead  string `col:"SHUFFLE_READ"`
+	ShuffleWrite string `col:"SHUFFLE_WRITE"`
+}
+
+type taskErrorRow struct {
+	Task     int64  `col:"TASK"`
+	Attempt  int    `col:"ATTEMPT"`
+	Executor string `col:"EXECUTOR"`
+	Status   string `col:"STATUS"`
+	Error    string `col:"ERROR"`
+}
+
 func newStagesCmd() *cobra.Command {
 	var status string
 	var limit int
@@ -118,23 +139,16 @@ func listStages(cmd *cobra.Command, c client.ClientWithResponsesInterface, param
 	stages, total := util.ApplyLimit(stages, limit)
 
 	return util.PrintOutput(cmd.OutOrStdout(), stages, outputFmt, func(w io.Writer) error {
-		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "ID\tATTEMPT\tSTATUS\tDESCRIPTION\tTASKS\tFAILED\tDURATION\tINPUT\tSHUFFLE_READ\tSHUFFLE_WRITE")
-		for _, s := range stages {
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%s\t%s\t%d\t%d\t%s\t%s\t%s\t%s\n",
-				util.Deref(s.StageId),
-				util.Deref(s.AttemptId),
-				util.Deref(s.Status),
-				stageDesc(s),
-				util.Deref(s.NumTasks),
-				util.Deref(s.NumFailedTasks),
-				stageDuration(s).Truncate(time.Millisecond),
-				util.DerefBytes(s.InputBytes),
-				util.DerefBytes(s.ShuffleReadBytes),
-				util.DerefBytes(s.ShuffleWriteBytes),
-			)
+		rows := make([]stageRow, len(stages))
+		for i, s := range stages {
+			rows[i] = stageRow{
+				util.Deref(s.StageId), util.Deref(s.AttemptId), string(util.Deref(s.Status)), stageDesc(s),
+				util.Deref(s.NumTasks), util.Deref(s.NumFailedTasks),
+				stageDuration(s).Truncate(time.Millisecond).String(),
+				util.DerefBytes(s.InputBytes), util.DerefBytes(s.ShuffleReadBytes), util.DerefBytes(s.ShuffleWriteBytes),
+			}
 		}
-		if err := tw.Flush(); err != nil {
+		if err := util.PrintTable(w, rows); err != nil {
 			return err
 		}
 		util.PrintLimitFooter(w, limit, total, "stages")
@@ -221,21 +235,14 @@ func getStageErrors(cmd *cobra.Command, c client.ClientWithResponsesInterface, s
 			_, _ = fmt.Fprintln(w, "No failed tasks.")
 			return nil
 		}
-		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "TASK\tATTEMPT\tEXECUTOR\tSTATUS\tERROR")
-		for _, t := range tasks {
+		rows := make([]taskErrorRow, len(tasks))
+		for i, t := range tasks {
 			errMsg := util.Deref(t.ErrorMessage)
-			if i := strings.IndexByte(errMsg, '\n'); i >= 0 {
-				errMsg = errMsg[:i]
+			if j := strings.IndexByte(errMsg, '\n'); j >= 0 {
+				errMsg = errMsg[:j]
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%s\t%s\t%s\n",
-				util.Deref(t.TaskId),
-				util.Deref(t.Attempt),
-				util.Deref(t.ExecutorId),
-				util.Deref(t.Status),
-				errMsg,
-			)
+			rows[i] = taskErrorRow{util.Deref(t.TaskId), util.Deref(t.Attempt), util.Deref(t.ExecutorId), util.Deref(t.Status), errMsg}
 		}
-		return tw.Flush()
+		return util.PrintTable(w, rows)
 	})
 }

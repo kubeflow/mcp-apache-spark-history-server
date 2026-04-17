@@ -1,0 +1,65 @@
+{
+  "appA": "local-1776286786993",
+  "appB": "local-1776286804625",
+  "different": [
+    {
+      "key": "spark.app.id",
+      "a": "local-1776286786993",
+      "b": "local-1776286804625"
+    },
+    {
+      "key": "spark.app.name",
+      "a": "shs-e2e-app1",
+      "b": "shs-e2e-app2"
+    },
+    {
+      "key": "spark.app.startTime",
+      "a": "1776286786231",
+      "b": "1776286803787"
+    },
+    {
+      "key": "spark.app.submitTime",
+      "a": "1776286785660",
+      "b": "1776286803241"
+    },
+    {
+      "key": "spark.driver.host",
+      "a": "71cc0a0f2562",
+      "b": "182cfde53e01"
+    },
+    {
+      "key": "spark.driver.memory",
+      "a": "512m",
+      "b": "1g"
+    },
+    {
+      "key": "spark.driver.port",
+      "a": "34505",
+      "b": "40413"
+    },
+    {
+      "key": "spark.sql.autoBroadcastJoinThreshold",
+      "a": "-1",
+      "b": "10485760"
+    },
+    {
+      "key": "spark.sql.shuffle.partitions",
+      "a": "4",
+      "b": "8"
+    }
+  ],
+  "onlyInA": [
+    {
+      "key": "spark.memory.fraction",
+      "a": "0.1",
+      "b": ""
+    }
+  ],
+  "onlyInB": [
+    {
+      "key": "spark.shuffle.sort.bypassMergeThreshold",
+      "a": "",
+      "b": "0"
+    }
+  ]
+}

@@ -3,12 +3,17 @@ package cmd
 import (
 	"fmt"
 	"io"
-	"text/tabwriter"
 
 	"github.com/kubeflow/mcp-apache-spark-history-server/skills/cli/config"
 	"github.com/kubeflow/mcp-apache-spark-history-server/skills/cli/util"
 	"github.com/spf13/cobra"
 )
+
+type serverRow struct {
+	Name    string `col:"Name"`
+	URL     string `col:"URL"`
+	Default bool   `col:"Default"`
+}
 
 func newServersCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -21,15 +26,11 @@ func newServersCmd() *cobra.Command {
 				return fmt.Errorf("failed to load config %s", err)
 			}
 			return util.PrintOutput(cmd.OutOrStdout(), conf.Servers, outputFmt, func(w io.Writer) error {
-				tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-				_, _ = fmt.Fprintf(tw, "Name\tURL\tDefault\n")
+				var rows []serverRow
 				for name, server := range conf.Servers {
-					_, err := fmt.Fprintf(tw, "%s\t%s\t%t\n", name, server.URL, server.Default)
-					if err != nil {
-						return err
-					}
+					rows = append(rows, serverRow{name, server.URL, server.Default})
 				}
-				return tw.Flush()
+				return util.PrintTable(w, rows)
 			})
 		},
 	}

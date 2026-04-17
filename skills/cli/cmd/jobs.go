@@ -14,6 +14,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type jobRow struct {
+	ID          int    `col:"ID"`
+	Status      string `col:"STATUS"`
+	Description string `col:"DESCRIPTION"`
+	Duration    string `col:"DURATION"`
+	Tasks       int    `col:"TASKS"`
+	FailedTasks int    `col:"FAILED_TASKS"`
+	Stages      string `col:"STAGES"`
+}
+
 func newJobsCmd() *cobra.Command {
 	var status string
 	var limit int
@@ -117,25 +127,20 @@ func listJobs(cmd *cobra.Command, c client.ClientWithResponsesInterface, params 
 	jobs, total := util.ApplyLimit(jobs, limit)
 
 	return util.PrintOutput(cmd.OutOrStdout(), jobs, outputFmt, func(w io.Writer) error {
-		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "ID\tSTATUS\tDESCRIPTION\tDURATION\tTASKS\tFAILED_TASKS\tSTAGES")
-		for _, j := range jobs {
+		rows := make([]jobRow, len(jobs))
+		for i, j := range jobs {
 			desc := util.Deref(j.Description)
 			if desc == "" {
 				desc = util.Deref(j.Name)
 			}
-			stages := util.FormatIntSlice(j.StageIds)
-			_, _ = fmt.Fprintf(tw, "%d\t%s\t%s\t%s\t%d\t%d\t%s\n",
-				util.Deref(j.JobId),
-				util.Deref(j.Status),
-				desc,
-				jobDuration(j).Truncate(time.Millisecond),
-				util.Deref(j.NumTasks),
-				util.Deref(j.NumFailedTasks),
-				stages,
-			)
+			rows[i] = jobRow{
+				util.Deref(j.JobId), string(util.Deref(j.Status)), desc,
+				jobDuration(j).Truncate(time.Millisecond).String(),
+				util.Deref(j.NumTasks), util.Deref(j.NumFailedTasks),
+				util.FormatIntSlice(j.StageIds),
+			}
 		}
-		if err := tw.Flush(); err != nil {
+		if err := util.PrintTable(w, rows); err != nil {
 			return err
 		}
 		util.PrintLimitFooter(w, limit, total, "jobs")
