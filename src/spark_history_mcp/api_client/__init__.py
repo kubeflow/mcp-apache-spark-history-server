@@ -42,6 +42,7 @@ __all__ = [
     "MemoryMetrics",
     "OutputMetrics",
     "PeakMemoryMetrics",
+    "ProcessSummary",
     "RDDStorageInfo",
     "RDDStorageInfoDataDistributionInner",
     "RDDStorageInfoPartitionsInner",
@@ -69,6 +70,9 @@ __all__ = [
     "TaskMetricsSummaryShuffleReadMetrics",
     "TaskMetricsSummaryShuffleReadMetricsShufflePushReadMetricsDist",
     "TaskMetricsSummaryShuffleWriteMetrics",
+    "TaskTableResponse",
+    "ThreadStackTrace",
+    "ThreadStackTraceStackTrace",
     "Version",
 ]
 
@@ -101,6 +105,7 @@ from spark_history_mcp.api_client.models.job import Job as Job
 from spark_history_mcp.api_client.models.memory_metrics import MemoryMetrics as MemoryMetrics
 from spark_history_mcp.api_client.models.output_metrics import OutputMetrics as OutputMetrics
 from spark_history_mcp.api_client.models.peak_memory_metrics import PeakMemoryMetrics as PeakMemoryMetrics
+from spark_history_mcp.api_client.models.process_summary import ProcessSummary as ProcessSummary
 from spark_history_mcp.api_client.models.rdd_storage_info import RDDStorageInfo as RDDStorageInfo
 from spark_history_mcp.api_client.models.rdd_storage_info_data_distribution_inner import RDDStorageInfoDataDistributionInner as RDDStorageInfoDataDistributionInner
 from spark_history_mcp.api_client.models.rdd_storage_info_partitions_inner import RDDStorageInfoPartitionsInner as RDDStorageInfoPartitionsInner
@@ -128,5 +133,8 @@ from spark_history_mcp.api_client.models.task_metrics_summary_output_metrics imp
 from spark_history_mcp.api_client.models.task_metrics_summary_shuffle_read_metrics import TaskMetricsSummaryShuffleReadMetrics as TaskMetricsSummaryShuffleReadMetrics
 from spark_history_mcp.api_client.models.task_metrics_summary_shuffle_read_metrics_shuffle_push_read_metrics_dist import TaskMetricsSummaryShuffleReadMetricsShufflePushReadMetricsDist as TaskMetricsSummaryShuffleReadMetricsShufflePushReadMetricsDist
 from spark_history_mcp.api_client.models.task_metrics_summary_shuffle_write_metrics import TaskMetricsSummaryShuffleWriteMetrics as TaskMetricsSummaryShuffleWriteMetrics
+from spark_history_mcp.api_client.models.task_table_response import TaskTableResponse as TaskTableResponse
+from spark_history_mcp.api_client.models.thread_stack_trace import ThreadStackTrace as ThreadStackTrace
+from spark_history_mcp.api_client.models.thread_stack_trace_stack_trace import ThreadStackTraceStackTrace as ThreadStackTraceStackTrace
 from spark_history_mcp.api_client.models.version import Version as Version
 

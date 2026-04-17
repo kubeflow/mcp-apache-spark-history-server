@@ -17,26 +17,25 @@ import pprint
 import re  # noqa: F401
 import json
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, StrictStr
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, StrictStr
 from typing import Any, ClassVar, Dict, List, Optional
 from typing import Optional, Set
 from typing_extensions import Self
 from pydantic_core import to_jsonable_python
 
-class StreamingOutputOperation(BaseModel):
+class ProcessSummary(BaseModel):
     """
-    StreamingOutputOperation
+    ProcessSummary
     """ # noqa: E501
-    output_op_id: Optional[StrictInt] = Field(default=None, alias="outputOpId")
-    name: Optional[StrictStr] = None
-    description: Optional[StrictStr] = None
-    start_time: Optional[StrictStr] = Field(default=None, alias="startTime")
-    end_time: Optional[StrictStr] = Field(default=None, alias="endTime")
-    duration: Optional[StrictInt] = None
-    failure_reason: Optional[StrictStr] = Field(default=None, alias="failureReason")
-    job_ids: Optional[List[StrictInt]] = Field(default=None, alias="jobIds")
+    id: Optional[StrictStr] = None
+    host_port: Optional[StrictStr] = Field(default=None, alias="hostPort")
+    is_active: Optional[StrictBool] = Field(default=None, alias="isActive")
+    total_cores: Optional[StrictInt] = Field(default=None, alias="totalCores")
+    add_time: Optional[StrictStr] = Field(default=None, alias="addTime")
+    remove_time: Optional[StrictStr] = Field(default=None, alias="removeTime")
+    process_logs: Optional[Dict[str, StrictStr]] = Field(default=None, alias="processLogs")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["outputOpId", "name", "description", "startTime", "endTime", "duration", "failureReason", "jobIds"]
+    __properties: ClassVar[List[str]] = ["id", "hostPort", "isActive", "totalCores", "addTime", "removeTime", "processLogs"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -56,7 +55,7 @@ class StreamingOutputOperation(BaseModel):
 
     @classmethod
     def from_json(cls, json_str: str) -> Optional[Self]:
-        """Create an instance of StreamingOutputOperation from a JSON string"""
+        """Create an instance of ProcessSummary from a JSON string"""
         return cls.from_dict(json.loads(json_str))
 
     def to_dict(self) -> Dict[str, Any]:
@@ -84,31 +83,16 @@ class StreamingOutputOperation(BaseModel):
             for _key, _value in self.additional_properties.items():
                 _dict[_key] = _value
 
-        # set to None if start_time (nullable) is None
+        # set to None if remove_time (nullable) is None
         # and model_fields_set contains the field
-        if self.start_time is None and "start_time" in self.model_fields_set:
-            _dict['startTime'] = None
-
-        # set to None if end_time (nullable) is None
-        # and model_fields_set contains the field
-        if self.end_time is None and "end_time" in self.model_fields_set:
-            _dict['endTime'] = None
-
-        # set to None if duration (nullable) is None
-        # and model_fields_set contains the field
-        if self.duration is None and "duration" in self.model_fields_set:
-            _dict['duration'] = None
-
-        # set to None if failure_reason (nullable) is None
-        # and model_fields_set contains the field
-        if self.failure_reason is None and "failure_reason" in self.model_fields_set:
-            _dict['failureReason'] = None
+        if self.remove_time is None and "remove_time" in self.model_fields_set:
+            _dict['removeTime'] = None
 
         return _dict
 
     @classmethod
     def from_dict(cls, obj: Optional[Dict[str, Any]]) -> Optional[Self]:
-        """Create an instance of StreamingOutputOperation from a dict"""
+        """Create an instance of ProcessSummary from a dict"""
         if obj is None:
             return None
 
@@ -116,14 +100,13 @@ class StreamingOutputOperation(BaseModel):
             return cls.model_validate(obj)
 
         _obj = cls.model_validate({
-            "outputOpId": obj.get("outputOpId"),
-            "name": obj.get("name"),
-            "description": obj.get("description"),
-            "startTime": obj.get("startTime"),
-            "endTime": obj.get("endTime"),
-            "duration": obj.get("duration"),
-            "failureReason": obj.get("failureReason"),
-            "jobIds": obj.get("jobIds")
+            "id": obj.get("id"),
+            "hostPort": obj.get("hostPort"),
+            "isActive": obj.get("isActive"),
+            "totalCores": obj.get("totalCores"),
+            "addTime": obj.get("addTime"),
+            "removeTime": obj.get("removeTime"),
+            "processLogs": obj.get("processLogs")
         })
         # store additional fields in additional_properties
         for _key in obj.keys():

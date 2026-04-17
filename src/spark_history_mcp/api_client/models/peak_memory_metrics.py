@@ -48,8 +48,10 @@ class PeakMemoryMetrics(BaseModel):
     major_gc_count: Optional[StrictInt] = Field(default=None, alias="MajorGCCount")
     major_gc_time: Optional[StrictInt] = Field(default=None, alias="MajorGCTime")
     total_gc_time: Optional[StrictInt] = Field(default=None, alias="TotalGCTime")
+    concurrent_gc_count: Optional[StrictInt] = Field(default=None, alias="ConcurrentGCCount")
+    concurrent_gc_time: Optional[StrictInt] = Field(default=None, alias="ConcurrentGCTime")
     additional_properties: Dict[str, Any] = {}
-    __properties: ClassVar[List[str]] = ["JVMHeapMemory", "JVMOffHeapMemory", "OnHeapExecutionMemory", "OffHeapExecutionMemory", "OnHeapStorageMemory", "OffHeapStorageMemory", "OnHeapUnifiedMemory", "OffHeapUnifiedMemory", "DirectPoolMemory", "MappedPoolMemory", "ProcessTreeJVMVMemory", "ProcessTreeJVMRSSMemory", "ProcessTreePythonVMemory", "ProcessTreePythonRSSMemory", "ProcessTreeOtherVMemory", "ProcessTreeOtherRSSMemory", "MinorGCCount", "MinorGCTime", "MajorGCCount", "MajorGCTime", "TotalGCTime"]
+    __properties: ClassVar[List[str]] = ["JVMHeapMemory", "JVMOffHeapMemory", "OnHeapExecutionMemory", "OffHeapExecutionMemory", "OnHeapStorageMemory", "OffHeapStorageMemory", "OnHeapUnifiedMemory", "OffHeapUnifiedMemory", "DirectPoolMemory", "MappedPoolMemory", "ProcessTreeJVMVMemory", "ProcessTreeJVMRSSMemory", "ProcessTreePythonVMemory", "ProcessTreePythonRSSMemory", "ProcessTreeOtherVMemory", "ProcessTreeOtherRSSMemory", "MinorGCCount", "MinorGCTime", "MajorGCCount", "MajorGCTime", "TotalGCTime", "ConcurrentGCCount", "ConcurrentGCTime"]
 
     model_config = ConfigDict(
         validate_by_name=True,
@@ -129,7 +131,9 @@ class PeakMemoryMetrics(BaseModel):
             "MinorGCTime": obj.get("MinorGCTime"),
             "MajorGCCount": obj.get("MajorGCCount"),
             "MajorGCTime": obj.get("MajorGCTime"),
-            "TotalGCTime": obj.get("TotalGCTime")
+            "TotalGCTime": obj.get("TotalGCTime"),
+            "ConcurrentGCCount": obj.get("ConcurrentGCCount"),
+            "ConcurrentGCTime": obj.get("ConcurrentGCTime")
         })
         # store additional fields in additional_properties
         for _key in obj.keys():
