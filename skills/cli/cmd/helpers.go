@@ -57,6 +57,9 @@ func requireAppID(cmd *cobra.Command, args []string) error {
 	if appID == "" {
 		return fmt.Errorf("required flag \"app-id\" not set")
 	}
+	if attemptID != "" {
+		appID = appID + "/" + attemptID
+	}
 	return nil
 }
 

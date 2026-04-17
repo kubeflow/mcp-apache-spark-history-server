@@ -1,4 +1,10 @@
-"""Generate Spark event logs covering jobs, stages, failures, SQL, and executor metrics."""
+"""Generate Spark event logs covering jobs, stages, failures, SQL, and executor metrics.
+
+Set SPARK_APP_FAIL=1 to simulate a failed application attempt — the script will
+do partial work then raise an exception, letting Spark shut down cleanly.
+"""
+
+import os
 
 from pyspark.sql import SparkSession
 
@@ -8,6 +14,8 @@ spark = (
     .config("spark.eventLog.rolling.enabled", "false")
     .getOrCreate()
 )
+
+FAIL_MODE = os.environ.get("SPARK_APP_FAIL") == "1"
 
 sc = spark.sparkContext
 
@@ -28,7 +36,6 @@ spark.range(1000).selectExpr("id % 10 as key", "id as value").groupBy(
 # ---------------------------------------------------------------------------
 # Job 3: flaky tasks — fail once per partition, succeed on retry
 # ---------------------------------------------------------------------------
-import os
 
 
 def flaky_partition(index, iterator):
@@ -57,7 +64,13 @@ except Exception:
     pass
 
 # ---------------------------------------------------------------------------
-# Job 4: cache a dataset to populate executor memory/storage metrics
+# In fail mode, stop after partial work to simulate a failed attempt.
+# ---------------------------------------------------------------------------
+if FAIL_MODE:
+    spark.sparkContext._jvm.Runtime.getRuntime().halt(1)
+
+# ---------------------------------------------------------------------------
+# Job 5: cache a dataset to populate executor memory/storage metrics
 # ---------------------------------------------------------------------------
 big_df = spark.range(500000).selectExpr(
     "id", "id % 50 as dept", "id % 7 as region", "rand() * 1000 as salary"

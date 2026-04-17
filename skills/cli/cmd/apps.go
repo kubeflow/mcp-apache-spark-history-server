@@ -19,11 +19,18 @@ func newAppsCmd() *cobra.Command {
 	var sortBy string
 	var desc bool
 	var allServers bool
+	var showAttempts bool
 
 	cmd := &cobra.Command{
 		Use:   "apps",
 		Short: "List applications",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if showAttempts {
+				if appID == "" {
+					return fmt.Errorf("--attempts requires --app-id")
+				}
+				return listAttempts(cmd)
+			}
 			if allServers {
 				return listAppsAllServers(cmd, status, limit, sortBy, desc)
 			}
@@ -48,6 +55,7 @@ func newAppsCmd() *cobra.Command {
 	cmd.Flags().StringVar(&sortBy, "sort", "", "Sort by field (name|id|date|duration)")
 	cmd.Flags().BoolVar(&desc, "desc", false, "Sort descending")
 	cmd.Flags().BoolVar(&allServers, "all-servers", false, "Query all configured servers")
+	cmd.Flags().BoolVar(&showAttempts, "attempts", false, "List attempts for an application (requires -a)")
 	return cmd
 }
 
@@ -216,5 +224,47 @@ func listApps(cmd *cobra.Command, c client.ClientWithResponsesInterface, params 
 		}
 		util.PrintLimitFooter(w, limit, len(apps), "applications")
 		return nil
+	})
+}
+
+func listAttempts(cmd *cobra.Command) error {
+	c, err := newClient()
+	if err != nil {
+		return err
+	}
+	resp, err := c.GetApplicationWithResponse(cmd.Context(), appID)
+	if err != nil {
+		return err
+	}
+	body, err := util.CheckResponse(resp.JSON200, resp.HTTPResponse.Status)
+	if err != nil {
+		return err
+	}
+	if body.Attempts == nil {
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), "No attempts found.")
+		return nil
+	}
+	attempts := *body.Attempts
+	return util.PrintOutput(cmd.OutOrStdout(), attempts, outputFmt, func(w io.Writer) error {
+		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintln(tw, "ATTEMPT\tSTATUS\tDURATION\tSTART\tEND")
+		for _, a := range attempts {
+			status := "INCOMPLETE"
+			if util.Deref(a.Completed) {
+				status = "COMPLETED"
+			}
+			dur := util.FormatMsVal(util.Deref(a.Duration))
+			if dur == "0s" && !util.Deref(a.Completed) {
+				dur = "-"
+			}
+			start := util.Deref(a.StartTime)
+			end := util.Deref(a.EndTime)
+			if !util.Deref(a.Completed) {
+				end = "-"
+			}
+			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n",
+				util.Deref(a.AttemptId), status, dur, start, end)
+		}
+		return tw.Flush()
 	})
 }

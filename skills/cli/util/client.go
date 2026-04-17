@@ -1,8 +1,10 @@
 package util
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/kubeflow/mcp-apache-spark-history-server/skills/cli/client"
@@ -43,7 +45,10 @@ func NewSHSClient(configPath string, opts ...Option) (client.ClientWithResponses
 	}
 
 	httpClient := &http.Client{Timeout: o.timeout}
-	return client.NewClientWithResponses(server.URL+"/api/v1", client.WithHTTPClient(httpClient))
+	return client.NewClientWithResponses(server.URL+"/api/v1",
+		client.WithHTTPClient(httpClient),
+		client.WithRequestEditorFn(unescapeAppAttemptPath),
+	)
 }
 
 type options struct {
@@ -59,4 +64,15 @@ func WithTimeout(d time.Duration) Option {
 
 func WithServer(name string) Option {
 	return func(o *options) { o.serverName = name }
+}
+
+// unescapeAppAttemptPath rewrites %2F back to / in the URL path so that
+// YARN-style app IDs like "application_123/1" are routed correctly as
+// /applications/{appId}/{attemptId}/... instead of /applications/{appId%2FattemptId}/...
+func unescapeAppAttemptPath(_ context.Context, req *http.Request) error {
+	if strings.Contains(req.URL.RawPath, "%2F") {
+		req.URL.RawPath = strings.ReplaceAll(req.URL.RawPath, "%2F", "/")
+		req.URL.Path = req.URL.RawPath
+	}
+	return nil
 }

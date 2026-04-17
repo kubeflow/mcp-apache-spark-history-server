@@ -91,8 +91,14 @@ type ClientInterface interface {
 	// ListApplications request
 	ListApplications(ctx context.Context, params *ListApplicationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetApplication request
+	GetApplication(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListAllExecutors request
 	ListAllExecutors(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAllMiscellaneousProcess request
+	ListAllMiscellaneousProcess(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetEnvironment request
 	GetEnvironment(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -130,6 +136,9 @@ type ClientInterface interface {
 	// GetTaskSummary request
 	GetTaskSummary(ctx context.Context, appId AppId, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskSummaryParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// GetTaskTable request
+	GetTaskTable(ctx context.Context, appId AppId, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskTableParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// ListStorageRDDs request
 	ListStorageRDDs(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -137,7 +146,7 @@ type ClientInterface interface {
 	GetStorageRDD(ctx context.Context, appId AppId, rddId int, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListStreamingBatches request
-	ListStreamingBatches(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListStreamingBatches(ctx context.Context, appId AppId, params *ListStreamingBatchesParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetStreamingBatch request
 	GetStreamingBatch(ctx context.Context, appId AppId, batchId int, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -156,6 +165,87 @@ type ClientInterface interface {
 
 	// GetStreamingStatistics request
 	GetStreamingStatistics(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTaskThreadDump request
+	GetTaskThreadDump(ctx context.Context, appId AppId, params *GetTaskThreadDumpParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetApplicationAttempt request
+	GetApplicationAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAllExecutorsWithAttempt request
+	ListAllExecutorsWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListAllMiscellaneousProcessWithAttempt request
+	ListAllMiscellaneousProcessWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetEnvironmentWithAttempt request
+	GetEnvironmentWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListActiveExecutorsWithAttempt request
+	ListActiveExecutorsWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetExecutorThreadsWithAttempt request
+	GetExecutorThreadsWithAttempt(ctx context.Context, appId AppId, attemptId string, executorId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListJobsWithAttempt request
+	ListJobsWithAttempt(ctx context.Context, appId AppId, attemptId string, params *ListJobsWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetJobWithAttempt request
+	GetJobWithAttempt(ctx context.Context, appId AppId, attemptId string, jobId int, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListSQLExecutionsWithAttempt request
+	ListSQLExecutionsWithAttempt(ctx context.Context, appId AppId, attemptId string, params *ListSQLExecutionsWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetSQLExecutionWithAttempt request
+	GetSQLExecutionWithAttempt(ctx context.Context, appId AppId, attemptId string, executionId int, params *GetSQLExecutionWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListStagesWithAttempt request
+	ListStagesWithAttempt(ctx context.Context, appId AppId, attemptId string, params *ListStagesWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListStageAttemptsWithAttempt request
+	ListStageAttemptsWithAttempt(ctx context.Context, appId AppId, attemptId string, stageId StageId, params *ListStageAttemptsWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetStageAttemptWithAttempt request
+	GetStageAttemptWithAttempt(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetStageAttemptWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListTasksWithAttempt request
+	ListTasksWithAttempt(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *ListTasksWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTaskSummaryWithAttempt request
+	GetTaskSummaryWithAttempt(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskSummaryWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTaskTableWithAttempt request
+	GetTaskTableWithAttempt(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskTableWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListStorageRDDsWithAttempt request
+	ListStorageRDDsWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetStorageRDDWithAttempt request
+	GetStorageRDDWithAttempt(ctx context.Context, appId AppId, attemptId string, rddId int, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListStreamingBatchesWithAttempt request
+	ListStreamingBatchesWithAttempt(ctx context.Context, appId AppId, attemptId string, params *ListStreamingBatchesWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetStreamingBatchWithAttempt request
+	GetStreamingBatchWithAttempt(ctx context.Context, appId AppId, attemptId string, batchId int, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListStreamingBatchOperationsWithAttempt request
+	ListStreamingBatchOperationsWithAttempt(ctx context.Context, appId AppId, attemptId string, batchId int, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetStreamingBatchOperationWithAttempt request
+	GetStreamingBatchOperationWithAttempt(ctx context.Context, appId AppId, attemptId string, batchId int, outputOpId int, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListStreamingReceiversWithAttempt request
+	ListStreamingReceiversWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetStreamingReceiverWithAttempt request
+	GetStreamingReceiverWithAttempt(ctx context.Context, appId AppId, attemptId string, streamId int, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetStreamingStatisticsWithAttempt request
+	GetStreamingStatisticsWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetTaskThreadDumpWithAttempt request
+	GetTaskThreadDumpWithAttempt(ctx context.Context, appId AppId, attemptId string, params *GetTaskThreadDumpWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DownloadLogs request
 	DownloadLogs(ctx context.Context, baseAppId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -179,8 +269,32 @@ func (c *Client) ListApplications(ctx context.Context, params *ListApplicationsP
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetApplication(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApplicationRequest(c.Server, appId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) ListAllExecutors(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListAllExecutorsRequest(c.Server, appId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListAllMiscellaneousProcess(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAllMiscellaneousProcessRequest(c.Server, appId)
 	if err != nil {
 		return nil, err
 	}
@@ -335,6 +449,18 @@ func (c *Client) GetTaskSummary(ctx context.Context, appId AppId, stageId StageI
 	return c.Client.Do(req)
 }
 
+func (c *Client) GetTaskTable(ctx context.Context, appId AppId, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskTableParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTaskTableRequest(c.Server, appId, stageId, stageAttemptId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
 func (c *Client) ListStorageRDDs(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListStorageRDDsRequest(c.Server, appId)
 	if err != nil {
@@ -359,8 +485,8 @@ func (c *Client) GetStorageRDD(ctx context.Context, appId AppId, rddId int, reqE
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListStreamingBatches(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListStreamingBatchesRequest(c.Server, appId)
+func (c *Client) ListStreamingBatches(ctx context.Context, appId AppId, params *ListStreamingBatchesParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListStreamingBatchesRequest(c.Server, appId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -433,6 +559,330 @@ func (c *Client) GetStreamingReceiver(ctx context.Context, appId AppId, streamId
 
 func (c *Client) GetStreamingStatistics(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetStreamingStatisticsRequest(c.Server, appId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTaskThreadDump(ctx context.Context, appId AppId, params *GetTaskThreadDumpParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTaskThreadDumpRequest(c.Server, appId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetApplicationAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetApplicationAttemptRequest(c.Server, appId, attemptId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListAllExecutorsWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAllExecutorsWithAttemptRequest(c.Server, appId, attemptId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListAllMiscellaneousProcessWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListAllMiscellaneousProcessWithAttemptRequest(c.Server, appId, attemptId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetEnvironmentWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetEnvironmentWithAttemptRequest(c.Server, appId, attemptId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListActiveExecutorsWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListActiveExecutorsWithAttemptRequest(c.Server, appId, attemptId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetExecutorThreadsWithAttempt(ctx context.Context, appId AppId, attemptId string, executorId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetExecutorThreadsWithAttemptRequest(c.Server, appId, attemptId, executorId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListJobsWithAttempt(ctx context.Context, appId AppId, attemptId string, params *ListJobsWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListJobsWithAttemptRequest(c.Server, appId, attemptId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetJobWithAttempt(ctx context.Context, appId AppId, attemptId string, jobId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetJobWithAttemptRequest(c.Server, appId, attemptId, jobId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListSQLExecutionsWithAttempt(ctx context.Context, appId AppId, attemptId string, params *ListSQLExecutionsWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListSQLExecutionsWithAttemptRequest(c.Server, appId, attemptId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetSQLExecutionWithAttempt(ctx context.Context, appId AppId, attemptId string, executionId int, params *GetSQLExecutionWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetSQLExecutionWithAttemptRequest(c.Server, appId, attemptId, executionId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListStagesWithAttempt(ctx context.Context, appId AppId, attemptId string, params *ListStagesWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListStagesWithAttemptRequest(c.Server, appId, attemptId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListStageAttemptsWithAttempt(ctx context.Context, appId AppId, attemptId string, stageId StageId, params *ListStageAttemptsWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListStageAttemptsWithAttemptRequest(c.Server, appId, attemptId, stageId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetStageAttemptWithAttempt(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetStageAttemptWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStageAttemptWithAttemptRequest(c.Server, appId, attemptId, stageId, stageAttemptId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListTasksWithAttempt(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *ListTasksWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListTasksWithAttemptRequest(c.Server, appId, attemptId, stageId, stageAttemptId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTaskSummaryWithAttempt(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskSummaryWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTaskSummaryWithAttemptRequest(c.Server, appId, attemptId, stageId, stageAttemptId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTaskTableWithAttempt(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskTableWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTaskTableWithAttemptRequest(c.Server, appId, attemptId, stageId, stageAttemptId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListStorageRDDsWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListStorageRDDsWithAttemptRequest(c.Server, appId, attemptId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetStorageRDDWithAttempt(ctx context.Context, appId AppId, attemptId string, rddId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStorageRDDWithAttemptRequest(c.Server, appId, attemptId, rddId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListStreamingBatchesWithAttempt(ctx context.Context, appId AppId, attemptId string, params *ListStreamingBatchesWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListStreamingBatchesWithAttemptRequest(c.Server, appId, attemptId, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetStreamingBatchWithAttempt(ctx context.Context, appId AppId, attemptId string, batchId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStreamingBatchWithAttemptRequest(c.Server, appId, attemptId, batchId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListStreamingBatchOperationsWithAttempt(ctx context.Context, appId AppId, attemptId string, batchId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListStreamingBatchOperationsWithAttemptRequest(c.Server, appId, attemptId, batchId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetStreamingBatchOperationWithAttempt(ctx context.Context, appId AppId, attemptId string, batchId int, outputOpId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStreamingBatchOperationWithAttemptRequest(c.Server, appId, attemptId, batchId, outputOpId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListStreamingReceiversWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListStreamingReceiversWithAttemptRequest(c.Server, appId, attemptId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetStreamingReceiverWithAttempt(ctx context.Context, appId AppId, attemptId string, streamId int, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStreamingReceiverWithAttemptRequest(c.Server, appId, attemptId, streamId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetStreamingStatisticsWithAttempt(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStreamingStatisticsWithAttemptRequest(c.Server, appId, attemptId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetTaskThreadDumpWithAttempt(ctx context.Context, appId AppId, attemptId string, params *GetTaskThreadDumpWithAttemptParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTaskThreadDumpWithAttemptRequest(c.Server, appId, attemptId, params)
 	if err != nil {
 		return nil, err
 	}
@@ -608,6 +1058,40 @@ func NewListApplicationsRequest(server string, params *ListApplicationsParams) (
 	return req, nil
 }
 
+// NewGetApplicationRequest generates requests for GetApplication
+func NewGetApplicationRequest(server string, appId AppId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListAllExecutorsRequest generates requests for ListAllExecutors
 func NewListAllExecutorsRequest(server string, appId AppId) (*http.Request, error) {
 	var err error
@@ -625,6 +1109,40 @@ func NewListAllExecutorsRequest(server string, appId AppId) (*http.Request, erro
 	}
 
 	operationPath := fmt.Sprintf("/applications/%s/allexecutors", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListAllMiscellaneousProcessRequest generates requests for ListAllMiscellaneousProcess
+func NewListAllMiscellaneousProcessRequest(server string, appId AppId) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/allmiscellaneousprocess", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1568,6 +2086,168 @@ func NewGetTaskSummaryRequest(server string, appId AppId, stageId StageId, stage
 	return req, nil
 }
 
+// NewGetTaskTableRequest generates requests for GetTaskTable
+func NewGetTaskTableRequest(server string, appId AppId, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskTableParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "stageId", stageId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "stageAttemptId", stageAttemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/stages/%s/%s/taskTable", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Details != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "details", *params.Details, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "numTasks", params.NumTasks, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.Start != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "start", *params.Start, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Length != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "length", *params.Length, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.SearchValue != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "search[value]", *params.SearchValue, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.ColumnNameToSort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "columnNameToSort", *params.ColumnNameToSort, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Order0Dir != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "order[0][dir]", *params.Order0Dir, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewListStorageRDDsRequest generates requests for ListStorageRDDs
 func NewListStorageRDDsRequest(server string, appId AppId) (*http.Request, error) {
 	var err error
@@ -1644,7 +2324,7 @@ func NewGetStorageRDDRequest(server string, appId AppId, rddId int) (*http.Reque
 }
 
 // NewListStreamingBatchesRequest generates requests for ListStreamingBatches
-func NewListStreamingBatchesRequest(server string, appId AppId) (*http.Request, error) {
+func NewListStreamingBatchesRequest(server string, appId AppId, params *ListStreamingBatchesParams) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -1667,6 +2347,28 @@ func NewListStreamingBatchesRequest(server string, appId AppId) (*http.Request, 
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -1916,6 +2618,1876 @@ func NewGetStreamingStatisticsRequest(server string, appId AppId) (*http.Request
 	return req, nil
 }
 
+// NewGetTaskThreadDumpRequest generates requests for GetTaskThreadDump
+func NewGetTaskThreadDumpRequest(server string, appId AppId, params *GetTaskThreadDumpParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/threads", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "taskId", params.TaskId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int64"}); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "executorId", params.ExecutorId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetApplicationAttemptRequest generates requests for GetApplicationAttempt
+func NewGetApplicationAttemptRequest(server string, appId AppId, attemptId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListAllExecutorsWithAttemptRequest generates requests for ListAllExecutorsWithAttempt
+func NewListAllExecutorsWithAttemptRequest(server string, appId AppId, attemptId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/allexecutors", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListAllMiscellaneousProcessWithAttemptRequest generates requests for ListAllMiscellaneousProcessWithAttempt
+func NewListAllMiscellaneousProcessWithAttemptRequest(server string, appId AppId, attemptId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/allmiscellaneousprocess", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetEnvironmentWithAttemptRequest generates requests for GetEnvironmentWithAttempt
+func NewGetEnvironmentWithAttemptRequest(server string, appId AppId, attemptId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/environment", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListActiveExecutorsWithAttemptRequest generates requests for ListActiveExecutorsWithAttempt
+func NewListActiveExecutorsWithAttemptRequest(server string, appId AppId, attemptId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/executors", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetExecutorThreadsWithAttemptRequest generates requests for GetExecutorThreadsWithAttempt
+func NewGetExecutorThreadsWithAttemptRequest(server string, appId AppId, attemptId string, executorId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "executorId", executorId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/executors/%s/threads", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListJobsWithAttemptRequest generates requests for ListJobsWithAttempt
+func NewListJobsWithAttemptRequest(server string, appId AppId, attemptId string, params *ListJobsWithAttemptParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/jobs", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetJobWithAttemptRequest generates requests for GetJobWithAttempt
+func NewGetJobWithAttemptRequest(server string, appId AppId, attemptId string, jobId int) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "jobId", jobId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/jobs/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListSQLExecutionsWithAttemptRequest generates requests for ListSQLExecutionsWithAttempt
+func NewListSQLExecutionsWithAttemptRequest(server string, appId AppId, attemptId string, params *ListSQLExecutionsWithAttemptParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/sql", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Details != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "details", *params.Details, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.PlanDescription != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "planDescription", *params.PlanDescription, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Length != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "length", *params.Length, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetSQLExecutionWithAttemptRequest generates requests for GetSQLExecutionWithAttempt
+func NewGetSQLExecutionWithAttemptRequest(server string, appId AppId, attemptId string, executionId int, params *GetSQLExecutionWithAttemptParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "executionId", executionId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/sql/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Details != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "details", *params.Details, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.PlanDescription != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "planDescription", *params.PlanDescription, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListStagesWithAttemptRequest generates requests for ListStagesWithAttempt
+func NewListStagesWithAttemptRequest(server string, appId AppId, attemptId string, params *ListStagesWithAttemptParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/stages", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Details != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "details", *params.Details, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.TaskStatus != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "taskStatus", *params.TaskStatus, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.WithSummaries != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "withSummaries", *params.WithSummaries, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Quantiles != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "quantiles", *params.Quantiles, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListStageAttemptsWithAttemptRequest generates requests for ListStageAttemptsWithAttempt
+func NewListStageAttemptsWithAttemptRequest(server string, appId AppId, attemptId string, stageId StageId, params *ListStageAttemptsWithAttemptParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "stageId", stageId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/stages/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Details != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "details", *params.Details, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.TaskStatus != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "taskStatus", *params.TaskStatus, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.WithSummaries != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "withSummaries", *params.WithSummaries, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Quantiles != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "quantiles", *params.Quantiles, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetStageAttemptWithAttemptRequest generates requests for GetStageAttemptWithAttempt
+func NewGetStageAttemptWithAttemptRequest(server string, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetStageAttemptWithAttemptParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "stageId", stageId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "stageAttemptId", stageAttemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/stages/%s/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Details != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "details", *params.Details, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.TaskStatus != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "taskStatus", *params.TaskStatus, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.WithSummaries != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "withSummaries", *params.WithSummaries, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Quantiles != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "quantiles", *params.Quantiles, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListTasksWithAttemptRequest generates requests for ListTasksWithAttempt
+func NewListTasksWithAttemptRequest(server string, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *ListTasksWithAttemptParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "stageId", stageId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "stageAttemptId", stageAttemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/stages/%s/%s/taskList", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Offset != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "offset", *params.Offset, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Length != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "length", *params.Length, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.SortBy != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "sortBy", *params.SortBy, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTaskSummaryWithAttemptRequest generates requests for GetTaskSummaryWithAttempt
+func NewGetTaskSummaryWithAttemptRequest(server string, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskSummaryWithAttemptParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "stageId", stageId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "stageAttemptId", stageAttemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/stages/%s/%s/taskSummary", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Quantiles != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "quantiles", *params.Quantiles, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTaskTableWithAttemptRequest generates requests for GetTaskTableWithAttempt
+func NewGetTaskTableWithAttemptRequest(server string, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskTableWithAttemptParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "stageId", stageId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "stageAttemptId", stageAttemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/stages/%s/%s/taskTable", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Details != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "details", *params.Details, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "boolean", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "numTasks", params.NumTasks, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if params.Start != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "start", *params.Start, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Length != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "length", *params.Length, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.SearchValue != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "search[value]", *params.SearchValue, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.ColumnNameToSort != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "columnNameToSort", *params.ColumnNameToSort, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		if params.Order0Dir != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "order[0][dir]", *params.Order0Dir, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListStorageRDDsWithAttemptRequest generates requests for ListStorageRDDsWithAttempt
+func NewListStorageRDDsWithAttemptRequest(server string, appId AppId, attemptId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/storage/rdd", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetStorageRDDWithAttemptRequest generates requests for GetStorageRDDWithAttempt
+func NewGetStorageRDDWithAttemptRequest(server string, appId AppId, attemptId string, rddId int) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "rddId", rddId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/storage/rdd/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListStreamingBatchesWithAttemptRequest generates requests for ListStreamingBatchesWithAttempt
+func NewListStreamingBatchesWithAttemptRequest(server string, appId AppId, attemptId string, params *ListStreamingBatchesWithAttemptParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/streaming/batches", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.Status != nil {
+
+			if queryFrag, err := runtime.StyleParamWithOptions("form", true, "status", *params.Status, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetStreamingBatchWithAttemptRequest generates requests for GetStreamingBatchWithAttempt
+func NewGetStreamingBatchWithAttemptRequest(server string, appId AppId, attemptId string, batchId int) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "batchId", batchId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/streaming/batches/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListStreamingBatchOperationsWithAttemptRequest generates requests for ListStreamingBatchOperationsWithAttempt
+func NewListStreamingBatchOperationsWithAttemptRequest(server string, appId AppId, attemptId string, batchId int) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "batchId", batchId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/streaming/batches/%s/operations", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetStreamingBatchOperationWithAttemptRequest generates requests for GetStreamingBatchOperationWithAttempt
+func NewGetStreamingBatchOperationWithAttemptRequest(server string, appId AppId, attemptId string, batchId int, outputOpId int) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "batchId", batchId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam3 string
+
+	pathParam3, err = runtime.StyleParamWithOptions("simple", false, "outputOpId", outputOpId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/streaming/batches/%s/operations/%s", pathParam0, pathParam1, pathParam2, pathParam3)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListStreamingReceiversWithAttemptRequest generates requests for ListStreamingReceiversWithAttempt
+func NewListStreamingReceiversWithAttemptRequest(server string, appId AppId, attemptId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/streaming/receivers", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetStreamingReceiverWithAttemptRequest generates requests for GetStreamingReceiverWithAttempt
+func NewGetStreamingReceiverWithAttemptRequest(server string, appId AppId, attemptId string, streamId int) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam2 string
+
+	pathParam2, err = runtime.StyleParamWithOptions("simple", false, "streamId", streamId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "integer", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/streaming/receivers/%s", pathParam0, pathParam1, pathParam2)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetStreamingStatisticsWithAttemptRequest generates requests for GetStreamingStatisticsWithAttempt
+func NewGetStreamingStatisticsWithAttemptRequest(server string, appId AppId, attemptId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/streaming/statistics", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetTaskThreadDumpWithAttemptRequest generates requests for GetTaskThreadDumpWithAttempt
+func NewGetTaskThreadDumpWithAttemptRequest(server string, appId AppId, attemptId string, params *GetTaskThreadDumpWithAttemptParams) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithOptions("simple", false, "appId", appId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithOptions("simple", false, "attemptId", attemptId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationPath, Type: "string", Format: ""})
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/applications/%s/%s/threads", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "taskId", params.TaskId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "integer", Format: "int64"}); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithOptions("form", true, "executorId", params.ExecutorId, runtime.StyleParamOptions{ParamLocation: runtime.ParamLocationQuery, Type: "string", Format: ""}); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewDownloadLogsRequest generates requests for DownloadLogs
 func NewDownloadLogsRequest(server string, baseAppId string) (*http.Request, error) {
 	var err error
@@ -2064,8 +4636,14 @@ type ClientWithResponsesInterface interface {
 	// ListApplicationsWithResponse request
 	ListApplicationsWithResponse(ctx context.Context, params *ListApplicationsParams, reqEditors ...RequestEditorFn) (*ListApplicationsResponse, error)
 
+	// GetApplicationWithResponse request
+	GetApplicationWithResponse(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*GetApplicationResponse, error)
+
 	// ListAllExecutorsWithResponse request
 	ListAllExecutorsWithResponse(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*ListAllExecutorsResponse, error)
+
+	// ListAllMiscellaneousProcessWithResponse request
+	ListAllMiscellaneousProcessWithResponse(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*ListAllMiscellaneousProcessResponse, error)
 
 	// GetEnvironmentWithResponse request
 	GetEnvironmentWithResponse(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*GetEnvironmentResponse, error)
@@ -2103,6 +4681,9 @@ type ClientWithResponsesInterface interface {
 	// GetTaskSummaryWithResponse request
 	GetTaskSummaryWithResponse(ctx context.Context, appId AppId, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskSummaryParams, reqEditors ...RequestEditorFn) (*GetTaskSummaryResponse, error)
 
+	// GetTaskTableWithResponse request
+	GetTaskTableWithResponse(ctx context.Context, appId AppId, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskTableParams, reqEditors ...RequestEditorFn) (*GetTaskTableResponse, error)
+
 	// ListStorageRDDsWithResponse request
 	ListStorageRDDsWithResponse(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*ListStorageRDDsResponse, error)
 
@@ -2110,7 +4691,7 @@ type ClientWithResponsesInterface interface {
 	GetStorageRDDWithResponse(ctx context.Context, appId AppId, rddId int, reqEditors ...RequestEditorFn) (*GetStorageRDDResponse, error)
 
 	// ListStreamingBatchesWithResponse request
-	ListStreamingBatchesWithResponse(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*ListStreamingBatchesResponse, error)
+	ListStreamingBatchesWithResponse(ctx context.Context, appId AppId, params *ListStreamingBatchesParams, reqEditors ...RequestEditorFn) (*ListStreamingBatchesResponse, error)
 
 	// GetStreamingBatchWithResponse request
 	GetStreamingBatchWithResponse(ctx context.Context, appId AppId, batchId int, reqEditors ...RequestEditorFn) (*GetStreamingBatchResponse, error)
@@ -2129,6 +4710,87 @@ type ClientWithResponsesInterface interface {
 
 	// GetStreamingStatisticsWithResponse request
 	GetStreamingStatisticsWithResponse(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*GetStreamingStatisticsResponse, error)
+
+	// GetTaskThreadDumpWithResponse request
+	GetTaskThreadDumpWithResponse(ctx context.Context, appId AppId, params *GetTaskThreadDumpParams, reqEditors ...RequestEditorFn) (*GetTaskThreadDumpResponse, error)
+
+	// GetApplicationAttemptWithResponse request
+	GetApplicationAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*GetApplicationAttemptResponse, error)
+
+	// ListAllExecutorsWithAttemptWithResponse request
+	ListAllExecutorsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*ListAllExecutorsWithAttemptResponse, error)
+
+	// ListAllMiscellaneousProcessWithAttemptWithResponse request
+	ListAllMiscellaneousProcessWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*ListAllMiscellaneousProcessWithAttemptResponse, error)
+
+	// GetEnvironmentWithAttemptWithResponse request
+	GetEnvironmentWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*GetEnvironmentWithAttemptResponse, error)
+
+	// ListActiveExecutorsWithAttemptWithResponse request
+	ListActiveExecutorsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*ListActiveExecutorsWithAttemptResponse, error)
+
+	// GetExecutorThreadsWithAttemptWithResponse request
+	GetExecutorThreadsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, executorId string, reqEditors ...RequestEditorFn) (*GetExecutorThreadsWithAttemptResponse, error)
+
+	// ListJobsWithAttemptWithResponse request
+	ListJobsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, params *ListJobsWithAttemptParams, reqEditors ...RequestEditorFn) (*ListJobsWithAttemptResponse, error)
+
+	// GetJobWithAttemptWithResponse request
+	GetJobWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, jobId int, reqEditors ...RequestEditorFn) (*GetJobWithAttemptResponse, error)
+
+	// ListSQLExecutionsWithAttemptWithResponse request
+	ListSQLExecutionsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, params *ListSQLExecutionsWithAttemptParams, reqEditors ...RequestEditorFn) (*ListSQLExecutionsWithAttemptResponse, error)
+
+	// GetSQLExecutionWithAttemptWithResponse request
+	GetSQLExecutionWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, executionId int, params *GetSQLExecutionWithAttemptParams, reqEditors ...RequestEditorFn) (*GetSQLExecutionWithAttemptResponse, error)
+
+	// ListStagesWithAttemptWithResponse request
+	ListStagesWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, params *ListStagesWithAttemptParams, reqEditors ...RequestEditorFn) (*ListStagesWithAttemptResponse, error)
+
+	// ListStageAttemptsWithAttemptWithResponse request
+	ListStageAttemptsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, stageId StageId, params *ListStageAttemptsWithAttemptParams, reqEditors ...RequestEditorFn) (*ListStageAttemptsWithAttemptResponse, error)
+
+	// GetStageAttemptWithAttemptWithResponse request
+	GetStageAttemptWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetStageAttemptWithAttemptParams, reqEditors ...RequestEditorFn) (*GetStageAttemptWithAttemptResponse, error)
+
+	// ListTasksWithAttemptWithResponse request
+	ListTasksWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *ListTasksWithAttemptParams, reqEditors ...RequestEditorFn) (*ListTasksWithAttemptResponse, error)
+
+	// GetTaskSummaryWithAttemptWithResponse request
+	GetTaskSummaryWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskSummaryWithAttemptParams, reqEditors ...RequestEditorFn) (*GetTaskSummaryWithAttemptResponse, error)
+
+	// GetTaskTableWithAttemptWithResponse request
+	GetTaskTableWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskTableWithAttemptParams, reqEditors ...RequestEditorFn) (*GetTaskTableWithAttemptResponse, error)
+
+	// ListStorageRDDsWithAttemptWithResponse request
+	ListStorageRDDsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*ListStorageRDDsWithAttemptResponse, error)
+
+	// GetStorageRDDWithAttemptWithResponse request
+	GetStorageRDDWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, rddId int, reqEditors ...RequestEditorFn) (*GetStorageRDDWithAttemptResponse, error)
+
+	// ListStreamingBatchesWithAttemptWithResponse request
+	ListStreamingBatchesWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, params *ListStreamingBatchesWithAttemptParams, reqEditors ...RequestEditorFn) (*ListStreamingBatchesWithAttemptResponse, error)
+
+	// GetStreamingBatchWithAttemptWithResponse request
+	GetStreamingBatchWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, batchId int, reqEditors ...RequestEditorFn) (*GetStreamingBatchWithAttemptResponse, error)
+
+	// ListStreamingBatchOperationsWithAttemptWithResponse request
+	ListStreamingBatchOperationsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, batchId int, reqEditors ...RequestEditorFn) (*ListStreamingBatchOperationsWithAttemptResponse, error)
+
+	// GetStreamingBatchOperationWithAttemptWithResponse request
+	GetStreamingBatchOperationWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, batchId int, outputOpId int, reqEditors ...RequestEditorFn) (*GetStreamingBatchOperationWithAttemptResponse, error)
+
+	// ListStreamingReceiversWithAttemptWithResponse request
+	ListStreamingReceiversWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*ListStreamingReceiversWithAttemptResponse, error)
+
+	// GetStreamingReceiverWithAttemptWithResponse request
+	GetStreamingReceiverWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, streamId int, reqEditors ...RequestEditorFn) (*GetStreamingReceiverWithAttemptResponse, error)
+
+	// GetStreamingStatisticsWithAttemptWithResponse request
+	GetStreamingStatisticsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*GetStreamingStatisticsWithAttemptResponse, error)
+
+	// GetTaskThreadDumpWithAttemptWithResponse request
+	GetTaskThreadDumpWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, params *GetTaskThreadDumpWithAttemptParams, reqEditors ...RequestEditorFn) (*GetTaskThreadDumpWithAttemptResponse, error)
 
 	// DownloadLogsWithResponse request
 	DownloadLogsWithResponse(ctx context.Context, baseAppId string, reqEditors ...RequestEditorFn) (*DownloadLogsResponse, error)
@@ -2162,6 +4824,28 @@ func (r ListApplicationsResponse) StatusCode() int {
 	return 0
 }
 
+type GetApplicationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Application
+}
+
+// Status returns HTTPResponse.Status
+func (r GetApplicationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetApplicationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type ListAllExecutorsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2178,6 +4862,28 @@ func (r ListAllExecutorsResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r ListAllExecutorsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListAllMiscellaneousProcessResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]ProcessSummary
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAllMiscellaneousProcessResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAllMiscellaneousProcessResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2231,7 +4937,7 @@ func (r ListActiveExecutorsResponse) StatusCode() int {
 type GetExecutorThreadsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *map[string]string
+	JSON200      *[]ThreadStackTrace
 }
 
 // Status returns HTTPResponse.Status
@@ -2448,6 +5154,28 @@ func (r GetTaskSummaryResponse) StatusCode() int {
 	return 0
 }
 
+type GetTaskTableResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *TaskTableResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTaskTableResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTaskTableResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type ListStorageRDDsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2646,6 +5374,600 @@ func (r GetStreamingStatisticsResponse) StatusCode() int {
 	return 0
 }
 
+type GetTaskThreadDumpResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ThreadStackTrace
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTaskThreadDumpResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTaskThreadDumpResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetApplicationAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ApplicationAttempt
+}
+
+// Status returns HTTPResponse.Status
+func (r GetApplicationAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetApplicationAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListAllExecutorsWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]Executor
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAllExecutorsWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAllExecutorsWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListAllMiscellaneousProcessWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]ProcessSummary
+}
+
+// Status returns HTTPResponse.Status
+func (r ListAllMiscellaneousProcessWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListAllMiscellaneousProcessWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetEnvironmentWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Environment
+}
+
+// Status returns HTTPResponse.Status
+func (r GetEnvironmentWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetEnvironmentWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListActiveExecutorsWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]Executor
+}
+
+// Status returns HTTPResponse.Status
+func (r ListActiveExecutorsWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListActiveExecutorsWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetExecutorThreadsWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]ThreadStackTrace
+}
+
+// Status returns HTTPResponse.Status
+func (r GetExecutorThreadsWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetExecutorThreadsWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListJobsWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]Job
+}
+
+// Status returns HTTPResponse.Status
+func (r ListJobsWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListJobsWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetJobWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Job
+}
+
+// Status returns HTTPResponse.Status
+func (r GetJobWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetJobWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListSQLExecutionsWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]SQLExecution
+}
+
+// Status returns HTTPResponse.Status
+func (r ListSQLExecutionsWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListSQLExecutionsWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetSQLExecutionWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *SQLExecution
+}
+
+// Status returns HTTPResponse.Status
+func (r GetSQLExecutionWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetSQLExecutionWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListStagesWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]StageData
+}
+
+// Status returns HTTPResponse.Status
+func (r ListStagesWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListStagesWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListStageAttemptsWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]StageData
+}
+
+// Status returns HTTPResponse.Status
+func (r ListStageAttemptsWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListStageAttemptsWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetStageAttemptWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *StageData
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStageAttemptWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStageAttemptWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListTasksWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]Task
+}
+
+// Status returns HTTPResponse.Status
+func (r ListTasksWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListTasksWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTaskSummaryWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *TaskMetricsSummary
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTaskSummaryWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTaskSummaryWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTaskTableWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *TaskTableResponse
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTaskTableWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTaskTableWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListStorageRDDsWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]RDDStorageInfo
+}
+
+// Status returns HTTPResponse.Status
+func (r ListStorageRDDsWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListStorageRDDsWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetStorageRDDWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *RDDStorageInfo
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStorageRDDWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStorageRDDWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListStreamingBatchesWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]StreamingBatch
+}
+
+// Status returns HTTPResponse.Status
+func (r ListStreamingBatchesWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListStreamingBatchesWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetStreamingBatchWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *StreamingBatch
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStreamingBatchWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStreamingBatchWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListStreamingBatchOperationsWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]StreamingOutputOperation
+}
+
+// Status returns HTTPResponse.Status
+func (r ListStreamingBatchOperationsWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListStreamingBatchOperationsWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetStreamingBatchOperationWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *StreamingOutputOperation
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStreamingBatchOperationWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStreamingBatchOperationWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListStreamingReceiversWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]StreamingReceiver
+}
+
+// Status returns HTTPResponse.Status
+func (r ListStreamingReceiversWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListStreamingReceiversWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetStreamingReceiverWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *StreamingReceiver
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStreamingReceiverWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStreamingReceiverWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetStreamingStatisticsWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *StreamingStatistics
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStreamingStatisticsWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStreamingStatisticsWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetTaskThreadDumpWithAttemptResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ThreadStackTrace
+}
+
+// Status returns HTTPResponse.Status
+func (r GetTaskThreadDumpWithAttemptResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetTaskThreadDumpWithAttemptResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type DownloadLogsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -2719,6 +6041,15 @@ func (c *ClientWithResponses) ListApplicationsWithResponse(ctx context.Context, 
 	return ParseListApplicationsResponse(rsp)
 }
 
+// GetApplicationWithResponse request returning *GetApplicationResponse
+func (c *ClientWithResponses) GetApplicationWithResponse(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*GetApplicationResponse, error) {
+	rsp, err := c.GetApplication(ctx, appId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetApplicationResponse(rsp)
+}
+
 // ListAllExecutorsWithResponse request returning *ListAllExecutorsResponse
 func (c *ClientWithResponses) ListAllExecutorsWithResponse(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*ListAllExecutorsResponse, error) {
 	rsp, err := c.ListAllExecutors(ctx, appId, reqEditors...)
@@ -2726,6 +6057,15 @@ func (c *ClientWithResponses) ListAllExecutorsWithResponse(ctx context.Context, 
 		return nil, err
 	}
 	return ParseListAllExecutorsResponse(rsp)
+}
+
+// ListAllMiscellaneousProcessWithResponse request returning *ListAllMiscellaneousProcessResponse
+func (c *ClientWithResponses) ListAllMiscellaneousProcessWithResponse(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*ListAllMiscellaneousProcessResponse, error) {
+	rsp, err := c.ListAllMiscellaneousProcess(ctx, appId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAllMiscellaneousProcessResponse(rsp)
 }
 
 // GetEnvironmentWithResponse request returning *GetEnvironmentResponse
@@ -2836,6 +6176,15 @@ func (c *ClientWithResponses) GetTaskSummaryWithResponse(ctx context.Context, ap
 	return ParseGetTaskSummaryResponse(rsp)
 }
 
+// GetTaskTableWithResponse request returning *GetTaskTableResponse
+func (c *ClientWithResponses) GetTaskTableWithResponse(ctx context.Context, appId AppId, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskTableParams, reqEditors ...RequestEditorFn) (*GetTaskTableResponse, error) {
+	rsp, err := c.GetTaskTable(ctx, appId, stageId, stageAttemptId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTaskTableResponse(rsp)
+}
+
 // ListStorageRDDsWithResponse request returning *ListStorageRDDsResponse
 func (c *ClientWithResponses) ListStorageRDDsWithResponse(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*ListStorageRDDsResponse, error) {
 	rsp, err := c.ListStorageRDDs(ctx, appId, reqEditors...)
@@ -2855,8 +6204,8 @@ func (c *ClientWithResponses) GetStorageRDDWithResponse(ctx context.Context, app
 }
 
 // ListStreamingBatchesWithResponse request returning *ListStreamingBatchesResponse
-func (c *ClientWithResponses) ListStreamingBatchesWithResponse(ctx context.Context, appId AppId, reqEditors ...RequestEditorFn) (*ListStreamingBatchesResponse, error) {
-	rsp, err := c.ListStreamingBatches(ctx, appId, reqEditors...)
+func (c *ClientWithResponses) ListStreamingBatchesWithResponse(ctx context.Context, appId AppId, params *ListStreamingBatchesParams, reqEditors ...RequestEditorFn) (*ListStreamingBatchesResponse, error) {
+	rsp, err := c.ListStreamingBatches(ctx, appId, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2917,6 +6266,249 @@ func (c *ClientWithResponses) GetStreamingStatisticsWithResponse(ctx context.Con
 	return ParseGetStreamingStatisticsResponse(rsp)
 }
 
+// GetTaskThreadDumpWithResponse request returning *GetTaskThreadDumpResponse
+func (c *ClientWithResponses) GetTaskThreadDumpWithResponse(ctx context.Context, appId AppId, params *GetTaskThreadDumpParams, reqEditors ...RequestEditorFn) (*GetTaskThreadDumpResponse, error) {
+	rsp, err := c.GetTaskThreadDump(ctx, appId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTaskThreadDumpResponse(rsp)
+}
+
+// GetApplicationAttemptWithResponse request returning *GetApplicationAttemptResponse
+func (c *ClientWithResponses) GetApplicationAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*GetApplicationAttemptResponse, error) {
+	rsp, err := c.GetApplicationAttempt(ctx, appId, attemptId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetApplicationAttemptResponse(rsp)
+}
+
+// ListAllExecutorsWithAttemptWithResponse request returning *ListAllExecutorsWithAttemptResponse
+func (c *ClientWithResponses) ListAllExecutorsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*ListAllExecutorsWithAttemptResponse, error) {
+	rsp, err := c.ListAllExecutorsWithAttempt(ctx, appId, attemptId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAllExecutorsWithAttemptResponse(rsp)
+}
+
+// ListAllMiscellaneousProcessWithAttemptWithResponse request returning *ListAllMiscellaneousProcessWithAttemptResponse
+func (c *ClientWithResponses) ListAllMiscellaneousProcessWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*ListAllMiscellaneousProcessWithAttemptResponse, error) {
+	rsp, err := c.ListAllMiscellaneousProcessWithAttempt(ctx, appId, attemptId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListAllMiscellaneousProcessWithAttemptResponse(rsp)
+}
+
+// GetEnvironmentWithAttemptWithResponse request returning *GetEnvironmentWithAttemptResponse
+func (c *ClientWithResponses) GetEnvironmentWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*GetEnvironmentWithAttemptResponse, error) {
+	rsp, err := c.GetEnvironmentWithAttempt(ctx, appId, attemptId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetEnvironmentWithAttemptResponse(rsp)
+}
+
+// ListActiveExecutorsWithAttemptWithResponse request returning *ListActiveExecutorsWithAttemptResponse
+func (c *ClientWithResponses) ListActiveExecutorsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*ListActiveExecutorsWithAttemptResponse, error) {
+	rsp, err := c.ListActiveExecutorsWithAttempt(ctx, appId, attemptId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListActiveExecutorsWithAttemptResponse(rsp)
+}
+
+// GetExecutorThreadsWithAttemptWithResponse request returning *GetExecutorThreadsWithAttemptResponse
+func (c *ClientWithResponses) GetExecutorThreadsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, executorId string, reqEditors ...RequestEditorFn) (*GetExecutorThreadsWithAttemptResponse, error) {
+	rsp, err := c.GetExecutorThreadsWithAttempt(ctx, appId, attemptId, executorId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetExecutorThreadsWithAttemptResponse(rsp)
+}
+
+// ListJobsWithAttemptWithResponse request returning *ListJobsWithAttemptResponse
+func (c *ClientWithResponses) ListJobsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, params *ListJobsWithAttemptParams, reqEditors ...RequestEditorFn) (*ListJobsWithAttemptResponse, error) {
+	rsp, err := c.ListJobsWithAttempt(ctx, appId, attemptId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListJobsWithAttemptResponse(rsp)
+}
+
+// GetJobWithAttemptWithResponse request returning *GetJobWithAttemptResponse
+func (c *ClientWithResponses) GetJobWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, jobId int, reqEditors ...RequestEditorFn) (*GetJobWithAttemptResponse, error) {
+	rsp, err := c.GetJobWithAttempt(ctx, appId, attemptId, jobId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetJobWithAttemptResponse(rsp)
+}
+
+// ListSQLExecutionsWithAttemptWithResponse request returning *ListSQLExecutionsWithAttemptResponse
+func (c *ClientWithResponses) ListSQLExecutionsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, params *ListSQLExecutionsWithAttemptParams, reqEditors ...RequestEditorFn) (*ListSQLExecutionsWithAttemptResponse, error) {
+	rsp, err := c.ListSQLExecutionsWithAttempt(ctx, appId, attemptId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListSQLExecutionsWithAttemptResponse(rsp)
+}
+
+// GetSQLExecutionWithAttemptWithResponse request returning *GetSQLExecutionWithAttemptResponse
+func (c *ClientWithResponses) GetSQLExecutionWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, executionId int, params *GetSQLExecutionWithAttemptParams, reqEditors ...RequestEditorFn) (*GetSQLExecutionWithAttemptResponse, error) {
+	rsp, err := c.GetSQLExecutionWithAttempt(ctx, appId, attemptId, executionId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetSQLExecutionWithAttemptResponse(rsp)
+}
+
+// ListStagesWithAttemptWithResponse request returning *ListStagesWithAttemptResponse
+func (c *ClientWithResponses) ListStagesWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, params *ListStagesWithAttemptParams, reqEditors ...RequestEditorFn) (*ListStagesWithAttemptResponse, error) {
+	rsp, err := c.ListStagesWithAttempt(ctx, appId, attemptId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListStagesWithAttemptResponse(rsp)
+}
+
+// ListStageAttemptsWithAttemptWithResponse request returning *ListStageAttemptsWithAttemptResponse
+func (c *ClientWithResponses) ListStageAttemptsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, stageId StageId, params *ListStageAttemptsWithAttemptParams, reqEditors ...RequestEditorFn) (*ListStageAttemptsWithAttemptResponse, error) {
+	rsp, err := c.ListStageAttemptsWithAttempt(ctx, appId, attemptId, stageId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListStageAttemptsWithAttemptResponse(rsp)
+}
+
+// GetStageAttemptWithAttemptWithResponse request returning *GetStageAttemptWithAttemptResponse
+func (c *ClientWithResponses) GetStageAttemptWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetStageAttemptWithAttemptParams, reqEditors ...RequestEditorFn) (*GetStageAttemptWithAttemptResponse, error) {
+	rsp, err := c.GetStageAttemptWithAttempt(ctx, appId, attemptId, stageId, stageAttemptId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStageAttemptWithAttemptResponse(rsp)
+}
+
+// ListTasksWithAttemptWithResponse request returning *ListTasksWithAttemptResponse
+func (c *ClientWithResponses) ListTasksWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *ListTasksWithAttemptParams, reqEditors ...RequestEditorFn) (*ListTasksWithAttemptResponse, error) {
+	rsp, err := c.ListTasksWithAttempt(ctx, appId, attemptId, stageId, stageAttemptId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListTasksWithAttemptResponse(rsp)
+}
+
+// GetTaskSummaryWithAttemptWithResponse request returning *GetTaskSummaryWithAttemptResponse
+func (c *ClientWithResponses) GetTaskSummaryWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskSummaryWithAttemptParams, reqEditors ...RequestEditorFn) (*GetTaskSummaryWithAttemptResponse, error) {
+	rsp, err := c.GetTaskSummaryWithAttempt(ctx, appId, attemptId, stageId, stageAttemptId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTaskSummaryWithAttemptResponse(rsp)
+}
+
+// GetTaskTableWithAttemptWithResponse request returning *GetTaskTableWithAttemptResponse
+func (c *ClientWithResponses) GetTaskTableWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, stageId StageId, stageAttemptId StageAttemptId, params *GetTaskTableWithAttemptParams, reqEditors ...RequestEditorFn) (*GetTaskTableWithAttemptResponse, error) {
+	rsp, err := c.GetTaskTableWithAttempt(ctx, appId, attemptId, stageId, stageAttemptId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTaskTableWithAttemptResponse(rsp)
+}
+
+// ListStorageRDDsWithAttemptWithResponse request returning *ListStorageRDDsWithAttemptResponse
+func (c *ClientWithResponses) ListStorageRDDsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*ListStorageRDDsWithAttemptResponse, error) {
+	rsp, err := c.ListStorageRDDsWithAttempt(ctx, appId, attemptId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListStorageRDDsWithAttemptResponse(rsp)
+}
+
+// GetStorageRDDWithAttemptWithResponse request returning *GetStorageRDDWithAttemptResponse
+func (c *ClientWithResponses) GetStorageRDDWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, rddId int, reqEditors ...RequestEditorFn) (*GetStorageRDDWithAttemptResponse, error) {
+	rsp, err := c.GetStorageRDDWithAttempt(ctx, appId, attemptId, rddId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStorageRDDWithAttemptResponse(rsp)
+}
+
+// ListStreamingBatchesWithAttemptWithResponse request returning *ListStreamingBatchesWithAttemptResponse
+func (c *ClientWithResponses) ListStreamingBatchesWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, params *ListStreamingBatchesWithAttemptParams, reqEditors ...RequestEditorFn) (*ListStreamingBatchesWithAttemptResponse, error) {
+	rsp, err := c.ListStreamingBatchesWithAttempt(ctx, appId, attemptId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListStreamingBatchesWithAttemptResponse(rsp)
+}
+
+// GetStreamingBatchWithAttemptWithResponse request returning *GetStreamingBatchWithAttemptResponse
+func (c *ClientWithResponses) GetStreamingBatchWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, batchId int, reqEditors ...RequestEditorFn) (*GetStreamingBatchWithAttemptResponse, error) {
+	rsp, err := c.GetStreamingBatchWithAttempt(ctx, appId, attemptId, batchId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStreamingBatchWithAttemptResponse(rsp)
+}
+
+// ListStreamingBatchOperationsWithAttemptWithResponse request returning *ListStreamingBatchOperationsWithAttemptResponse
+func (c *ClientWithResponses) ListStreamingBatchOperationsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, batchId int, reqEditors ...RequestEditorFn) (*ListStreamingBatchOperationsWithAttemptResponse, error) {
+	rsp, err := c.ListStreamingBatchOperationsWithAttempt(ctx, appId, attemptId, batchId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListStreamingBatchOperationsWithAttemptResponse(rsp)
+}
+
+// GetStreamingBatchOperationWithAttemptWithResponse request returning *GetStreamingBatchOperationWithAttemptResponse
+func (c *ClientWithResponses) GetStreamingBatchOperationWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, batchId int, outputOpId int, reqEditors ...RequestEditorFn) (*GetStreamingBatchOperationWithAttemptResponse, error) {
+	rsp, err := c.GetStreamingBatchOperationWithAttempt(ctx, appId, attemptId, batchId, outputOpId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStreamingBatchOperationWithAttemptResponse(rsp)
+}
+
+// ListStreamingReceiversWithAttemptWithResponse request returning *ListStreamingReceiversWithAttemptResponse
+func (c *ClientWithResponses) ListStreamingReceiversWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*ListStreamingReceiversWithAttemptResponse, error) {
+	rsp, err := c.ListStreamingReceiversWithAttempt(ctx, appId, attemptId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListStreamingReceiversWithAttemptResponse(rsp)
+}
+
+// GetStreamingReceiverWithAttemptWithResponse request returning *GetStreamingReceiverWithAttemptResponse
+func (c *ClientWithResponses) GetStreamingReceiverWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, streamId int, reqEditors ...RequestEditorFn) (*GetStreamingReceiverWithAttemptResponse, error) {
+	rsp, err := c.GetStreamingReceiverWithAttempt(ctx, appId, attemptId, streamId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStreamingReceiverWithAttemptResponse(rsp)
+}
+
+// GetStreamingStatisticsWithAttemptWithResponse request returning *GetStreamingStatisticsWithAttemptResponse
+func (c *ClientWithResponses) GetStreamingStatisticsWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, reqEditors ...RequestEditorFn) (*GetStreamingStatisticsWithAttemptResponse, error) {
+	rsp, err := c.GetStreamingStatisticsWithAttempt(ctx, appId, attemptId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStreamingStatisticsWithAttemptResponse(rsp)
+}
+
+// GetTaskThreadDumpWithAttemptWithResponse request returning *GetTaskThreadDumpWithAttemptResponse
+func (c *ClientWithResponses) GetTaskThreadDumpWithAttemptWithResponse(ctx context.Context, appId AppId, attemptId string, params *GetTaskThreadDumpWithAttemptParams, reqEditors ...RequestEditorFn) (*GetTaskThreadDumpWithAttemptResponse, error) {
+	rsp, err := c.GetTaskThreadDumpWithAttempt(ctx, appId, attemptId, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetTaskThreadDumpWithAttemptResponse(rsp)
+}
+
 // DownloadLogsWithResponse request returning *DownloadLogsResponse
 func (c *ClientWithResponses) DownloadLogsWithResponse(ctx context.Context, baseAppId string, reqEditors ...RequestEditorFn) (*DownloadLogsResponse, error) {
 	rsp, err := c.DownloadLogs(ctx, baseAppId, reqEditors...)
@@ -2970,6 +6562,32 @@ func ParseListApplicationsResponse(rsp *http.Response) (*ListApplicationsRespons
 	return response, nil
 }
 
+// ParseGetApplicationResponse parses an HTTP response from a GetApplicationWithResponse call
+func ParseGetApplicationResponse(rsp *http.Response) (*GetApplicationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetApplicationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Application
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListAllExecutorsResponse parses an HTTP response from a ListAllExecutorsWithResponse call
 func ParseListAllExecutorsResponse(rsp *http.Response) (*ListAllExecutorsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2986,6 +6604,32 @@ func ParseListAllExecutorsResponse(rsp *http.Response) (*ListAllExecutorsRespons
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest []Executor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAllMiscellaneousProcessResponse parses an HTTP response from a ListAllMiscellaneousProcessWithResponse call
+func ParseListAllMiscellaneousProcessResponse(rsp *http.Response) (*ListAllMiscellaneousProcessResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAllMiscellaneousProcessResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ProcessSummary
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -3063,7 +6707,7 @@ func ParseGetExecutorThreadsResponse(rsp *http.Response) (*GetExecutorThreadsRes
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest map[string]string
+		var dest []ThreadStackTrace
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -3308,6 +6952,32 @@ func ParseGetTaskSummaryResponse(rsp *http.Response) (*GetTaskSummaryResponse, e
 	return response, nil
 }
 
+// ParseGetTaskTableResponse parses an HTTP response from a GetTaskTableWithResponse call
+func ParseGetTaskTableResponse(rsp *http.Response) (*GetTaskTableResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTaskTableResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TaskTableResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseListStorageRDDsResponse parses an HTTP response from a ListStorageRDDsWithResponse call
 func ParseListStorageRDDsResponse(rsp *http.Response) (*ListStorageRDDsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -3532,6 +7202,708 @@ func ParseGetStreamingStatisticsResponse(rsp *http.Response) (*GetStreamingStati
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest StreamingStatistics
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTaskThreadDumpResponse parses an HTTP response from a GetTaskThreadDumpWithResponse call
+func ParseGetTaskThreadDumpResponse(rsp *http.Response) (*GetTaskThreadDumpResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTaskThreadDumpResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ThreadStackTrace
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetApplicationAttemptResponse parses an HTTP response from a GetApplicationAttemptWithResponse call
+func ParseGetApplicationAttemptResponse(rsp *http.Response) (*GetApplicationAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetApplicationAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ApplicationAttempt
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAllExecutorsWithAttemptResponse parses an HTTP response from a ListAllExecutorsWithAttemptWithResponse call
+func ParseListAllExecutorsWithAttemptResponse(rsp *http.Response) (*ListAllExecutorsWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAllExecutorsWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Executor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListAllMiscellaneousProcessWithAttemptResponse parses an HTTP response from a ListAllMiscellaneousProcessWithAttemptWithResponse call
+func ParseListAllMiscellaneousProcessWithAttemptResponse(rsp *http.Response) (*ListAllMiscellaneousProcessWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListAllMiscellaneousProcessWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ProcessSummary
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetEnvironmentWithAttemptResponse parses an HTTP response from a GetEnvironmentWithAttemptWithResponse call
+func ParseGetEnvironmentWithAttemptResponse(rsp *http.Response) (*GetEnvironmentWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetEnvironmentWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Environment
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListActiveExecutorsWithAttemptResponse parses an HTTP response from a ListActiveExecutorsWithAttemptWithResponse call
+func ParseListActiveExecutorsWithAttemptResponse(rsp *http.Response) (*ListActiveExecutorsWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListActiveExecutorsWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Executor
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetExecutorThreadsWithAttemptResponse parses an HTTP response from a GetExecutorThreadsWithAttemptWithResponse call
+func ParseGetExecutorThreadsWithAttemptResponse(rsp *http.Response) (*GetExecutorThreadsWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetExecutorThreadsWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []ThreadStackTrace
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListJobsWithAttemptResponse parses an HTTP response from a ListJobsWithAttemptWithResponse call
+func ParseListJobsWithAttemptResponse(rsp *http.Response) (*ListJobsWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListJobsWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Job
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetJobWithAttemptResponse parses an HTTP response from a GetJobWithAttemptWithResponse call
+func ParseGetJobWithAttemptResponse(rsp *http.Response) (*GetJobWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetJobWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Job
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListSQLExecutionsWithAttemptResponse parses an HTTP response from a ListSQLExecutionsWithAttemptWithResponse call
+func ParseListSQLExecutionsWithAttemptResponse(rsp *http.Response) (*ListSQLExecutionsWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListSQLExecutionsWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []SQLExecution
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetSQLExecutionWithAttemptResponse parses an HTTP response from a GetSQLExecutionWithAttemptWithResponse call
+func ParseGetSQLExecutionWithAttemptResponse(rsp *http.Response) (*GetSQLExecutionWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetSQLExecutionWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SQLExecution
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListStagesWithAttemptResponse parses an HTTP response from a ListStagesWithAttemptWithResponse call
+func ParseListStagesWithAttemptResponse(rsp *http.Response) (*ListStagesWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListStagesWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []StageData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListStageAttemptsWithAttemptResponse parses an HTTP response from a ListStageAttemptsWithAttemptWithResponse call
+func ParseListStageAttemptsWithAttemptResponse(rsp *http.Response) (*ListStageAttemptsWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListStageAttemptsWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []StageData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetStageAttemptWithAttemptResponse parses an HTTP response from a GetStageAttemptWithAttemptWithResponse call
+func ParseGetStageAttemptWithAttemptResponse(rsp *http.Response) (*GetStageAttemptWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStageAttemptWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StageData
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListTasksWithAttemptResponse parses an HTTP response from a ListTasksWithAttemptWithResponse call
+func ParseListTasksWithAttemptResponse(rsp *http.Response) (*ListTasksWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListTasksWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Task
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTaskSummaryWithAttemptResponse parses an HTTP response from a GetTaskSummaryWithAttemptWithResponse call
+func ParseGetTaskSummaryWithAttemptResponse(rsp *http.Response) (*GetTaskSummaryWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTaskSummaryWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TaskMetricsSummary
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTaskTableWithAttemptResponse parses an HTTP response from a GetTaskTableWithAttemptWithResponse call
+func ParseGetTaskTableWithAttemptResponse(rsp *http.Response) (*GetTaskTableWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTaskTableWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TaskTableResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListStorageRDDsWithAttemptResponse parses an HTTP response from a ListStorageRDDsWithAttemptWithResponse call
+func ParseListStorageRDDsWithAttemptResponse(rsp *http.Response) (*ListStorageRDDsWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListStorageRDDsWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []RDDStorageInfo
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetStorageRDDWithAttemptResponse parses an HTTP response from a GetStorageRDDWithAttemptWithResponse call
+func ParseGetStorageRDDWithAttemptResponse(rsp *http.Response) (*GetStorageRDDWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStorageRDDWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RDDStorageInfo
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListStreamingBatchesWithAttemptResponse parses an HTTP response from a ListStreamingBatchesWithAttemptWithResponse call
+func ParseListStreamingBatchesWithAttemptResponse(rsp *http.Response) (*ListStreamingBatchesWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListStreamingBatchesWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []StreamingBatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetStreamingBatchWithAttemptResponse parses an HTTP response from a GetStreamingBatchWithAttemptWithResponse call
+func ParseGetStreamingBatchWithAttemptResponse(rsp *http.Response) (*GetStreamingBatchWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStreamingBatchWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StreamingBatch
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListStreamingBatchOperationsWithAttemptResponse parses an HTTP response from a ListStreamingBatchOperationsWithAttemptWithResponse call
+func ParseListStreamingBatchOperationsWithAttemptResponse(rsp *http.Response) (*ListStreamingBatchOperationsWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListStreamingBatchOperationsWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []StreamingOutputOperation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetStreamingBatchOperationWithAttemptResponse parses an HTTP response from a GetStreamingBatchOperationWithAttemptWithResponse call
+func ParseGetStreamingBatchOperationWithAttemptResponse(rsp *http.Response) (*GetStreamingBatchOperationWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStreamingBatchOperationWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StreamingOutputOperation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListStreamingReceiversWithAttemptResponse parses an HTTP response from a ListStreamingReceiversWithAttemptWithResponse call
+func ParseListStreamingReceiversWithAttemptResponse(rsp *http.Response) (*ListStreamingReceiversWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListStreamingReceiversWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []StreamingReceiver
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetStreamingReceiverWithAttemptResponse parses an HTTP response from a GetStreamingReceiverWithAttemptWithResponse call
+func ParseGetStreamingReceiverWithAttemptResponse(rsp *http.Response) (*GetStreamingReceiverWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStreamingReceiverWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StreamingReceiver
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetStreamingStatisticsWithAttemptResponse parses an HTTP response from a GetStreamingStatisticsWithAttemptWithResponse call
+func ParseGetStreamingStatisticsWithAttemptResponse(rsp *http.Response) (*GetStreamingStatisticsWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStreamingStatisticsWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StreamingStatistics
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetTaskThreadDumpWithAttemptResponse parses an HTTP response from a GetTaskThreadDumpWithAttemptWithResponse call
+func ParseGetTaskThreadDumpWithAttemptResponse(rsp *http.Response) (*GetTaskThreadDumpWithAttemptResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetTaskThreadDumpWithAttemptResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ThreadStackTrace
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

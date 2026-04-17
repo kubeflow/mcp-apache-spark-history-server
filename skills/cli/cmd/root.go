@@ -9,6 +9,7 @@ import (
 
 var (
 	appID      string
+	attemptID  string
 	serverName string
 	configPath string
 	outputFmt  string
@@ -28,6 +29,7 @@ func init() {
 	}
 
 	rootCmd.PersistentFlags().StringVarP(&appID, "app-id", "a", "", "Spark application ID (or SHS_APP_ID env var)")
+	rootCmd.PersistentFlags().StringVar(&attemptID, "attempt", "", "Application attempt ID (for YARN apps)")
 	rootCmd.PersistentFlags().StringVarP(&serverName, "server", "s", "", "Server name from config")
 	rootCmd.PersistentFlags().StringVarP(&configPath, "config", "c", defaultConfig, "Path to config file")
 	rootCmd.PersistentFlags().StringVarP(&outputFmt, "output", "o", "txt", "Output format (txt|json|yaml)")

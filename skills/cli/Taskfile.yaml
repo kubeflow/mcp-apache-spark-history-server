@@ -110,6 +110,57 @@ tasks:
       - docker rm {{.CONTAINER}}
       - chmod o+r e2e/spark-events/*
 
+  generate-events-yarn:
+    desc: Generate a YARN-style multi-attempt app (attempt 1 fails, attempt 2 succeeds)
+    vars:
+      CONTAINER: shs-e2e-generate-yarn
+      YARN_APP_ID: application_1713000000000_0001
+    cmds:
+      # Attempt 1: fails after partial work
+      - docker rm -f {{.CONTAINER}}
+      - docker run --name {{.CONTAINER}}
+          -e SPARK_APP_FAIL=1
+          -v $(pwd)/e2e/generate_events.py:/app/generate_events.py:ro
+          {{.SPARK_IMAGE}}
+          bash -c "mkdir -p /tmp/spark-events && /opt/spark/bin/spark-submit
+            --master 'local[2,4]'
+            --name shs-e2e-yarn
+            --conf spark.driver.memory=512m
+            --conf spark.sql.autoBroadcastJoinThreshold=-1
+            --conf spark.sql.shuffle.partitions=4
+            --conf spark.memory.fraction=0.1
+            /app/generate_events.py || true"
+      - |
+        docker cp "{{.CONTAINER}}:/tmp/spark-events/." e2e/spark-events/yarn-staging
+        mv e2e/spark-events/yarn-staging/local-* e2e/spark-events/yarn-attempt1.zstd
+        rm -rf e2e/spark-events/yarn-staging
+      - docker rm {{.CONTAINER}}
+      # Attempt 2: succeeds with full workload
+      - docker run --name {{.CONTAINER}}
+          -v $(pwd)/e2e/generate_events.py:/app/generate_events.py:ro
+          {{.SPARK_IMAGE}}
+          bash -c "mkdir -p /tmp/spark-events && /opt/spark/bin/spark-submit
+            --master 'local[2,4]'
+            --name shs-e2e-yarn
+            --conf spark.driver.memory=1g
+            --conf spark.sql.autoBroadcastJoinThreshold=10485760
+            --conf spark.sql.shuffle.partitions=8
+            --conf spark.shuffle.sort.bypassMergeThreshold=0
+            /app/generate_events.py"
+      - |
+        docker cp "{{.CONTAINER}}:/tmp/spark-events/." e2e/spark-events/yarn-staging
+        mv e2e/spark-events/yarn-staging/local-* e2e/spark-events/yarn-attempt2.zstd
+        rm -rf e2e/spark-events/yarn-staging
+      - docker rm {{.CONTAINER}}
+      # Rewrite both as YARN-style attempts
+      - |
+        uv run --with zstandard python3 e2e/rewrite_yarn_app.py e2e/spark-events/yarn-attempt1.zstd "e2e/spark-events/{{.YARN_APP_ID}}_1.zstd" \
+          --app-id "{{.YARN_APP_ID}}" --attempt-id "1"
+        uv run --with zstandard python3 e2e/rewrite_yarn_app.py e2e/spark-events/yarn-attempt2.zstd "e2e/spark-events/{{.YARN_APP_ID}}_2.zstd" \
+          --app-id "{{.YARN_APP_ID}}" --attempt-id "2"
+      - rm -f e2e/spark-events/yarn-attempt1.zstd e2e/spark-events/yarn-attempt2.zstd
+      - chmod o+r e2e/spark-events/{{.YARN_APP_ID}}_*.zstd
+
   start-shs:
     desc: Start Spark History Server against e2e event logs
     cmds:

@@ -254,6 +254,240 @@ func (e ListTasksParamsStatus) Valid() bool {
 	}
 }
 
+// Defines values for GetTaskTableParamsOrder0Dir.
+const (
+	GetTaskTableParamsOrder0DirAsc  GetTaskTableParamsOrder0Dir = "asc"
+	GetTaskTableParamsOrder0DirDesc GetTaskTableParamsOrder0Dir = "desc"
+)
+
+// Valid indicates whether the value is a known member of the GetTaskTableParamsOrder0Dir enum.
+func (e GetTaskTableParamsOrder0Dir) Valid() bool {
+	switch e {
+	case GetTaskTableParamsOrder0DirAsc:
+		return true
+	case GetTaskTableParamsOrder0DirDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListStreamingBatchesParamsStatus.
+const (
+	ListStreamingBatchesParamsStatusCOMPLETED  ListStreamingBatchesParamsStatus = "COMPLETED"
+	ListStreamingBatchesParamsStatusPROCESSING ListStreamingBatchesParamsStatus = "PROCESSING"
+	ListStreamingBatchesParamsStatusQUEUED     ListStreamingBatchesParamsStatus = "QUEUED"
+)
+
+// Valid indicates whether the value is a known member of the ListStreamingBatchesParamsStatus enum.
+func (e ListStreamingBatchesParamsStatus) Valid() bool {
+	switch e {
+	case ListStreamingBatchesParamsStatusCOMPLETED:
+		return true
+	case ListStreamingBatchesParamsStatusPROCESSING:
+		return true
+	case ListStreamingBatchesParamsStatusQUEUED:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListJobsWithAttemptParamsStatus.
+const (
+	ListJobsWithAttemptParamsStatusFailed    ListJobsWithAttemptParamsStatus = "failed"
+	ListJobsWithAttemptParamsStatusRunning   ListJobsWithAttemptParamsStatus = "running"
+	ListJobsWithAttemptParamsStatusSucceeded ListJobsWithAttemptParamsStatus = "succeeded"
+	ListJobsWithAttemptParamsStatusUnknown   ListJobsWithAttemptParamsStatus = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the ListJobsWithAttemptParamsStatus enum.
+func (e ListJobsWithAttemptParamsStatus) Valid() bool {
+	switch e {
+	case ListJobsWithAttemptParamsStatusFailed:
+		return true
+	case ListJobsWithAttemptParamsStatusRunning:
+		return true
+	case ListJobsWithAttemptParamsStatusSucceeded:
+		return true
+	case ListJobsWithAttemptParamsStatusUnknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListStagesWithAttemptParamsStatus.
+const (
+	ListStagesWithAttemptParamsStatusActive   ListStagesWithAttemptParamsStatus = "active"
+	ListStagesWithAttemptParamsStatusComplete ListStagesWithAttemptParamsStatus = "complete"
+	ListStagesWithAttemptParamsStatusFailed   ListStagesWithAttemptParamsStatus = "failed"
+	ListStagesWithAttemptParamsStatusPending  ListStagesWithAttemptParamsStatus = "pending"
+)
+
+// Valid indicates whether the value is a known member of the ListStagesWithAttemptParamsStatus enum.
+func (e ListStagesWithAttemptParamsStatus) Valid() bool {
+	switch e {
+	case ListStagesWithAttemptParamsStatusActive:
+		return true
+	case ListStagesWithAttemptParamsStatusComplete:
+		return true
+	case ListStagesWithAttemptParamsStatusFailed:
+		return true
+	case ListStagesWithAttemptParamsStatusPending:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListStagesWithAttemptParamsTaskStatus.
+const (
+	ListStagesWithAttemptParamsTaskStatusFAILED  ListStagesWithAttemptParamsTaskStatus = "FAILED"
+	ListStagesWithAttemptParamsTaskStatusKILLED  ListStagesWithAttemptParamsTaskStatus = "KILLED"
+	ListStagesWithAttemptParamsTaskStatusPENDING ListStagesWithAttemptParamsTaskStatus = "PENDING"
+	ListStagesWithAttemptParamsTaskStatusRUNNING ListStagesWithAttemptParamsTaskStatus = "RUNNING"
+	ListStagesWithAttemptParamsTaskStatusSUCCESS ListStagesWithAttemptParamsTaskStatus = "SUCCESS"
+)
+
+// Valid indicates whether the value is a known member of the ListStagesWithAttemptParamsTaskStatus enum.
+func (e ListStagesWithAttemptParamsTaskStatus) Valid() bool {
+	switch e {
+	case ListStagesWithAttemptParamsTaskStatusFAILED:
+		return true
+	case ListStagesWithAttemptParamsTaskStatusKILLED:
+		return true
+	case ListStagesWithAttemptParamsTaskStatusPENDING:
+		return true
+	case ListStagesWithAttemptParamsTaskStatusRUNNING:
+		return true
+	case ListStagesWithAttemptParamsTaskStatusSUCCESS:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListStageAttemptsWithAttemptParamsTaskStatus.
+const (
+	ListStageAttemptsWithAttemptParamsTaskStatusFAILED  ListStageAttemptsWithAttemptParamsTaskStatus = "FAILED"
+	ListStageAttemptsWithAttemptParamsTaskStatusKILLED  ListStageAttemptsWithAttemptParamsTaskStatus = "KILLED"
+	ListStageAttemptsWithAttemptParamsTaskStatusPENDING ListStageAttemptsWithAttemptParamsTaskStatus = "PENDING"
+	ListStageAttemptsWithAttemptParamsTaskStatusRUNNING ListStageAttemptsWithAttemptParamsTaskStatus = "RUNNING"
+	ListStageAttemptsWithAttemptParamsTaskStatusSUCCESS ListStageAttemptsWithAttemptParamsTaskStatus = "SUCCESS"
+)
+
+// Valid indicates whether the value is a known member of the ListStageAttemptsWithAttemptParamsTaskStatus enum.
+func (e ListStageAttemptsWithAttemptParamsTaskStatus) Valid() bool {
+	switch e {
+	case ListStageAttemptsWithAttemptParamsTaskStatusFAILED:
+		return true
+	case ListStageAttemptsWithAttemptParamsTaskStatusKILLED:
+		return true
+	case ListStageAttemptsWithAttemptParamsTaskStatusPENDING:
+		return true
+	case ListStageAttemptsWithAttemptParamsTaskStatusRUNNING:
+		return true
+	case ListStageAttemptsWithAttemptParamsTaskStatusSUCCESS:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetStageAttemptWithAttemptParamsTaskStatus.
+const (
+	FAILED  GetStageAttemptWithAttemptParamsTaskStatus = "FAILED"
+	KILLED  GetStageAttemptWithAttemptParamsTaskStatus = "KILLED"
+	PENDING GetStageAttemptWithAttemptParamsTaskStatus = "PENDING"
+	RUNNING GetStageAttemptWithAttemptParamsTaskStatus = "RUNNING"
+	SUCCESS GetStageAttemptWithAttemptParamsTaskStatus = "SUCCESS"
+)
+
+// Valid indicates whether the value is a known member of the GetStageAttemptWithAttemptParamsTaskStatus enum.
+func (e GetStageAttemptWithAttemptParamsTaskStatus) Valid() bool {
+	switch e {
+	case FAILED:
+		return true
+	case KILLED:
+		return true
+	case PENDING:
+		return true
+	case RUNNING:
+		return true
+	case SUCCESS:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListTasksWithAttemptParamsStatus.
+const (
+	Failed  ListTasksWithAttemptParamsStatus = "failed"
+	Killed  ListTasksWithAttemptParamsStatus = "killed"
+	Running ListTasksWithAttemptParamsStatus = "running"
+	Success ListTasksWithAttemptParamsStatus = "success"
+	Unknown ListTasksWithAttemptParamsStatus = "unknown"
+)
+
+// Valid indicates whether the value is a known member of the ListTasksWithAttemptParamsStatus enum.
+func (e ListTasksWithAttemptParamsStatus) Valid() bool {
+	switch e {
+	case Failed:
+		return true
+	case Killed:
+		return true
+	case Running:
+		return true
+	case Success:
+		return true
+	case Unknown:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for GetTaskTableWithAttemptParamsOrder0Dir.
+const (
+	GetTaskTableWithAttemptParamsOrder0DirAsc  GetTaskTableWithAttemptParamsOrder0Dir = "asc"
+	GetTaskTableWithAttemptParamsOrder0DirDesc GetTaskTableWithAttemptParamsOrder0Dir = "desc"
+)
+
+// Valid indicates whether the value is a known member of the GetTaskTableWithAttemptParamsOrder0Dir enum.
+func (e GetTaskTableWithAttemptParamsOrder0Dir) Valid() bool {
+	switch e {
+	case GetTaskTableWithAttemptParamsOrder0DirAsc:
+		return true
+	case GetTaskTableWithAttemptParamsOrder0DirDesc:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ListStreamingBatchesWithAttemptParamsStatus.
+const (
+	ListStreamingBatchesWithAttemptParamsStatusCOMPLETED  ListStreamingBatchesWithAttemptParamsStatus = "COMPLETED"
+	ListStreamingBatchesWithAttemptParamsStatusPROCESSING ListStreamingBatchesWithAttemptParamsStatus = "PROCESSING"
+	ListStreamingBatchesWithAttemptParamsStatusQUEUED     ListStreamingBatchesWithAttemptParamsStatus = "QUEUED"
+)
+
+// Valid indicates whether the value is a known member of the ListStreamingBatchesWithAttemptParamsStatus enum.
+func (e ListStreamingBatchesWithAttemptParamsStatus) Valid() bool {
+	switch e {
+	case ListStreamingBatchesWithAttemptParamsStatusCOMPLETED:
+		return true
+	case ListStreamingBatchesWithAttemptParamsStatusPROCESSING:
+		return true
+	case ListStreamingBatchesWithAttemptParamsStatusQUEUED:
+		return true
+	default:
+		return false
+	}
+}
+
 // AccumulatorUpdate defines model for AccumulatorUpdate.
 type AccumulatorUpdate struct {
 	Id                   *int64                 `json:"id,omitempty"`
@@ -450,6 +684,8 @@ type OutputMetrics struct {
 
 // PeakMemoryMetrics defines model for PeakMemoryMetrics.
 type PeakMemoryMetrics struct {
+	ConcurrentGCCount          *int64                 `json:"ConcurrentGCCount,omitempty"`
+	ConcurrentGCTime           *int64                 `json:"ConcurrentGCTime,omitempty"`
 	DirectPoolMemory           *int64                 `json:"DirectPoolMemory,omitempty"`
 	JVMHeapMemory              *int64                 `json:"JVMHeapMemory,omitempty"`
 	JVMOffHeapMemory           *int64                 `json:"JVMOffHeapMemory,omitempty"`
@@ -472,6 +708,18 @@ type PeakMemoryMetrics struct {
 	ProcessTreePythonVMemory   *int64                 `json:"ProcessTreePythonVMemory,omitempty"`
 	TotalGCTime                *int64                 `json:"TotalGCTime,omitempty"`
 	AdditionalProperties       map[string]interface{} `json:"-"`
+}
+
+// ProcessSummary defines model for ProcessSummary.
+type ProcessSummary struct {
+	AddTime              *string                `json:"addTime,omitempty"`
+	HostPort             *string                `json:"hostPort,omitempty"`
+	Id                   *string                `json:"id,omitempty"`
+	IsActive             *bool                  `json:"isActive,omitempty"`
+	ProcessLogs          *map[string]string     `json:"processLogs,omitempty"`
+	RemoveTime           *string                `json:"removeTime,omitempty"`
+	TotalCores           *int                   `json:"totalCores,omitempty"`
+	AdditionalProperties map[string]interface{} `json:"-"`
 }
 
 // RDDStorageInfo defines model for RDDStorageInfo.
@@ -752,9 +1000,9 @@ type StreamingReceiver struct {
 // StreamingStatistics defines model for StreamingStatistics.
 type StreamingStatistics struct {
 	AvgInputRate                *float32               `json:"avgInputRate,omitempty"`
-	AvgProcessingTime           *float32               `json:"avgProcessingTime,omitempty"`
-	AvgSchedulingDelay          *float32               `json:"avgSchedulingDelay,omitempty"`
-	AvgTotalDelay               *float32               `json:"avgTotalDelay,omitempty"`
+	AvgProcessingTime           *int64                 `json:"avgProcessingTime,omitempty"`
+	AvgSchedulingDelay          *int64                 `json:"avgSchedulingDelay,omitempty"`
+	AvgTotalDelay               *int64                 `json:"avgTotalDelay,omitempty"`
 	BatchDuration               *int64                 `json:"batchDuration,omitempty"`
 	NumActiveBatches            *int                   `json:"numActiveBatches,omitempty"`
 	NumActiveReceivers          *int                   `json:"numActiveReceivers,omitempty"`
@@ -884,6 +1132,37 @@ type TaskMetricsSummary_ShuffleWriteMetrics struct {
 	AdditionalProperties map[string]interface{} `json:"-"`
 }
 
+// TaskTableResponse defines model for TaskTableResponse.
+type TaskTableResponse struct {
+	AaData               *[]Task                `json:"aaData,omitempty"`
+	RecordsFiltered      *string                `json:"recordsFiltered,omitempty"`
+	RecordsTotal         *string                `json:"recordsTotal,omitempty"`
+	AdditionalProperties map[string]interface{} `json:"-"`
+}
+
+// ThreadStackTrace defines model for ThreadStackTrace.
+type ThreadStackTrace struct {
+	BlockedByLock     *string `json:"blockedByLock,omitempty"`
+	BlockedByThreadId *int64  `json:"blockedByThreadId,omitempty"`
+	// Deprecated: this property has been marked as deprecated upstream, but no `x-deprecated-reason` was set
+	HoldingLocks  *[]string `json:"holdingLocks,omitempty"`
+	InNative      *bool     `json:"inNative,omitempty"`
+	IsDaemon      *bool     `json:"isDaemon,omitempty"`
+	LockName      *string   `json:"lockName,omitempty"`
+	LockOwnerName *string   `json:"lockOwnerName,omitempty"`
+	Monitors      *[]string `json:"monitors,omitempty"`
+	Priority      *int      `json:"priority,omitempty"`
+	StackTrace    *struct {
+		Elems *[]string `json:"elems,omitempty"`
+	} `json:"stackTrace,omitempty"`
+	Suspended            *bool                  `json:"suspended,omitempty"`
+	Synchronizers        *[]string              `json:"synchronizers,omitempty"`
+	ThreadId             *int64                 `json:"threadId,omitempty"`
+	ThreadName           *string                `json:"threadName,omitempty"`
+	ThreadState          *string                `json:"threadState,omitempty"`
+	AdditionalProperties map[string]interface{} `json:"-"`
+}
+
 // Version defines model for Version.
 type Version struct {
 	Spark                *string                `json:"spark,omitempty"`
@@ -985,6 +1264,161 @@ type ListTasksParamsStatus string
 // GetTaskSummaryParams defines parameters for GetTaskSummary.
 type GetTaskSummaryParams struct {
 	Quantiles *string `form:"quantiles,omitempty" json:"quantiles,omitempty"`
+}
+
+// GetTaskTableParams defines parameters for GetTaskTable.
+type GetTaskTableParams struct {
+	Details *bool `form:"details,omitempty" json:"details,omitempty"`
+
+	// NumTasks Total number of tasks in the stage attempt
+	NumTasks int `form:"numTasks" json:"numTasks"`
+
+	// Start Pagination start index
+	Start *int `form:"start,omitempty" json:"start,omitempty"`
+
+	// Length Page length
+	Length *int `form:"length,omitempty" json:"length,omitempty"`
+
+	// SearchValue Search filter value
+	SearchValue *string `form:"search[value],omitempty" json:"search[value],omitempty"`
+
+	// ColumnNameToSort Column name to sort by
+	ColumnNameToSort *string `form:"columnNameToSort,omitempty" json:"columnNameToSort,omitempty"`
+
+	// Order0Dir Sort direction
+	Order0Dir *GetTaskTableParamsOrder0Dir `form:"order[0][dir],omitempty" json:"order[0][dir],omitempty"`
+}
+
+// GetTaskTableParamsOrder0Dir defines parameters for GetTaskTable.
+type GetTaskTableParamsOrder0Dir string
+
+// ListStreamingBatchesParams defines parameters for ListStreamingBatches.
+type ListStreamingBatchesParams struct {
+	Status *ListStreamingBatchesParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// ListStreamingBatchesParamsStatus defines parameters for ListStreamingBatches.
+type ListStreamingBatchesParamsStatus string
+
+// GetTaskThreadDumpParams defines parameters for GetTaskThreadDump.
+type GetTaskThreadDumpParams struct {
+	TaskId     int64  `form:"taskId" json:"taskId"`
+	ExecutorId string `form:"executorId" json:"executorId"`
+}
+
+// ListJobsWithAttemptParams defines parameters for ListJobsWithAttempt.
+type ListJobsWithAttemptParams struct {
+	Status *ListJobsWithAttemptParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// ListJobsWithAttemptParamsStatus defines parameters for ListJobsWithAttempt.
+type ListJobsWithAttemptParamsStatus string
+
+// ListSQLExecutionsWithAttemptParams defines parameters for ListSQLExecutionsWithAttempt.
+type ListSQLExecutionsWithAttemptParams struct {
+	Details         *bool `form:"details,omitempty" json:"details,omitempty"`
+	PlanDescription *bool `form:"planDescription,omitempty" json:"planDescription,omitempty"`
+	Offset          *int  `form:"offset,omitempty" json:"offset,omitempty"`
+	Length          *int  `form:"length,omitempty" json:"length,omitempty"`
+}
+
+// GetSQLExecutionWithAttemptParams defines parameters for GetSQLExecutionWithAttempt.
+type GetSQLExecutionWithAttemptParams struct {
+	Details         *bool `form:"details,omitempty" json:"details,omitempty"`
+	PlanDescription *bool `form:"planDescription,omitempty" json:"planDescription,omitempty"`
+}
+
+// ListStagesWithAttemptParams defines parameters for ListStagesWithAttempt.
+type ListStagesWithAttemptParams struct {
+	Status        *ListStagesWithAttemptParamsStatus     `form:"status,omitempty" json:"status,omitempty"`
+	Details       *bool                                  `form:"details,omitempty" json:"details,omitempty"`
+	TaskStatus    *ListStagesWithAttemptParamsTaskStatus `form:"taskStatus,omitempty" json:"taskStatus,omitempty"`
+	WithSummaries *bool                                  `form:"withSummaries,omitempty" json:"withSummaries,omitempty"`
+	Quantiles     *string                                `form:"quantiles,omitempty" json:"quantiles,omitempty"`
+}
+
+// ListStagesWithAttemptParamsStatus defines parameters for ListStagesWithAttempt.
+type ListStagesWithAttemptParamsStatus string
+
+// ListStagesWithAttemptParamsTaskStatus defines parameters for ListStagesWithAttempt.
+type ListStagesWithAttemptParamsTaskStatus string
+
+// ListStageAttemptsWithAttemptParams defines parameters for ListStageAttemptsWithAttempt.
+type ListStageAttemptsWithAttemptParams struct {
+	Details       *bool                                         `form:"details,omitempty" json:"details,omitempty"`
+	TaskStatus    *ListStageAttemptsWithAttemptParamsTaskStatus `form:"taskStatus,omitempty" json:"taskStatus,omitempty"`
+	WithSummaries *bool                                         `form:"withSummaries,omitempty" json:"withSummaries,omitempty"`
+	Quantiles     *string                                       `form:"quantiles,omitempty" json:"quantiles,omitempty"`
+}
+
+// ListStageAttemptsWithAttemptParamsTaskStatus defines parameters for ListStageAttemptsWithAttempt.
+type ListStageAttemptsWithAttemptParamsTaskStatus string
+
+// GetStageAttemptWithAttemptParams defines parameters for GetStageAttemptWithAttempt.
+type GetStageAttemptWithAttemptParams struct {
+	Details       *bool                                       `form:"details,omitempty" json:"details,omitempty"`
+	TaskStatus    *GetStageAttemptWithAttemptParamsTaskStatus `form:"taskStatus,omitempty" json:"taskStatus,omitempty"`
+	WithSummaries *bool                                       `form:"withSummaries,omitempty" json:"withSummaries,omitempty"`
+	Quantiles     *string                                     `form:"quantiles,omitempty" json:"quantiles,omitempty"`
+}
+
+// GetStageAttemptWithAttemptParamsTaskStatus defines parameters for GetStageAttemptWithAttempt.
+type GetStageAttemptWithAttemptParamsTaskStatus string
+
+// ListTasksWithAttemptParams defines parameters for ListTasksWithAttempt.
+type ListTasksWithAttemptParams struct {
+	Offset *int                              `form:"offset,omitempty" json:"offset,omitempty"`
+	Length *int                              `form:"length,omitempty" json:"length,omitempty"`
+	SortBy *string                           `form:"sortBy,omitempty" json:"sortBy,omitempty"`
+	Status *ListTasksWithAttemptParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// ListTasksWithAttemptParamsStatus defines parameters for ListTasksWithAttempt.
+type ListTasksWithAttemptParamsStatus string
+
+// GetTaskSummaryWithAttemptParams defines parameters for GetTaskSummaryWithAttempt.
+type GetTaskSummaryWithAttemptParams struct {
+	Quantiles *string `form:"quantiles,omitempty" json:"quantiles,omitempty"`
+}
+
+// GetTaskTableWithAttemptParams defines parameters for GetTaskTableWithAttempt.
+type GetTaskTableWithAttemptParams struct {
+	Details *bool `form:"details,omitempty" json:"details,omitempty"`
+
+	// NumTasks Total number of tasks in the stage attempt
+	NumTasks int `form:"numTasks" json:"numTasks"`
+
+	// Start Pagination start index
+	Start *int `form:"start,omitempty" json:"start,omitempty"`
+
+	// Length Page length
+	Length *int `form:"length,omitempty" json:"length,omitempty"`
+
+	// SearchValue Search filter value
+	SearchValue *string `form:"search[value],omitempty" json:"search[value],omitempty"`
+
+	// ColumnNameToSort Column name to sort by
+	ColumnNameToSort *string `form:"columnNameToSort,omitempty" json:"columnNameToSort,omitempty"`
+
+	// Order0Dir Sort direction
+	Order0Dir *GetTaskTableWithAttemptParamsOrder0Dir `form:"order[0][dir],omitempty" json:"order[0][dir],omitempty"`
+}
+
+// GetTaskTableWithAttemptParamsOrder0Dir defines parameters for GetTaskTableWithAttempt.
+type GetTaskTableWithAttemptParamsOrder0Dir string
+
+// ListStreamingBatchesWithAttemptParams defines parameters for ListStreamingBatchesWithAttempt.
+type ListStreamingBatchesWithAttemptParams struct {
+	Status *ListStreamingBatchesWithAttemptParamsStatus `form:"status,omitempty" json:"status,omitempty"`
+}
+
+// ListStreamingBatchesWithAttemptParamsStatus defines parameters for ListStreamingBatchesWithAttempt.
+type ListStreamingBatchesWithAttemptParamsStatus string
+
+// GetTaskThreadDumpWithAttemptParams defines parameters for GetTaskThreadDumpWithAttempt.
+type GetTaskThreadDumpWithAttemptParams struct {
+	TaskId     int64  `form:"taskId" json:"taskId"`
+	ExecutorId string `form:"executorId" json:"executorId"`
 }
 
 // Getter for additional properties for AccumulatorUpdate. Returns the specified
@@ -3591,6 +4025,22 @@ func (a *PeakMemoryMetrics) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
+	if raw, found := object["ConcurrentGCCount"]; found {
+		err = json.Unmarshal(raw, &a.ConcurrentGCCount)
+		if err != nil {
+			return fmt.Errorf("error reading 'ConcurrentGCCount': %w", err)
+		}
+		delete(object, "ConcurrentGCCount")
+	}
+
+	if raw, found := object["ConcurrentGCTime"]; found {
+		err = json.Unmarshal(raw, &a.ConcurrentGCTime)
+		if err != nil {
+			return fmt.Errorf("error reading 'ConcurrentGCTime': %w", err)
+		}
+		delete(object, "ConcurrentGCTime")
+	}
+
 	if raw, found := object["DirectPoolMemory"]; found {
 		err = json.Unmarshal(raw, &a.DirectPoolMemory)
 		if err != nil {
@@ -3778,6 +4228,20 @@ func (a PeakMemoryMetrics) MarshalJSON() ([]byte, error) {
 	var err error
 	object := make(map[string]json.RawMessage)
 
+	if a.ConcurrentGCCount != nil {
+		object["ConcurrentGCCount"], err = json.Marshal(a.ConcurrentGCCount)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ConcurrentGCCount': %w", err)
+		}
+	}
+
+	if a.ConcurrentGCTime != nil {
+		object["ConcurrentGCTime"], err = json.Marshal(a.ConcurrentGCTime)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'ConcurrentGCTime': %w", err)
+		}
+	}
+
 	if a.DirectPoolMemory != nil {
 		object["DirectPoolMemory"], err = json.Marshal(a.DirectPoolMemory)
 		if err != nil {
@@ -3922,6 +4386,164 @@ func (a PeakMemoryMetrics) MarshalJSON() ([]byte, error) {
 		object["TotalGCTime"], err = json.Marshal(a.TotalGCTime)
 		if err != nil {
 			return nil, fmt.Errorf("error marshaling 'TotalGCTime': %w", err)
+		}
+	}
+
+	for fieldName, field := range a.AdditionalProperties {
+		object[fieldName], err = json.Marshal(field)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling '%s': %w", fieldName, err)
+		}
+	}
+	return json.Marshal(object)
+}
+
+// Getter for additional properties for ProcessSummary. Returns the specified
+// element and whether it was found
+func (a ProcessSummary) Get(fieldName string) (value interface{}, found bool) {
+	if a.AdditionalProperties != nil {
+		value, found = a.AdditionalProperties[fieldName]
+	}
+	return
+}
+
+// Setter for additional properties for ProcessSummary
+func (a *ProcessSummary) Set(fieldName string, value interface{}) {
+	if a.AdditionalProperties == nil {
+		a.AdditionalProperties = make(map[string]interface{})
+	}
+	a.AdditionalProperties[fieldName] = value
+}
+
+// Override default JSON handling for ProcessSummary to handle AdditionalProperties
+func (a *ProcessSummary) UnmarshalJSON(b []byte) error {
+	object := make(map[string]json.RawMessage)
+	err := json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["addTime"]; found {
+		err = json.Unmarshal(raw, &a.AddTime)
+		if err != nil {
+			return fmt.Errorf("error reading 'addTime': %w", err)
+		}
+		delete(object, "addTime")
+	}
+
+	if raw, found := object["hostPort"]; found {
+		err = json.Unmarshal(raw, &a.HostPort)
+		if err != nil {
+			return fmt.Errorf("error reading 'hostPort': %w", err)
+		}
+		delete(object, "hostPort")
+	}
+
+	if raw, found := object["id"]; found {
+		err = json.Unmarshal(raw, &a.Id)
+		if err != nil {
+			return fmt.Errorf("error reading 'id': %w", err)
+		}
+		delete(object, "id")
+	}
+
+	if raw, found := object["isActive"]; found {
+		err = json.Unmarshal(raw, &a.IsActive)
+		if err != nil {
+			return fmt.Errorf("error reading 'isActive': %w", err)
+		}
+		delete(object, "isActive")
+	}
+
+	if raw, found := object["processLogs"]; found {
+		err = json.Unmarshal(raw, &a.ProcessLogs)
+		if err != nil {
+			return fmt.Errorf("error reading 'processLogs': %w", err)
+		}
+		delete(object, "processLogs")
+	}
+
+	if raw, found := object["removeTime"]; found {
+		err = json.Unmarshal(raw, &a.RemoveTime)
+		if err != nil {
+			return fmt.Errorf("error reading 'removeTime': %w", err)
+		}
+		delete(object, "removeTime")
+	}
+
+	if raw, found := object["totalCores"]; found {
+		err = json.Unmarshal(raw, &a.TotalCores)
+		if err != nil {
+			return fmt.Errorf("error reading 'totalCores': %w", err)
+		}
+		delete(object, "totalCores")
+	}
+
+	if len(object) != 0 {
+		a.AdditionalProperties = make(map[string]interface{})
+		for fieldName, fieldBuf := range object {
+			var fieldVal interface{}
+			err := json.Unmarshal(fieldBuf, &fieldVal)
+			if err != nil {
+				return fmt.Errorf("error unmarshaling field %s: %w", fieldName, err)
+			}
+			a.AdditionalProperties[fieldName] = fieldVal
+		}
+	}
+	return nil
+}
+
+// Override default JSON handling for ProcessSummary to handle AdditionalProperties
+func (a ProcessSummary) MarshalJSON() ([]byte, error) {
+	var err error
+	object := make(map[string]json.RawMessage)
+
+	if a.AddTime != nil {
+		object["addTime"], err = json.Marshal(a.AddTime)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'addTime': %w", err)
+		}
+	}
+
+	if a.HostPort != nil {
+		object["hostPort"], err = json.Marshal(a.HostPort)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'hostPort': %w", err)
+		}
+	}
+
+	if a.Id != nil {
+		object["id"], err = json.Marshal(a.Id)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'id': %w", err)
+		}
+	}
+
+	if a.IsActive != nil {
+		object["isActive"], err = json.Marshal(a.IsActive)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isActive': %w", err)
+		}
+	}
+
+	if a.ProcessLogs != nil {
+		object["processLogs"], err = json.Marshal(a.ProcessLogs)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'processLogs': %w", err)
+		}
+	}
+
+	if a.RemoveTime != nil {
+		object["removeTime"], err = json.Marshal(a.RemoveTime)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'removeTime': %w", err)
+		}
+	}
+
+	if a.TotalCores != nil {
+		object["totalCores"], err = json.Marshal(a.TotalCores)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'totalCores': %w", err)
 		}
 	}
 
@@ -9268,6 +9890,382 @@ func (a TaskMetricsSummary_ShuffleWriteMetrics) MarshalJSON() ([]byte, error) {
 		object["writeTime"], err = json.Marshal(a.WriteTime)
 		if err != nil {
 			return nil, fmt.Errorf("error marshaling 'writeTime': %w", err)
+		}
+	}
+
+	for fieldName, field := range a.AdditionalProperties {
+		object[fieldName], err = json.Marshal(field)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling '%s': %w", fieldName, err)
+		}
+	}
+	return json.Marshal(object)
+}
+
+// Getter for additional properties for TaskTableResponse. Returns the specified
+// element and whether it was found
+func (a TaskTableResponse) Get(fieldName string) (value interface{}, found bool) {
+	if a.AdditionalProperties != nil {
+		value, found = a.AdditionalProperties[fieldName]
+	}
+	return
+}
+
+// Setter for additional properties for TaskTableResponse
+func (a *TaskTableResponse) Set(fieldName string, value interface{}) {
+	if a.AdditionalProperties == nil {
+		a.AdditionalProperties = make(map[string]interface{})
+	}
+	a.AdditionalProperties[fieldName] = value
+}
+
+// Override default JSON handling for TaskTableResponse to handle AdditionalProperties
+func (a *TaskTableResponse) UnmarshalJSON(b []byte) error {
+	object := make(map[string]json.RawMessage)
+	err := json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["aaData"]; found {
+		err = json.Unmarshal(raw, &a.AaData)
+		if err != nil {
+			return fmt.Errorf("error reading 'aaData': %w", err)
+		}
+		delete(object, "aaData")
+	}
+
+	if raw, found := object["recordsFiltered"]; found {
+		err = json.Unmarshal(raw, &a.RecordsFiltered)
+		if err != nil {
+			return fmt.Errorf("error reading 'recordsFiltered': %w", err)
+		}
+		delete(object, "recordsFiltered")
+	}
+
+	if raw, found := object["recordsTotal"]; found {
+		err = json.Unmarshal(raw, &a.RecordsTotal)
+		if err != nil {
+			return fmt.Errorf("error reading 'recordsTotal': %w", err)
+		}
+		delete(object, "recordsTotal")
+	}
+
+	if len(object) != 0 {
+		a.AdditionalProperties = make(map[string]interface{})
+		for fieldName, fieldBuf := range object {
+			var fieldVal interface{}
+			err := json.Unmarshal(fieldBuf, &fieldVal)
+			if err != nil {
+				return fmt.Errorf("error unmarshaling field %s: %w", fieldName, err)
+			}
+			a.AdditionalProperties[fieldName] = fieldVal
+		}
+	}
+	return nil
+}
+
+// Override default JSON handling for TaskTableResponse to handle AdditionalProperties
+func (a TaskTableResponse) MarshalJSON() ([]byte, error) {
+	var err error
+	object := make(map[string]json.RawMessage)
+
+	if a.AaData != nil {
+		object["aaData"], err = json.Marshal(a.AaData)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'aaData': %w", err)
+		}
+	}
+
+	if a.RecordsFiltered != nil {
+		object["recordsFiltered"], err = json.Marshal(a.RecordsFiltered)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'recordsFiltered': %w", err)
+		}
+	}
+
+	if a.RecordsTotal != nil {
+		object["recordsTotal"], err = json.Marshal(a.RecordsTotal)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'recordsTotal': %w", err)
+		}
+	}
+
+	for fieldName, field := range a.AdditionalProperties {
+		object[fieldName], err = json.Marshal(field)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling '%s': %w", fieldName, err)
+		}
+	}
+	return json.Marshal(object)
+}
+
+// Getter for additional properties for ThreadStackTrace. Returns the specified
+// element and whether it was found
+func (a ThreadStackTrace) Get(fieldName string) (value interface{}, found bool) {
+	if a.AdditionalProperties != nil {
+		value, found = a.AdditionalProperties[fieldName]
+	}
+	return
+}
+
+// Setter for additional properties for ThreadStackTrace
+func (a *ThreadStackTrace) Set(fieldName string, value interface{}) {
+	if a.AdditionalProperties == nil {
+		a.AdditionalProperties = make(map[string]interface{})
+	}
+	a.AdditionalProperties[fieldName] = value
+}
+
+// Override default JSON handling for ThreadStackTrace to handle AdditionalProperties
+func (a *ThreadStackTrace) UnmarshalJSON(b []byte) error {
+	object := make(map[string]json.RawMessage)
+	err := json.Unmarshal(b, &object)
+	if err != nil {
+		return err
+	}
+
+	if raw, found := object["blockedByLock"]; found {
+		err = json.Unmarshal(raw, &a.BlockedByLock)
+		if err != nil {
+			return fmt.Errorf("error reading 'blockedByLock': %w", err)
+		}
+		delete(object, "blockedByLock")
+	}
+
+	if raw, found := object["blockedByThreadId"]; found {
+		err = json.Unmarshal(raw, &a.BlockedByThreadId)
+		if err != nil {
+			return fmt.Errorf("error reading 'blockedByThreadId': %w", err)
+		}
+		delete(object, "blockedByThreadId")
+	}
+
+	if raw, found := object["holdingLocks"]; found {
+		err = json.Unmarshal(raw, &a.HoldingLocks)
+		if err != nil {
+			return fmt.Errorf("error reading 'holdingLocks': %w", err)
+		}
+		delete(object, "holdingLocks")
+	}
+
+	if raw, found := object["inNative"]; found {
+		err = json.Unmarshal(raw, &a.InNative)
+		if err != nil {
+			return fmt.Errorf("error reading 'inNative': %w", err)
+		}
+		delete(object, "inNative")
+	}
+
+	if raw, found := object["isDaemon"]; found {
+		err = json.Unmarshal(raw, &a.IsDaemon)
+		if err != nil {
+			return fmt.Errorf("error reading 'isDaemon': %w", err)
+		}
+		delete(object, "isDaemon")
+	}
+
+	if raw, found := object["lockName"]; found {
+		err = json.Unmarshal(raw, &a.LockName)
+		if err != nil {
+			return fmt.Errorf("error reading 'lockName': %w", err)
+		}
+		delete(object, "lockName")
+	}
+
+	if raw, found := object["lockOwnerName"]; found {
+		err = json.Unmarshal(raw, &a.LockOwnerName)
+		if err != nil {
+			return fmt.Errorf("error reading 'lockOwnerName': %w", err)
+		}
+		delete(object, "lockOwnerName")
+	}
+
+	if raw, found := object["monitors"]; found {
+		err = json.Unmarshal(raw, &a.Monitors)
+		if err != nil {
+			return fmt.Errorf("error reading 'monitors': %w", err)
+		}
+		delete(object, "monitors")
+	}
+
+	if raw, found := object["priority"]; found {
+		err = json.Unmarshal(raw, &a.Priority)
+		if err != nil {
+			return fmt.Errorf("error reading 'priority': %w", err)
+		}
+		delete(object, "priority")
+	}
+
+	if raw, found := object["stackTrace"]; found {
+		err = json.Unmarshal(raw, &a.StackTrace)
+		if err != nil {
+			return fmt.Errorf("error reading 'stackTrace': %w", err)
+		}
+		delete(object, "stackTrace")
+	}
+
+	if raw, found := object["suspended"]; found {
+		err = json.Unmarshal(raw, &a.Suspended)
+		if err != nil {
+			return fmt.Errorf("error reading 'suspended': %w", err)
+		}
+		delete(object, "suspended")
+	}
+
+	if raw, found := object["synchronizers"]; found {
+		err = json.Unmarshal(raw, &a.Synchronizers)
+		if err != nil {
+			return fmt.Errorf("error reading 'synchronizers': %w", err)
+		}
+		delete(object, "synchronizers")
+	}
+
+	if raw, found := object["threadId"]; found {
+		err = json.Unmarshal(raw, &a.ThreadId)
+		if err != nil {
+			return fmt.Errorf("error reading 'threadId': %w", err)
+		}
+		delete(object, "threadId")
+	}
+
+	if raw, found := object["threadName"]; found {
+		err = json.Unmarshal(raw, &a.ThreadName)
+		if err != nil {
+			return fmt.Errorf("error reading 'threadName': %w", err)
+		}
+		delete(object, "threadName")
+	}
+
+	if raw, found := object["threadState"]; found {
+		err = json.Unmarshal(raw, &a.ThreadState)
+		if err != nil {
+			return fmt.Errorf("error reading 'threadState': %w", err)
+		}
+		delete(object, "threadState")
+	}
+
+	if len(object) != 0 {
+		a.AdditionalProperties = make(map[string]interface{})
+		for fieldName, fieldBuf := range object {
+			var fieldVal interface{}
+			err := json.Unmarshal(fieldBuf, &fieldVal)
+			if err != nil {
+				return fmt.Errorf("error unmarshaling field %s: %w", fieldName, err)
+			}
+			a.AdditionalProperties[fieldName] = fieldVal
+		}
+	}
+	return nil
+}
+
+// Override default JSON handling for ThreadStackTrace to handle AdditionalProperties
+func (a ThreadStackTrace) MarshalJSON() ([]byte, error) {
+	var err error
+	object := make(map[string]json.RawMessage)
+
+	if a.BlockedByLock != nil {
+		object["blockedByLock"], err = json.Marshal(a.BlockedByLock)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'blockedByLock': %w", err)
+		}
+	}
+
+	if a.BlockedByThreadId != nil {
+		object["blockedByThreadId"], err = json.Marshal(a.BlockedByThreadId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'blockedByThreadId': %w", err)
+		}
+	}
+
+	if a.HoldingLocks != nil {
+		object["holdingLocks"], err = json.Marshal(a.HoldingLocks)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'holdingLocks': %w", err)
+		}
+	}
+
+	if a.InNative != nil {
+		object["inNative"], err = json.Marshal(a.InNative)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'inNative': %w", err)
+		}
+	}
+
+	if a.IsDaemon != nil {
+		object["isDaemon"], err = json.Marshal(a.IsDaemon)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'isDaemon': %w", err)
+		}
+	}
+
+	if a.LockName != nil {
+		object["lockName"], err = json.Marshal(a.LockName)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'lockName': %w", err)
+		}
+	}
+
+	if a.LockOwnerName != nil {
+		object["lockOwnerName"], err = json.Marshal(a.LockOwnerName)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'lockOwnerName': %w", err)
+		}
+	}
+
+	if a.Monitors != nil {
+		object["monitors"], err = json.Marshal(a.Monitors)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'monitors': %w", err)
+		}
+	}
+
+	if a.Priority != nil {
+		object["priority"], err = json.Marshal(a.Priority)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'priority': %w", err)
+		}
+	}
+
+	if a.StackTrace != nil {
+		object["stackTrace"], err = json.Marshal(a.StackTrace)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'stackTrace': %w", err)
+		}
+	}
+
+	if a.Suspended != nil {
+		object["suspended"], err = json.Marshal(a.Suspended)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'suspended': %w", err)
+		}
+	}
+
+	if a.Synchronizers != nil {
+		object["synchronizers"], err = json.Marshal(a.Synchronizers)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'synchronizers': %w", err)
+		}
+	}
+
+	if a.ThreadId != nil {
+		object["threadId"], err = json.Marshal(a.ThreadId)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'threadId': %w", err)
+		}
+	}
+
+	if a.ThreadName != nil {
+		object["threadName"], err = json.Marshal(a.ThreadName)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'threadName': %w", err)
+		}
+	}
+
+	if a.ThreadState != nil {
+		object["threadState"], err = json.Marshal(a.ThreadState)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling 'threadState': %w", err)
 		}
 	}
 

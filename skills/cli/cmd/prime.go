@@ -30,6 +30,7 @@ COMMANDS
 
 GLOBAL FLAGS
   -a, --app-id STRING     Application ID (required for most commands)
+      --attempt STRING    Application attempt ID (for YARN apps with multiple attempts)
   -s, --server STRING     Server name from config file
   -o, --output FORMAT     txt (default) | json | yaml
   -c, --config PATH       Config file (default: config.yaml)
@@ -64,6 +65,12 @@ COMMON WORKFLOWS
     shs apps
     shs apps --status completed --limit 5
 
+  Investigate a specific attempt (YARN apps):
+    shs apps                                          # shows attempt count
+    shs jobs -a APP_ID --attempt 1                    # attempt 1
+    shs jobs -a APP_ID --attempt 2                    # attempt 2
+    shs jobs -a APP_ID                                # latest attempt (default)
+
   Investigate failures:
     shs jobs -a APP_ID --status failed
     shs stages -a APP_ID --status failed
@@ -95,7 +102,9 @@ COMMON WORKFLOWS
     shs env -a APP_ID --section spark
 
 DATA MODEL
-  Application  A Spark app with one or more attempts.
+  Application  A Spark app with one or more attempts. YARN apps may have multiple
+               attempts if the ApplicationMaster restarts. Use --attempt to select one;
+               omit it to get the latest attempt.
   Job          A Spark action (collect, save, etc). Contains stages.
   Stage        A unit of parallel work. Has tasks and may have retry attempts.
                Detail view shows: task counts, input/output bytes,
