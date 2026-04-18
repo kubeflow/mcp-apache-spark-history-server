@@ -257,7 +257,11 @@ class SparkRestClient:
         return self._parse_model(data, ApplicationAttemptInfo)
 
     def list_jobs(
-        self, app_id: str, status: Optional[List[JobExecutionStatus]] = None
+        self,
+        app_id: str,
+        status: Optional[List[JobExecutionStatus]] = None,
+        offset: int = 0,
+        length: Optional[int] = None,
     ) -> List[JobData]:
         """
         Get a list of all jobs for an application.
@@ -265,6 +269,8 @@ class SparkRestClient:
         Args:
             app_id: The application ID
             status: Filter by job status
+            offset: Number of items to skip from the start (client-side)
+            length: Maximum number of items to return (client-side, None = all)
 
         Returns:
             List of JobData objects
@@ -274,7 +280,10 @@ class SparkRestClient:
             params["status"] = [s.value for s in status]
 
         data = self._get(f"applications/{app_id}/jobs", params)
-        return self._parse_model_list(data, JobData)
+        jobs = self._parse_model_list(data, JobData)
+        if length is not None:
+            return jobs[offset : offset + length]
+        return jobs[offset:] if offset else jobs
 
     def get_job(self, app_id: str, job_id: int) -> JobData:
         """
@@ -298,6 +307,8 @@ class SparkRestClient:
         with_summaries: bool = False,
         quantiles: str = "0.05, 0.25, 0.5, 0.75, 0.95",
         task_status: Optional[List[TaskStatus]] = None,
+        offset: int = 0,
+        length: Optional[int] = None,
     ) -> List[StageData]:
         """
         Get a list of all stages for an application.
@@ -309,6 +320,8 @@ class SparkRestClient:
             with_summaries: Whether to include summary metrics
             quantiles: Comma-separated list of quantiles to use for summary metrics
             task_status: Filter by task status (only takes effect when details=true)
+            offset: Number of items to skip from the start (client-side)
+            length: Maximum number of items to return (client-side, None = all)
 
         Returns:
             List of StageData objects
@@ -321,12 +334,14 @@ class SparkRestClient:
 
         if status:
             params["status"] = [s.value for s in status]
-        # taskStatus parameter only takes effect when details=true
         if task_status and details:
             params["taskStatus"] = [s.value for s in task_status]
 
         data = self._get(f"applications/{app_id}/stages", params)
-        return self._parse_model_list(data, StageData)
+        stages = self._parse_model_list(data, StageData)
+        if length is not None:
+            return stages[offset : offset + length]
+        return stages[offset:] if offset else stages
 
     def list_stage_attempts(
         self,
@@ -462,31 +477,51 @@ class SparkRestClient:
         )
         return self._parse_model_list(data, TaskData)
 
-    def list_executors(self, app_id: str) -> List[ExecutorSummary]:
+    def list_executors(
+        self,
+        app_id: str,
+        offset: int = 0,
+        length: Optional[int] = None,
+    ) -> List[ExecutorSummary]:
         """
         Get a list of all executors for an application.
 
         Args:
             app_id: The application ID
+            offset: Number of items to skip from the start (client-side)
+            length: Maximum number of items to return (client-side, None = all)
 
         Returns:
             List of ExecutorSummary objects
         """
         data = self._get(f"applications/{app_id}/executors")
-        return self._parse_model_list(data, ExecutorSummary)
+        executors = self._parse_model_list(data, ExecutorSummary)
+        if length is not None:
+            return executors[offset : offset + length]
+        return executors[offset:] if offset else executors
 
-    def list_all_executors(self, app_id: str) -> List[ExecutorSummary]:
+    def list_all_executors(
+        self,
+        app_id: str,
+        offset: int = 0,
+        length: Optional[int] = None,
+    ) -> List[ExecutorSummary]:
         """
         Get a list of all executors (active and inactive) for an application.
 
         Args:
             app_id: The application ID
+            offset: Number of items to skip from the start (client-side)
+            length: Maximum number of items to return (client-side, None = all)
 
         Returns:
             List of ExecutorSummary objects
         """
         data = self._get(f"applications/{app_id}/allexecutors")
-        return self._parse_model_list(data, ExecutorSummary)
+        executors = self._parse_model_list(data, ExecutorSummary)
+        if length is not None:
+            return executors[offset : offset + length]
+        return executors[offset:] if offset else executors
 
     def list_executor_thread_dump(
         self, app_id: str, executor_id: str

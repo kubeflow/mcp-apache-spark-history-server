@@ -153,15 +153,24 @@ def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInf
 
 @mcp.tool()
 def list_jobs(
-    app_id: str, server: Optional[str] = None, status: Optional[list[str]] = None
+    app_id: str,
+    server: Optional[str] = None,
+    status: Optional[list[str]] = None,
+    offset: int = 0,
+    length: Optional[int] = None,
 ) -> list:
     """
-    Get a list of all jobs for a Spark application.
+    Get a list of jobs for a Spark application.
+
+    Returns job metadata including ID, name, status, submission/completion times,
+    and task counts. Supports client-side pagination to limit response size.
 
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         status: Optional list of job status values to filter by
+        offset: Number of jobs to skip from the start (default: 0)
+        length: Maximum number of jobs to return (default: None, returns all)
 
     Returns:
         List of JobData objects for the application
@@ -169,12 +178,18 @@ def list_jobs(
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
-    # Convert string status values to JobExecutionStatus enum if provided
+    if offset < 0:
+        raise ValueError("offset must be non-negative")
+    if length is not None and length < 0:
+        raise ValueError("length must be non-negative")
+
     job_statuses = None
     if status:
         job_statuses = [JobExecutionStatus.from_string(s) for s in status]
 
-    return client.list_jobs(app_id=app_id, status=job_statuses)
+    return client.list_jobs(
+        app_id=app_id, status=job_statuses, offset=offset, length=length
+    )
 
 
 @mcp.tool()
@@ -228,18 +243,23 @@ def list_stages(
     server: Optional[str] = None,
     status: Optional[list[str]] = None,
     with_summaries: bool = False,
+    offset: int = 0,
+    length: Optional[int] = None,
 ) -> list:
     """
-    Get a list of all stages for a Spark application.
+    Get a list of stages for a Spark application.
 
     Retrieves information about stages in a Spark application with options to filter
-    by status and include additional details and summary metrics.
+    by status and include additional details and summary metrics. Supports client-side
+    pagination to limit response size.
 
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         status: Optional list of stage status values to filter by
         with_summaries: Whether to include summary metrics in the response
+        offset: Number of stages to skip from the start (default: 0)
+        length: Maximum number of stages to return (default: None, returns all)
 
     Returns:
         List of StageData objects for the application
@@ -247,7 +267,11 @@ def list_stages(
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
-    # Convert string status values to StageStatus enum if provided
+    if offset < 0:
+        raise ValueError("offset must be non-negative")
+    if length is not None and length < 0:
+        raise ValueError("length must be non-negative")
+
     stage_statuses = None
     if status:
         stage_statuses = [StageStatus.from_string(s) for s in status]
@@ -256,6 +280,8 @@ def list_stages(
         app_id=app_id,
         status=stage_statuses,
         with_summaries=with_summaries,
+        offset=offset,
+        length=length,
     )
 
 
@@ -391,18 +417,25 @@ def get_environment(app_id: str, server: Optional[str] = None):
 
 @mcp.tool()
 def list_executors(
-    app_id: str, server: Optional[str] = None, include_inactive: bool = False
+    app_id: str,
+    server: Optional[str] = None,
+    include_inactive: bool = False,
+    offset: int = 0,
+    length: Optional[int] = None,
 ):
     """
     Get executor information for a Spark application.
 
     Retrieves a list of executors (active by default) for the specified Spark application
-    with their resource allocation, task statistics, and performance metrics.
+    with their resource allocation, task statistics, and performance metrics. Supports
+    client-side pagination to limit response size.
 
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         include_inactive: Whether to include inactive executors (default: False)
+        offset: Number of executors to skip from the start (default: 0)
+        length: Maximum number of executors to return (default: None, returns all)
 
     Returns:
         List of ExecutorSummary objects containing executor information
@@ -410,10 +443,15 @@ def list_executors(
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
+    if offset < 0:
+        raise ValueError("offset must be non-negative")
+    if length is not None and length < 0:
+        raise ValueError("length must be non-negative")
+
     if include_inactive:
-        return client.list_all_executors(app_id=app_id)
+        return client.list_all_executors(app_id=app_id, offset=offset, length=length)
     else:
-        return client.list_executors(app_id=app_id)
+        return client.list_executors(app_id=app_id, offset=offset, length=length)
 
 
 @mcp.tool()
@@ -1014,6 +1052,47 @@ def list_slowest_sql_queries(
         simplified_results.append(query_summary)
 
     return simplified_results
+
+
+@mcp.tool()
+def get_sql_execution(
+    app_id: str,
+    execution_id: int,
+    server: Optional[str] = None,
+    attempt_id: Optional[str] = None,
+    details: bool = True,
+    plan_description: bool = True,
+) -> ExecutionData:
+    """
+    Get detailed information about a specific SQL execution.
+
+    Retrieves comprehensive details of a single SQL execution including its
+    execution plan, associated jobs, metrics, and node-level statistics.
+    This is useful for deep-diving into a specific query's performance after
+    identifying it via list_slowest_sql_queries.
+
+    Args:
+        app_id: The Spark application ID
+        execution_id: The SQL execution ID
+        server: Optional server name to use (uses default if not specified)
+        attempt_id: Optional application attempt ID
+        details: Whether to include execution details (default: True)
+        plan_description: Whether to include plan description (default: True)
+
+    Returns:
+        ExecutionData object containing SQL execution details including
+        status, duration, associated job IDs, and execution plan nodes/edges
+    """
+    ctx = mcp.get_context()
+    client = get_client_or_default(ctx, server, app_id)
+
+    return client.get_sql_execution(
+        app_id=app_id,
+        execution_id=execution_id,
+        attempt_id=attempt_id,
+        details=details,
+        plan_description=plan_description,
+    )
 
 
 @mcp.tool()

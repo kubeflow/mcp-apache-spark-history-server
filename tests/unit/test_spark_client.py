@@ -238,3 +238,103 @@ class TestSparkClient(unittest.TestCase):
                 expected_url,
                 f"Failed to correctly modify URL.\nInput: {input_url}\nExpected: {expected_url}\nGot: {modified_url}",
             )
+
+    @patch("spark_history_mcp.api.spark_client.requests.get")
+    def test_list_jobs_pagination(self, mock_get):
+        """Test client-side pagination for list_jobs"""
+        mock_response = MagicMock()
+        mock_response.json.return_value = [
+            {
+                "jobId": i,
+                "name": f"job-{i}",
+                "status": "SUCCEEDED",
+                "stageIds": [],
+                "numTasks": 10,
+                "numActiveTasks": 0,
+                "numCompletedTasks": 10,
+                "numSkippedTasks": 0,
+                "numFailedTasks": 0,
+                "numKilledTasks": 0,
+                "numCompletedIndices": 10,
+                "numActiveStages": 0,
+                "numCompletedStages": 1,
+                "numSkippedStages": 0,
+                "numFailedStages": 0,
+                "killedTasksSummary": {},
+            }
+            for i in range(5)
+        ]
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        # No pagination — returns all
+        all_jobs = self.client.list_jobs("app-123")
+        self.assertEqual(len(all_jobs), 5)
+
+        # With offset
+        jobs = self.client.list_jobs("app-123", offset=2)
+        self.assertEqual(len(jobs), 3)
+        self.assertEqual(jobs[0].job_id, 2)
+
+        # With offset + length
+        jobs = self.client.list_jobs("app-123", offset=1, length=2)
+        self.assertEqual(len(jobs), 2)
+        self.assertEqual(jobs[0].job_id, 1)
+        self.assertEqual(jobs[1].job_id, 2)
+
+        # Offset beyond range
+        jobs = self.client.list_jobs("app-123", offset=10)
+        self.assertEqual(len(jobs), 0)
+
+    @patch("spark_history_mcp.api.spark_client.requests.get")
+    def test_list_executors_pagination(self, mock_get):
+        """Test client-side pagination for list_executors"""
+        mock_response = MagicMock()
+        mock_response.json.return_value = [
+            {
+                "id": str(i),
+                "hostPort": f"host-{i}:1234",
+                "isActive": True,
+                "rddBlocks": 0,
+                "memoryUsed": 0,
+                "diskUsed": 0,
+                "totalCores": 4,
+                "maxTasks": 4,
+                "activeTasks": 0,
+                "failedTasks": 0,
+                "completedTasks": 100,
+                "totalTasks": 100,
+                "totalDuration": 5000,
+                "totalGCTime": 100,
+                "totalInputBytes": 0,
+                "totalShuffleRead": 0,
+                "totalShuffleWrite": 0,
+                "isBlacklisted": False,
+                "maxMemory": 1000,
+                "addTime": "2023-01-01T00:00:00.000GMT",
+                "executorLogs": {},
+                "blacklistedInStages": [],
+                "attributes": {},
+                "resources": {},
+                "resourceProfileId": 0,
+                "isExcluded": False,
+                "excludedInStages": [],
+            }
+            for i in range(10)
+        ]
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        # No pagination
+        all_executors = self.client.list_executors("app-123")
+        self.assertEqual(len(all_executors), 10)
+
+        # With length only
+        executors = self.client.list_executors("app-123", length=3)
+        self.assertEqual(len(executors), 3)
+        self.assertEqual(executors[0].id, "0")
+
+        # With offset + length
+        executors = self.client.list_executors("app-123", offset=8, length=5)
+        self.assertEqual(len(executors), 2)
+        self.assertEqual(executors[0].id, "8")
