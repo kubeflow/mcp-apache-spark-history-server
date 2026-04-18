@@ -1017,6 +1017,47 @@ def list_slowest_sql_queries(
 
 
 @mcp.tool()
+def get_sql_execution(
+    app_id: str,
+    execution_id: int,
+    server: Optional[str] = None,
+    attempt_id: Optional[str] = None,
+    details: bool = True,
+    plan_description: bool = True,
+) -> ExecutionData:
+    """
+    Get detailed information about a specific SQL execution.
+
+    Retrieves comprehensive details of a single SQL execution including its
+    execution plan, associated jobs, metrics, and node-level statistics.
+    This is useful for deep-diving into a specific query's performance after
+    identifying it via list_slowest_sql_queries.
+
+    Args:
+        app_id: The Spark application ID
+        execution_id: The SQL execution ID
+        server: Optional server name to use (uses default if not specified)
+        attempt_id: Optional application attempt ID
+        details: Whether to include execution details (default: True)
+        plan_description: Whether to include plan description (default: True)
+
+    Returns:
+        ExecutionData object containing SQL execution details including
+        status, duration, associated job IDs, and execution plan nodes/edges
+    """
+    ctx = mcp.get_context()
+    client = get_client_or_default(ctx, server, app_id)
+
+    return client.get_sql_execution(
+        app_id=app_id,
+        execution_id=execution_id,
+        attempt_id=attempt_id,
+        details=details,
+        plan_description=plan_description,
+    )
+
+
+@mcp.tool()
 def get_job_bottlenecks(
     app_id: str, server: Optional[str] = None, top_n: int = 5
 ) -> Dict[str, Any]:
