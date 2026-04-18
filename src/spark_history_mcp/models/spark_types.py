@@ -866,14 +866,14 @@ class ThreadStackTrace(BaseModel):
     blocked_by_thread_id: Optional[int] = Field(None, alias="blockedByThreadId")
     blocked_by_lock: Optional[str] = Field(None, alias="blockedByLock")
     holding_locks: Sequence[str] = Field([], alias="holdingLocks")  # deprecated
-    synchronizers: Sequence[str]
-    monitors: Sequence[str]
+    synchronizers: Sequence[str] = Field(default_factory=list, alias="synchronizers")
+    monitors: Sequence[str] = Field(default_factory=list, alias="monitors")
     lock_name: Optional[str] = Field(None, alias="lockName")
     lock_owner_name: Optional[str] = Field(None, alias="lockOwnerName")
-    suspended: bool
+    suspended: bool = Field(False, alias="suspended")
     in_native: Optional[bool] = Field(None, alias="inNative")
     is_daemon: Optional[bool] = Field(None, alias="isDaemon")
-    priority: int
+    priority: int = Field(0, alias="priority")
 
     model_config = ConfigDict(populate_by_name=True, arbitrary_types_allowed=True)
 
