@@ -73,6 +73,8 @@ tasks:
     cmds:
       - go build -o {{.BIN_DIR}}/shs .
 
+  # You should not need to run this task for the most part. Events are already generated in e2e/ directory
+  # This task is for documenting how to generate data in the future.
   generate-events:
     desc: Generate Spark event logs for e2e tests (two apps with different configs)
     vars:
@@ -110,6 +112,8 @@ tasks:
       - docker rm {{.CONTAINER}}
       - chmod o+r e2e/spark-events/*
 
+  # You should not need to run this task for the most part. Events are already generated in e2e/ directory
+  # This task is for documenting how to generate data in the future.
   generate-events-yarn:
     desc: Generate a YARN-style multi-attempt app (attempt 1 fails, attempt 2 succeeds)
     vars:
@@ -163,16 +167,21 @@ tasks:
 
   start-shs:
     desc: Start Spark History Server against e2e event logs
+    silent: true
     cmds:
-      - docker rm -f {{.SHS_CONTAINER}}
-      - docker run -d --name {{.SHS_CONTAINER}}
-          -p 18080:18080
-          -v $(pwd)/e2e/spark-events:/tmp/spark-events:ro
-          -e SPARK_NO_DAEMONIZE=true
-          -e SPARK_HISTORY_OPTS="-Dspark.history.fs.logDirectory=file:///tmp/spark-events"
-          {{.SPARK_IMAGE}}
-          /opt/spark/sbin/start-history-server.sh
       - |
+        if docker inspect --format '{{`{{.State.Running}}`}}' {{.SHS_CONTAINER}} 2>/dev/null | grep -q true; then
+          echo "SHS container '{{.SHS_CONTAINER}}' is already running, skipping."
+          exit 0
+        fi
+        docker rm -f {{.SHS_CONTAINER}} 2>/dev/null || true
+        docker run -d --name {{.SHS_CONTAINER}} \
+          -p 18080:18080 \
+          -v $(pwd)/e2e/spark-events:/tmp/spark-events:ro \
+          -e SPARK_NO_DAEMONIZE=true \
+          -e SPARK_HISTORY_OPTS="-Dspark.history.fs.logDirectory=file:///tmp/spark-events" \
+          {{.SPARK_IMAGE}} \
+          /opt/spark/sbin/start-history-server.sh
         echo "Waiting for history server..."
         for i in $(seq 1 30); do
           if curl -sf http://localhost:18080/api/v1/applications > /dev/null 2>&1; then

@@ -319,3 +319,49 @@ yarn_stages_attempt1: |
   1   0        COMPLETE  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  2      0       154ms     0 B    0 B           496 B
   3   0        COMPLETE  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  1      0       143ms     0 B    496 B         0 B
   2   0        SKIPPED   $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  2      0       0s        0 B    0 B           0 B
+
+stages_5: |
+  Stage ID:        5
+  Attempt:         0
+  Status:          FAILED
+  Description:     collect at /app/generate_events.py:53
+  Name:            collect at /app/generate_events.py:53
+  Duration:        1.063s
+  Tasks:           2 (failed: 7, killed: 1)
+  Input:           0 B (40 records)
+  Output:          0 B (0 records)
+  Shuffle Read:    0 B (0 records)
+  Shuffle Write:   0 B (0 records)
+  Memory Spilled:  0 B
+  Disk Spilled:    0 B
+  GC Time:         6ms
+  Pool:            default
+
+stages_43: |
+  Stage ID:        43
+  Attempt:         0
+  Status:          COMPLETE
+  Description:     $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768
+  Name:            $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768
+  Duration:        2.083s
+  Tasks:           3 (failed: 0, killed: 0)
+  Input:           0 B (0 records)
+  Output:          55.3 MB (2000000 records)
+  Shuffle Read:    57.8 MB (2000000 records)
+  Shuffle Write:   0 B (0 records)
+  Memory Spilled:  80.0 MB
+  Disk Spilled:    67.1 MB
+  GC Time:         96ms
+  Pool:            default
+  
+  Task Quantiles (p25 / p50 / p75 / max):
+    Duration:          1.008s   / 1.055s   / 1.063s   / 1.063s
+    GC Time:           18ms     / 36ms     / 42ms     / 42ms
+    Scheduler Delay:   4ms      / 6ms      / 9ms      / 9ms
+    Peak Exec Memory:  6.0 MB   / 6.0 MB   / 12.0 MB  / 12.0 MB
+    Input:             0 B      / 0 B      / 0 B      / 0 B
+    Output:            14.0 MB  / 14.0 MB  / 27.3 MB  / 27.3 MB
+    Shuffle Read:      14.6 MB  / 14.7 MB  / 28.5 MB  / 28.5 MB
+    Shuffle Write:     0 B      / 0 B      / 0 B      / 0 B
+    Disk Spill:        16.6 MB  / 16.8 MB  / 33.7 MB  / 33.7 MB
+    Memory Spill:      20.0 MB  / 20.0 MB  / 40.0 MB  / 40.0 MB

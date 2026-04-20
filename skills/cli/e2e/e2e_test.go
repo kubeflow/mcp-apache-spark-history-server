@@ -25,34 +25,36 @@ type yarnInfo struct {
 }
 
 type fixtures struct {
-	App1           appInfo  `yaml:"app1"`
-	App2           appInfo  `yaml:"app2"`
-	Yarn           yarnInfo `yaml:"yarn"`
-	Apps           string  `yaml:"apps"`
-	JobsApp1       string  `yaml:"jobs_app1"`
-	JobsApp2       string  `yaml:"jobs_app2"`
-	Stage5ErrsApp1 string  `yaml:"stage5_errors_app1"`
-	Stage5ErrsApp2 string  `yaml:"stage5_errors_app2"`
-	SQLApp1        string  `yaml:"sql_app1"`
-	SQLApp2        string  `yaml:"sql_app2"`
-	JobsApp1SortID string  `yaml:"jobs_app1_sort_id"`
-	SQLApp1SortID  string  `yaml:"sql_app1_sort_id"`
-	CompareSQL6    string  `yaml:"compare_sql6"`
-	CompareSQL8    string  `yaml:"compare_sql8"`
-	ExecApp1       string  `yaml:"executors_app1"`
-	ExecApp2       string  `yaml:"executors_app2"`
-	ExecSumApp1    string  `yaml:"executors_summary_app1"`
-	SQL6SumApp1    string  `yaml:"sql6_summary_app1"`
-	SQL6SumApp2    string  `yaml:"sql6_summary_app2"`
-	SQL6PlanApp1   string  `yaml:"sql6_plan_sha256_app1"`
-	SQL6PlanApp2   string  `yaml:"sql6_plan_sha256_app2"`
-	AppsAllServers    string `yaml:"apps_all_servers"`
-	StagesApp1        string `yaml:"stages_app1"`
-	StagesApp2        string `yaml:"stages_app2"`
-	YarnAttempts      string `yaml:"yarn_attempts"`
-	YarnJobsAttempt1  string `yaml:"yarn_jobs_attempt1"`
-	YarnJobsAttempt2  string `yaml:"yarn_jobs_attempt2"`
-	YarnStagesAttempt1 string `yaml:"yarn_stages_attempt1"`
+	App1               appInfo  `yaml:"app1"`
+	App2               appInfo  `yaml:"app2"`
+	Yarn               yarnInfo `yaml:"yarn"`
+	Apps               string   `yaml:"apps"`
+	JobsApp1           string   `yaml:"jobs_app1"`
+	JobsApp2           string   `yaml:"jobs_app2"`
+	Stage5ErrsApp1     string   `yaml:"stage5_errors_app1"`
+	Stage5ErrsApp2     string   `yaml:"stage5_errors_app2"`
+	SQLApp1            string   `yaml:"sql_app1"`
+	SQLApp2            string   `yaml:"sql_app2"`
+	JobsApp1SortID     string   `yaml:"jobs_app1_sort_id"`
+	SQLApp1SortID      string   `yaml:"sql_app1_sort_id"`
+	CompareSQL6        string   `yaml:"compare_sql6"`
+	CompareSQL8        string   `yaml:"compare_sql8"`
+	ExecApp1           string   `yaml:"executors_app1"`
+	ExecApp2           string   `yaml:"executors_app2"`
+	ExecSumApp1        string   `yaml:"executors_summary_app1"`
+	SQL6SumApp1        string   `yaml:"sql6_summary_app1"`
+	SQL6SumApp2        string   `yaml:"sql6_summary_app2"`
+	SQL6PlanApp1       string   `yaml:"sql6_plan_sha256_app1"`
+	SQL6PlanApp2       string   `yaml:"sql6_plan_sha256_app2"`
+	AppsAllServers     string   `yaml:"apps_all_servers"`
+	StagesApp1         string   `yaml:"stages_app1"`
+	StagesApp2         string   `yaml:"stages_app2"`
+	YarnAttempts       string   `yaml:"yarn_attempts"`
+	YarnJobsAttempt1   string   `yaml:"yarn_jobs_attempt1"`
+	YarnJobsAttempt2   string   `yaml:"yarn_jobs_attempt2"`
+	YarnStagesAttempt1 string   `yaml:"yarn_stages_attempt1"`
+	Stages5            string   `yaml:"stages_5"`
+	Stages43           string   `yaml:"stages_43"`
 }
 
 var fix fixtures
@@ -296,6 +298,26 @@ func TestStages(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := shs(t, "stages", "-a", tt.app, "--limit", "5")
+			if diff := cmp.Diff(tt.want, got); diff != "" {
+				t.Errorf("mismatch (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestStageDetail(t *testing.T) {
+	tests := []struct {
+		name    string
+		app     string
+		stageID string
+		want    string
+	}{
+		{"failed_no_quantiles", fix.App1.ID, "5", fix.Stages5},
+		{"complete_with_quantiles", fix.App1.ID, "43", fix.Stages43},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := shs(t, "stages", "-a", tt.app, tt.stageID)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("mismatch (-want +got):\n%s", diff)
 			}

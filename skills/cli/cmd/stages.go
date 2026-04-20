@@ -15,27 +15,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type stageRow struct {
-	ID           int    `col:"ID"`
-	Attempt      int    `col:"ATTEMPT"`
-	Status       string `col:"STATUS"`
-	Description  string `col:"DESCRIPTION"`
-	Tasks        int    `col:"TASKS"`
-	Failed       int    `col:"FAILED"`
-	Duration     string `col:"DURATION"`
-	Input        string `col:"INPUT"`
-	ShuffleRead  string `col:"SHUFFLE_READ"`
-	ShuffleWrite string `col:"SHUFFLE_WRITE"`
-}
-
-type taskErrorRow struct {
-	Task     int64  `col:"TASK"`
-	Attempt  int    `col:"ATTEMPT"`
-	Executor string `col:"EXECUTOR"`
-	Status   string `col:"STATUS"`
-	Error    string `col:"ERROR"`
-}
-
 func newStagesCmd() *cobra.Command {
 	var status string
 	var limit int
@@ -76,6 +55,32 @@ func newStagesCmd() *cobra.Command {
 	cmd.Flags().StringVar(&sortBy, "sort", "", "Sort by field (failed-tasks|duration|id)")
 	cmd.Flags().BoolVar(&errors, "errors", false, "Show only failed tasks with error messages (requires stageId)")
 	return cmd
+}
+
+type stageRow struct {
+	ID           int    `col:"ID"`
+	Attempt      int    `col:"ATTEMPT"`
+	Status       string `col:"STATUS"`
+	Description  string `col:"DESCRIPTION"`
+	Tasks        int    `col:"TASKS"`
+	Failed       int    `col:"FAILED"`
+	Duration     string `col:"DURATION"`
+	Input        string `col:"INPUT"`
+	ShuffleRead  string `col:"SHUFFLE_READ"`
+	ShuffleWrite string `col:"SHUFFLE_WRITE"`
+}
+
+type taskErrorRow struct {
+	Task     int64  `col:"TASK"`
+	Attempt  int    `col:"ATTEMPT"`
+	Executor string `col:"EXECUTOR"`
+	Status   string `col:"STATUS"`
+	Error    string `col:"ERROR"`
+}
+
+type stageDetailOutput struct {
+	Stage       client.StageData           `json:"stage"`
+	TaskSummary *client.TaskMetricsSummary `json:"taskSummary,omitempty"`
 }
 
 var stageStatusPriority = map[string]int{
@@ -171,10 +176,21 @@ func getStage(cmd *cobra.Command, c client.ClientWithResponsesInterface, stageId
 	if len(attempts) == 0 {
 		return fmt.Errorf("no attempts found for stage %d", stageId)
 	}
-	// show latest attempt
 	s := attempts[len(attempts)-1]
+	attemptId := util.Deref(s.AttemptId)
 
-	return util.PrintOutput(cmd.OutOrStdout(), s, outputFmt, func(w io.Writer) error {
+	// fetch task quantile summary
+	quantiles := "0.25,0.5,0.75,1.0"
+	tsParams := &client.GetTaskSummaryParams{Quantiles: &quantiles}
+	tsResp, err := c.GetTaskSummaryWithResponse(cmd.Context(), appID, stageId, attemptId, tsParams)
+	var taskMetricsSummary *client.TaskMetricsSummary
+	if err == nil && tsResp.JSON200 != nil {
+		taskMetricsSummary = tsResp.JSON200
+	}
+
+	out := stageDetailOutput{Stage: s, TaskSummary: taskMetricsSummary}
+
+	return util.PrintOutput(cmd.OutOrStdout(), out, outputFmt, func(w io.Writer) error {
 		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 		_, _ = fmt.Fprintf(tw, "Stage ID:\t%d\n", util.Deref(s.StageId))
 		_, _ = fmt.Fprintf(tw, "Attempt:\t%d\n", util.Deref(s.AttemptId))
@@ -196,8 +212,45 @@ func getStage(cmd *cobra.Command, c client.ClientWithResponsesInterface, stageId
 		_, _ = fmt.Fprintf(tw, "Disk Spilled:\t%s\n", util.DerefBytes(s.DiskBytesSpilled))
 		_, _ = fmt.Fprintf(tw, "GC Time:\t%dms\n", util.Deref(s.JvmGcTime))
 		_, _ = fmt.Fprintf(tw, "Pool:\t%s\n", util.Deref(s.SchedulingPool))
-		return tw.Flush()
+		if err := tw.Flush(); err != nil {
+			return err
+		}
+
+		if taskMetricsSummary != nil {
+			_, _ = fmt.Fprintf(w, "\nTask Quantiles (p25 / p50 / p75 / max):\n")
+			tw = tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+			fmtMs := func(f float32) string { return util.FormatMsVal(int64(f)) }
+			fmtB := func(f float32) string { return util.FormatBytes(int64(f)) }
+			printQuantileRow(tw, "Duration", taskMetricsSummary.Duration, fmtMs)
+			printQuantileRow(tw, "GC Time", taskMetricsSummary.JvmGcTime, fmtMs)
+			printQuantileRow(tw, "Scheduler Delay", taskMetricsSummary.SchedulerDelay, fmtMs)
+			printQuantileRow(tw, "Peak Exec Memory", taskMetricsSummary.PeakExecutionMemory, fmtB)
+			if m := taskMetricsSummary.InputMetrics; m != nil {
+				printQuantileRow(tw, "Input", m.BytesRead, fmtB)
+			}
+			if m := taskMetricsSummary.OutputMetrics; m != nil {
+				printQuantileRow(tw, "Output", m.BytesWritten, fmtB)
+			}
+			if m := taskMetricsSummary.ShuffleReadMetrics; m != nil {
+				printQuantileRow(tw, "Shuffle Read", m.ReadBytes, fmtB)
+			}
+			if m := taskMetricsSummary.ShuffleWriteMetrics; m != nil {
+				printQuantileRow(tw, "Shuffle Write", m.WriteBytes, fmtB)
+			}
+			printQuantileRow(tw, "Disk Spill", taskMetricsSummary.DiskBytesSpilled, fmtB)
+			printQuantileRow(tw, "Memory Spill", taskMetricsSummary.MemoryBytesSpilled, fmtB)
+			return tw.Flush()
+		}
+		return nil
 	})
+}
+
+func printQuantileRow(w io.Writer, label string, vals *[]float32, fmtFn func(float32) string) {
+	v := util.Deref(vals)
+	if len(v) != 4 {
+		return
+	}
+	_, _ = fmt.Fprintf(w, "  %s:\t%s\t/ %s\t/ %s\t/ %s\n", label, fmtFn(v[0]), fmtFn(v[1]), fmtFn(v[2]), fmtFn(v[3]))
 }
 
 func getStageErrors(cmd *cobra.Command, c client.ClientWithResponsesInterface, stageId int) error {
