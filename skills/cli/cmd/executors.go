@@ -16,16 +16,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type timelineEvent struct {
-	Time time.Time
-	Kind string // "started" or "removed"
-	IDs  []string
-}
-
 type rawEvent struct {
-	time time.Time
-	id   string
-	kind string
+	time     time.Time
+	id       string
+	kind     string
+	cores    int
+	memBytes int64
 }
 
 type executorRow struct {
@@ -55,11 +51,14 @@ type executorSummaryRow struct {
 	RemoveReason string `col:"REMOVE_REASON"`
 }
 
-type executorTimelineRow struct {
-	Time      string `col:"TIME"`
-	Event     string `col:"EVENT"`
-	Executors string `col:"EXECUTORS"`
-	Count     int    `col:"COUNT"`
+// build timeline with running resource counters
+type snapshot struct {
+	Time       time.Time `json:"time"`
+	Event      string    `json:"event"`
+	ID         string    `json:"id"`
+	Executors  int       `json:"executors"`
+	TotalCores int       `json:"totalCores"`
+	TotalMem   int64     `json:"totalMemory"`
 }
 
 func newExecutorsCmd() *cobra.Command {
@@ -295,57 +294,50 @@ func listExecutorsTimeline(cmd *cobra.Command, c client.ClientWithResponsesInter
 
 	for _, e := range execs {
 		id := util.Deref(e.Id)
-		if id == "driver" {
-			continue
-		}
 		if e.AddTime != nil {
 			if t, err := util.ParseSparkTime(*e.AddTime); err == nil {
-				events = append(events, rawEvent{time: t, id: id, kind: "started"})
+				events = append(events, rawEvent{time: t, id: id, kind: "started",
+					cores: util.Deref(e.TotalCores), memBytes: util.Deref(e.MaxMemory)})
 			}
 		}
 		if e.RemoveTime != nil {
 			if t, err := util.ParseSparkTime(*e.RemoveTime); err == nil {
-				events = append(events, rawEvent{time: t, id: id, kind: "removed"})
+				events = append(events, rawEvent{time: t, id: id, kind: "removed",
+					cores: util.Deref(e.TotalCores), memBytes: util.Deref(e.MaxMemory)})
 			}
 		}
 	}
 
 	sort.Slice(events, func(i, j int) bool { return events[i].time.Before(events[j].time) })
 
-	// group events within 5 minutes with same kind
-	const window = 5 * time.Minute
-	var grouped []timelineEvent
-	for i := 0; i < len(events); {
-		j := i + 1
-		for j < len(events) &&
-			events[j].kind == events[i].kind &&
-			events[j].time.Sub(events[i].time) <= window {
-			j++
+	var activeExecs, totalCores int
+	var totalMem int64
+	snaps := make([]snapshot, len(events))
+	for i, e := range events {
+		switch e.kind {
+		case "started":
+			activeExecs++
+			totalCores += e.cores
+			totalMem += e.memBytes
+		case "removed":
+			activeExecs--
+			totalCores -= e.cores
+			totalMem -= e.memBytes
 		}
-		ids := make([]string, j-i)
-		for k := i; k < j; k++ {
-			ids[k-i] = events[k].id
-		}
-		grouped = append(grouped, timelineEvent{
-			Time: events[i].time,
-			Kind: events[i].kind,
-			IDs:  ids,
-		})
-		i = j
+		snaps[i] = snapshot{e.time, e.kind, e.id, activeExecs, totalCores, totalMem}
 	}
 
-	return util.PrintOutput(cmd.OutOrStdout(), grouped, outputFmt, func(w io.Writer) error {
-		rows := make([]executorTimelineRow, len(grouped))
-		for i, g := range grouped {
-			rows[i] = executorTimelineRow{g.Time.Format("15:04"), g.Kind, formatIDRange(g.IDs), len(g.IDs)}
+	return util.PrintOutput(cmd.OutOrStdout(), snaps, outputFmt, func(w io.Writer) error {
+		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintf(tw, "TIME\tEVENT\tID\tTOTAL_EXECS\tTOTAL_CORES\tTOTAL_MEMORY\n")
+		for _, s := range snaps {
+			mem := ""
+			if s.TotalMem > 0 {
+				mem = util.FormatBytes(s.TotalMem)
+			}
+			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%s\n",
+				s.Time.Format("15:04:05"), s.Event, s.ID, s.Executors, s.TotalCores, mem)
 		}
-		return util.PrintTable(w, rows)
+		return tw.Flush()
 	})
-}
-
-func formatIDRange(ids []string) string {
-	if len(ids) <= 5 {
-		return strings.Join(ids, ",")
-	}
-	return ids[0] + "-" + ids[len(ids)-1]
 }

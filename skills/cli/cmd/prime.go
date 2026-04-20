@@ -19,7 +19,7 @@ COMMANDS
   shs executors -a APP_ID         List active executors
   shs executors -a APP_ID EXEC    Get executor detail
   shs executors -a APP_ID --summary   Peak memory, lifecycle, remove reasons
-  shs executors -a APP_ID --timeline  Executor add/remove timeline
+  shs executors -a APP_ID --timeline  Executor add/remove timeline with resource totals
   shs sql -a APP_ID               List SQL executions
   shs sql -a APP_ID EXEC_ID       Get SQL execution header (status, duration, job IDs)
   shs sql -a APP_ID EXEC_ID --plan          Include query plan and node metrics
@@ -54,7 +54,7 @@ COMMAND DETAILS
              --all-servers (query all configured servers)  --attempts (list attempts, requires -a)
   jobs       --status running|succeeded|failed|unknown  --sort failed-tasks|duration|id  --group GROUP
   stages     --status active|complete|pending|failed  --sort failed-tasks|duration|id  --errors
-  executors  --all (include dead)  --summary (peak memory/OOM view)  --timeline (add/remove events)
+  executors  --all (include dead)  --summary (peak memory/OOM view)  --timeline (resource usage over time)
              --sort failed-tasks|duration|gc|id
   sql        --status completed|running|failed  --sort duration|id  --plan  --summary  --initial-plan
   env        --section runtime|spark|system|hadoop|metrics|classpath
@@ -125,7 +125,7 @@ COMMON WORKFLOWS
   Find executor bottlenecks:
     shs executors -a APP_ID --sort gc
     shs executors -a APP_ID --summary   # peak memory, OOM status, dead first
-    shs executors -a APP_ID --timeline  # executor add/remove events over time
+    shs executors -a APP_ID --timeline  # resource usage: executor count, cores, memory over time
     shs executors -a APP_ID EXECUTOR_ID
 
   Investigate slow SQL queries:
