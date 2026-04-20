@@ -199,7 +199,7 @@ func TestCompare(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := shs(t, "compare", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, tt.execID, tt.execID)
+			got := shs(t, "compare", "sql", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, tt.execID, tt.execID)
 			if diff := cmp.Diff(tt.want, got); diff != "" {
 				t.Errorf("mismatch (-want +got):\n%s", diff)
 			}
@@ -207,7 +207,7 @@ func TestCompare(t *testing.T) {
 	}
 	// Cross-server: same SHS via two config entries (default + secondary)
 	t.Run("cross_server", func(t *testing.T) {
-		got := shs(t, "compare", "--server-a", "default", "--server-b", "secondary",
+		got := shs(t, "compare", "sql", "--server-a", "default", "--server-b", "secondary",
 			"--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "6", "6")
 		if diff := cmp.Diff(fix.CompareSQL6, got); diff != "" {
 			t.Errorf("mismatch (-want +got):\n%s", diff)
@@ -356,9 +356,10 @@ func TestJSONOutput(t *testing.T) {
 		args []string
 		file string
 	}{
-		{"compare", []string{"compare", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "6", "6", "-o", "json"}, "compare.json"},
-		{"compare_env", []string{"compare", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "--env", "-o", "json"}, "compare_env.json"},
-		{"compare_plans", []string{"compare", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "--plans", "6", "6", "-o", "json"}, "compare_plans.json"},
+		{"compare", []string{"compare", "sql", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "6", "6", "-o", "json"}, "compare_sql.json"},
+		{"compare_env", []string{"compare", "sql", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "--env", "-o", "json"}, "compare_env.json"},
+		{"compare_plans", []string{"compare", "sql", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "--plans", "6", "6", "-o", "json"}, "compare_plans.json"},
+		{"compare_apps", []string{"compare", "apps", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "-o", "json"}, "compare_apps.json"},
 	}
 	for _, tt := range goldenTests {
 		t.Run(tt.name, func(t *testing.T) {

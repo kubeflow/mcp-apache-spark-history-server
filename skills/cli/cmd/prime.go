@@ -14,7 +14,7 @@ COMMANDS
   shs jobs -a APP_ID              List jobs for an application
   shs jobs -a APP_ID JOB_ID       Get job detail
   shs stages -a APP_ID            List stages for an application
-  shs stages -a APP_ID STAGE      Get stage detail with full metrics
+  shs stages -a APP_ID STAGE      Get stage detail with full metrics and task quantiles
   shs stages -a APP_ID STAGE --errors  Show failed tasks with errors
   shs executors -a APP_ID         List active executors
   shs executors -a APP_ID EXEC    Get executor detail
@@ -27,9 +27,10 @@ COMMANDS
   shs sql -a APP_ID EXEC_ID --initial-plan  Include initial AQE plans (implies --plan)
   shs env -a APP_ID               Show environment/config
   shs env -a APP_ID --section S   Show specific section (runtime|spark|system|hadoop|metrics|classpath)
-  shs compare --app-a APP1 --app-b APP2 EXEC1 EXEC2        Compare SQL execution metrics
-  shs compare --app-a APP1 --app-b APP2 --env               Compare Spark configurations
-  shs compare --app-a APP1 --app-b APP2 --plans EXEC1 EXEC2 Compare SQL plan structure
+  shs compare sql --app-a APP1 --app-b APP2 EXEC1 EXEC2        Compare SQL execution metrics
+  shs compare sql --app-a APP1 --app-b APP2 --env               Compare Spark configurations
+  shs compare sql --app-a APP1 --app-b APP2 --plans EXEC1 EXEC2 Compare SQL plan structure
+  shs compare apps --app-a APP1 --app-b APP2                     Compare app-level performance
     --server-a NAME  Server for app A (overrides --server)
     --server-b NAME  Server for app B (overrides --server)
   shs servers                     List configured servers
@@ -57,7 +58,8 @@ COMMAND DETAILS
              --sort failed-tasks|duration|gc|id
   sql        --status completed|running|failed  --sort duration|id  --plan  --summary  --initial-plan
   env        --section runtime|spark|system|hadoop|metrics|classpath
-  compare    --env (config diff, no EXEC IDs needed)  --plans (plan structure diff, needs EXEC IDs)
+  compare    sql (default: metrics diff)  sql --env (config diff)  sql --plans (plan structure diff)
+             apps (executors, jobs, stages, aggregate I/O)
 
 CONFIG FILE
   Default path: config.yaml (override with -c or SHS_CLI__CONFIG env var).
@@ -117,8 +119,8 @@ COMMON WORKFLOWS
   Find slowest stages:
     shs stages -a APP_ID --sort duration --limit 10
 
-  Check for data skew (look at shuffle and spill metrics):
-    shs stages -a APP_ID STAGE_ID -o json
+  Check for data skew (look at task quantiles in stage detail):
+    shs stages -a APP_ID STAGE_ID
 
   Find executor bottlenecks:
     shs executors -a APP_ID --sort gc
@@ -133,10 +135,13 @@ COMMON WORKFLOWS
     shs sql -a APP_ID EXEC_ID --summary   # jobs + aggregate shuffle/input/spill/GC metrics
 
   Compare same query across two runs:
-    shs compare --app-a APP1 --app-b APP2 EXEC1 EXEC2          # metrics: duration, stages, shuffle, spill
-    shs compare --app-a APP1 --app-b APP2 --env                 # config diff: spark properties
-    shs compare --app-a APP1 --app-b APP2 --plans EXEC1 EXEC2  # plan diff: node types, edges
-    shs compare --app-a APP1 --server-a prod --app-b APP2 --server-b staging EXEC1 EXEC2  # cross-server
+    shs compare sql --app-a APP1 --app-b APP2 EXEC1 EXEC2          # metrics: duration, stages, shuffle, spill
+    shs compare sql --app-a APP1 --app-b APP2 --env                 # config diff: spark properties
+    shs compare sql --app-a APP1 --app-b APP2 --plans EXEC1 EXEC2  # plan diff: node types, edges
+    shs compare sql --app-a APP1 --server-a prod --app-b APP2 --server-b staging EXEC1 EXEC2  # cross-server
+
+  Compare app-level performance:
+    shs compare apps --app-a APP1 --app-b APP2                      # executors, jobs, stages, I/O, spill, GC
 
   Get Spark config for an app:
     shs env -a APP_ID --section spark
@@ -148,7 +153,8 @@ DATA MODEL
   Job          A Spark action (collect, save, etc). Contains stages.
   Stage        A unit of parallel work. Has tasks and may have retry attempts.
                Detail view shows: task counts, input/output bytes,
-               shuffle read/write, spill, GC time, scheduling pool.
+               shuffle read/write, spill, GC time, scheduling pool,
+               and task quantile distributions (p25/p50/p75/max).
   Job Group    Optional grouping set by the application. Filter with --group.
   Executor     A JVM process running tasks. Has cores, memory, shuffle/IO stats.
                Detail view shows: memory usage, disk, task breakdown, RDD blocks.
@@ -166,8 +172,8 @@ TIPS
   - --initial-plan includes AQE initial plans (implies --plan).
   - SQL job IDs cross-reference with shs jobs output; use --summary to inline them.
   - Executor TASK_TIME is cumulative task execution time, not wall-clock uptime.
-  - compare --env shows only differing Spark properties (skips identical ones).
-  - compare --plans shows node type differences in the SQL execution DAG.
+  - compare sql --env shows only differing Spark properties (skips identical ones).
+  - compare sql --plans shows node type differences in the SQL execution DAG.
   - All timestamps are UTC.
 `
 

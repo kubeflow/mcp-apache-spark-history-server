@@ -1,0 +1,38 @@
+{
+  "a": {
+    "app": "local-1776286786993",
+    "executors": 0,
+    "deadExecutors": 0,
+    "totalCores": 0,
+    "maxMemory": 0,
+    "jobs": 23,
+    "failedJobs": 1,
+    "stages": 47,
+    "failedStages": 1,
+    "tasks": 90,
+    "failedTasks": 11,
+    "inputBytes": 27637960,
+    "shuffleRead": 68147078,
+    "shuffleWrite": 68135778,
+    "spillDisk": 74531722,
+    "gcTimeMs": 288
+  },
+  "b": {
+    "app": "local-1776286804625",
+    "executors": 0,
+    "deadExecutors": 0,
+    "totalCores": 0,
+    "maxMemory": 0,
+    "jobs": 23,
+    "failedJobs": 1,
+    "stages": 37,
+    "failedStages": 1,
+    "tasks": 64,
+    "failedTasks": 12,
+    "inputBytes": 27637960,
+    "shuffleRead": 60659680,
+    "shuffleWrite": 60648015,
+    "spillDisk": 0,
+    "gcTimeMs": 305
+  }
+}
