@@ -48,6 +48,7 @@ func init() {
 		newPrimeCmd(),
 		newCompareCmd(),
 		newServersCmd(),
+		newSetupCmd(),
 	)
 }
 
