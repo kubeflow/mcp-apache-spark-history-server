@@ -161,11 +161,18 @@ func listStages(cmd *cobra.Command, c client.ClientWithResponsesInterface, param
 	})
 }
 
+func stageNotFoundErr(stageId int) error {
+	return fmt.Errorf("stage %d not found (may have been skipped by AQE)", stageId)
+}
+
 func getStage(cmd *cobra.Command, c client.ClientWithResponsesInterface, stageId int) error {
 	params := &client.ListStageAttemptsParams{}
 	resp, err := c.ListStageAttemptsWithResponse(cmd.Context(), appID, stageId, params)
 	if err != nil {
 		return err
+	}
+	if resp.HTTPResponse.StatusCode == 404 {
+		return stageNotFoundErr(stageId)
 	}
 	body, err := util.CheckResponse(resp.JSON200, resp.HTTPResponse.Status)
 	if err != nil {
@@ -259,6 +266,9 @@ func getStageErrors(cmd *cobra.Command, c client.ClientWithResponsesInterface, s
 	resp, err := c.ListStageAttemptsWithResponse(cmd.Context(), appID, stageId, params)
 	if err != nil {
 		return err
+	}
+	if resp.HTTPResponse.StatusCode == 404 {
+		return stageNotFoundErr(stageId)
 	}
 	body, err := util.CheckResponse(resp.JSON200, resp.HTTPResponse.Status)
 	if err != nil {
