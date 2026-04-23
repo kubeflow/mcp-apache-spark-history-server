@@ -45,9 +45,10 @@ GLOBAL FLAGS
       --timeout DURATION  HTTP timeout (default: 10s)
 
 LIST FLAGS (apps, jobs, stages, sql)
-  --limit N       Max results, default 20. Use --limit 0 for all.
-  --status VALUE  Filter by status (values vary per command).
-  --sort FIELD    Sort field (values vary per command).
+  --limit N            Max results, default 20. Use --limit 0 for all.
+  --status VALUE       Filter by status (values vary per command).
+  --sort FIELD         Sort field (values vary per command).
+  --description TEXT   (sql only) Filter by description substring (case-insensitive).
 
 COMMAND DETAILS
   apps       --status running|completed  --sort name|id|date|duration  --desc
@@ -56,7 +57,7 @@ COMMAND DETAILS
   stages     --status active|complete|pending|failed  --sort failed-tasks|duration|id  --errors
   executors  --all (include dead)  --summary (peak memory/OOM view)  --timeline (resource usage over time)
              --sort failed-tasks|duration|gc|id
-  sql        --status completed|running|failed  --sort duration|id  --plan  --summary  --initial-plan
+  sql        --status completed|running|failed  --sort duration|id  --description TEXT  --plan  --summary  --initial-plan
   env        --section runtime|spark|system|hadoop|metrics|classpath
   compare    sql (default: metrics diff)  sql --env (config diff)  sql --plans (plan structure diff)
              apps (executors, jobs, stages, aggregate I/O)
@@ -127,6 +128,10 @@ COMMON WORKFLOWS
     shs executors -a APP_ID --summary   # peak memory, OOM status, dead first
     shs executors -a APP_ID --timeline  # resource usage: executor count, cores, memory over time
     shs executors -a APP_ID EXECUTOR_ID
+
+  Find SQL executions by description:
+    shs sql -a APP_ID --description "benchmark q5"
+    shs sql -a APP_ID --description "benchmark q5" --status completed
 
   Investigate slow SQL queries:
     shs sql -a APP_ID --sort duration --limit 10

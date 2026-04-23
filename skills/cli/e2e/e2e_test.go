@@ -35,6 +35,7 @@ type fixtures struct {
 	Stage5ErrsApp2     string   `yaml:"stage5_errors_app2"`
 	SQLApp1            string   `yaml:"sql_app1"`
 	SQLApp2            string   `yaml:"sql_app2"`
+	SQLApp1DescFilter  string   `yaml:"sql_app1_desc_filter"`
 	JobsApp1SortID     string   `yaml:"jobs_app1_sort_id"`
 	SQLApp1SortID      string   `yaml:"sql_app1_sort_id"`
 	CompareSQL6        string   `yaml:"compare_sql6"`
@@ -147,6 +148,13 @@ func TestSQL(t *testing.T) {
 				t.Errorf("mismatch (-want +got):\n%s", diff)
 			}
 		})
+	}
+}
+
+func TestSQLDescriptionFilter(t *testing.T) {
+	got := shs(t, "sql", "-a", fix.App1.ID, "--limit", "0", "--description", "createOrReplaceTempView")
+	if diff := cmp.Diff(fix.SQLApp1DescFilter, got); diff != "" {
+		t.Errorf("mismatch (-want +got):\n%s", diff)
 	}
 }
 

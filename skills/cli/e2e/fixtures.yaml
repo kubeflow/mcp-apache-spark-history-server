@@ -112,6 +112,12 @@ sql_app2: |
   4   COMPLETED  createOrReplaceTempView at NativeMethodAccessorImpl.java:0  11ms                                    
   5   COMPLETED  createOrReplaceTempView at NativeMethodAccessorImpl.java:0  3ms                                     
 
+sql_app1_desc_filter: |
+  ID  STATUS     DESCRIPTION                                                 DURATION  FAILED_JOBS  SUCCESS_JOBS  RUNNING_JOBS
+  4   COMPLETED  createOrReplaceTempView at NativeMethodAccessorImpl.java:0  12ms                                 
+  5   COMPLETED  createOrReplaceTempView at NativeMethodAccessorImpl.java:0  4ms                                  
+
+
 jobs_app1_sort_id: |
   ID  STATUS     DESCRIPTION                                                        DURATION  TASKS  FAILED_TASKS  STAGES
   22  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  79ms      3      0             45,46

@@ -29,6 +29,7 @@ type sqlRow struct {
 
 func newSQLCmd() *cobra.Command {
 	var status string
+	var description string
 	var limit int
 	var sortBy string
 	var showInitialPlan bool
@@ -58,11 +59,12 @@ func newSQLCmd() *cobra.Command {
 			if showSummary || showInitialPlan {
 				return fmt.Errorf("--summary and --initial-plan require an execution ID")
 			}
-			return listSQLExecutions(cmd, c, status, limit, sortBy)
+			return listSQLExecutions(cmd, c, status, description, limit, sortBy)
 		},
 	}
 
 	cmd.Flags().StringVar(&status, "status", "", "Filter by status (completed|running|failed)")
+	cmd.Flags().StringVar(&description, "description", "", "Filter by description (case-insensitive substring match)")
 	cmd.Flags().IntVar(&limit, "limit", 20, "Max number of executions to return (0 for all)")
 	cmd.Flags().StringVar(&sortBy, "sort", "", "Sort by field (duration|id)")
 	cmd.Flags().BoolVar(&showPlan, "plan", false, "Include query plan and node metrics")
@@ -122,7 +124,7 @@ func sortSQLExecutions(execs []client.SQLExecution, sortBy string) {
 	})
 }
 
-func listSQLExecutions(cmd *cobra.Command, c client.ClientWithResponsesInterface, status string, limit int, sortBy string) error {
+func listSQLExecutions(cmd *cobra.Command, c client.ClientWithResponsesInterface, status string, description string, limit int, sortBy string) error {
 	details := false
 	allResults := math.MaxInt32
 	params := &client.ListSQLExecutionsParams{Details: &details, Length: &allResults}
@@ -136,6 +138,12 @@ func listSQLExecutions(cmd *cobra.Command, c client.ClientWithResponsesInterface
 	}
 
 	execs := *body
+	if description != "" {
+		lower := strings.ToLower(description)
+		execs = slices.DeleteFunc(execs, func(e client.SQLExecution) bool {
+			return !strings.Contains(strings.ToLower(util.Deref(e.Description)), lower)
+		})
+	}
 	if status != "" {
 		upper := strings.ToUpper(status)
 		execs = slices.DeleteFunc(execs, func(e client.SQLExecution) bool {
