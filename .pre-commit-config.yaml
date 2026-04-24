@@ -1,10 +1,13 @@
+exclude: ^skills/cli/e2e/fixtures\.yaml$
 repos:
   # Pre-commit hooks for general file hygiene
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
       - id: trailing-whitespace
+        exclude: ^src/spark_history_mcp/api_client/
       - id: end-of-file-fixer
+        exclude: ^src/spark_history_mcp/api_client/
       - id: check-yaml
         exclude: ^deploy/kubernetes/helm/.*\.yaml$
         args: [--allow-multiple-documents]
@@ -24,9 +27,11 @@ repos:
       - id: ruff-check
         types_or: [python, pyi]
         args: [--fix]
+        exclude: ^(src/spark_history_mcp/api_client/|skills/cli/)  # skills/cli is a Go project; Python files there are test helpers only
       # Run the formatter
       - id: ruff-format
         types_or: [python, pyi]
+        exclude: ^(src/spark_history_mcp/api_client/|skills/cli/)  # skills/cli is a Go project; Python files there are test helpers only
 
   # Type checking with mypy (temporarily disabled - TODO: fix type annotations)
   # - repo: https://github.com/pre-commit/mirrors-mypy
@@ -42,7 +47,7 @@ repos:
     hooks:
       - id: bandit
         args: [--recursive, --format, json, --output, bandit-report.json]
-        exclude: ^tests/
+        exclude: ^(tests/|src/spark_history_mcp/api_client/|skills/cli/)  # skills/cli is a Go project; Python files there are test helpers only
 
   # Custom security check for config files
   - repo: local

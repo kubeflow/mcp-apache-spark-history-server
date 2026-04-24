@@ -1,0 +1,7 @@
+servers:
+  default:
+    default: true
+    url: "http://localhost:18080"
+  # Alias for cross-server compare tests (same SHS instance)
+  secondary:
+    url: "http://localhost:18080"

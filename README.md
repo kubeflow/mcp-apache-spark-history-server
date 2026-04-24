@@ -352,6 +352,10 @@ SHS_SERVERS_*_INCLUDE_PLAN_DESCRIPTION - Whether to include SQL execution plans 
 ✅ Highlight configuration differences
 ```
 
+## 🌍 Adopters
+
+Are you using **MCP Apache Spark History Server**? We'd love to know! Add your organization or name to our [ADOPTERS.md](ADOPTERS.md) and help grow the community.
+
 ## 🤝 Contributing
 
 Check [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines on contributions

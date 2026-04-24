@@ -1,0 +1,34 @@
+{
+  "a": {
+    "app": "local-1776286786993",
+    "sqlId": 6,
+    "description": "collect at /app/generate_events.py:86",
+    "status": "COMPLETED",
+    "durationMs": 1659,
+    "jobs": 7,
+    "stages": 25,
+    "tasks": 47,
+    "stageTimeMs": 1188,
+    "inputBytes": 5527592,
+    "shuffleRead": 7568036,
+    "shuffleWrite": 7556736,
+    "spillDisk": 4223661,
+    "gcTimeMs": 66
+  },
+  "b": {
+    "app": "local-1776286804625",
+    "sqlId": 6,
+    "description": "collect at /app/generate_events.py:86",
+    "status": "COMPLETED",
+    "durationMs": 999,
+    "jobs": 6,
+    "stages": 14,
+    "tasks": 20,
+    "stageTimeMs": 522,
+    "inputBytes": 5527592,
+    "shuffleRead": 54714,
+    "shuffleWrite": 43049,
+    "spillDisk": 0,
+    "gcTimeMs": 20
+  }
+}

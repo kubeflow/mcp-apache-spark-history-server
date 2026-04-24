@@ -1,0 +1,8 @@
+# Protect existing files from being overwritten by the generator
+spark_history_mcp/__init__.py
+
+# Skip generated files we don't need
+**/*_README.md
+**/test/**
+**/docs/**
+.openapi-generator/**

@@ -1,0 +1,343 @@
+package cmd
+
+import (
+	"cmp"
+	"context"
+	"fmt"
+	"io"
+	"slices"
+	"sort"
+	"strings"
+	"text/tabwriter"
+	"time"
+
+	"github.com/kubeflow/mcp-apache-spark-history-server/skills/cli/client"
+	"github.com/kubeflow/mcp-apache-spark-history-server/skills/cli/util"
+	"github.com/spf13/cobra"
+)
+
+type rawEvent struct {
+	time     time.Time
+	id       string
+	kind     string
+	cores    int
+	memBytes int64
+}
+
+type executorRow struct {
+	ID           string `col:"ID"`
+	Active       bool   `col:"ACTIVE"`
+	Host         string `col:"HOST"`
+	Tasks        int    `col:"TASKS"`
+	Failed       int    `col:"FAILED"`
+	TaskTime     string `col:"TASK_TIME"`
+	GCTime       string `col:"GC_TIME"`
+	Input        string `col:"INPUT"`
+	ShuffleRead  string `col:"SHUFFLE_READ"`
+	ShuffleWrite string `col:"SHUFFLE_WRITE"`
+}
+
+type executorSummaryRow struct {
+	ID           string `col:"ID"`
+	Active       bool   `col:"ACTIVE"`
+	Added        string `col:"ADDED"`
+	Removed      string `col:"REMOVED"`
+	Tasks        int    `col:"TASKS"`
+	PeakRSS      string `col:"PEAK_RSS"`
+	PeakHeap     string `col:"PEAK_HEAP"`
+	PeakDirect   string `col:"PEAK_DIRECT"`
+	PeakOffheap  string `col:"PEAK_OFFHEAP"`
+	GCTime       string `col:"GC_TIME"`
+	RemoveReason string `col:"REMOVE_REASON"`
+}
+
+// build timeline with running resource counters
+type snapshot struct {
+	Time       time.Time `json:"time"`
+	Event      string    `json:"event"`
+	ID         string    `json:"id"`
+	Executors  int       `json:"executors"`
+	TotalCores int       `json:"totalCores"`
+	TotalMem   int64     `json:"totalMemory"`
+}
+
+func newExecutorsCmd() *cobra.Command {
+	var all bool
+	var summary bool
+	var timeline bool
+	var sortBy string
+	var limit int
+
+	cmd := &cobra.Command{
+		Use:     "executors [executorId]",
+		Short:   "List or get executors for an application",
+		PreRunE: requireAppID,
+		Args:    cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			c, err := newClient()
+			if err != nil {
+				return err
+			}
+			if len(args) == 1 {
+				return getExecutor(cmd, c, args[0])
+			}
+			if timeline {
+				return listExecutorsTimeline(cmd, c)
+			}
+			if summary {
+				return listExecutorsSummary(cmd, c, limit, sortBy)
+			}
+			return listExecutors(cmd, c, all, limit, sortBy)
+		},
+	}
+
+	cmd.Flags().BoolVar(&all, "all", false, "Include dead executors")
+	cmd.Flags().BoolVar(&summary, "summary", false, "Show peak memory metrics (implies --all)")
+	cmd.Flags().BoolVar(&timeline, "timeline", false, "Show executor lifecycle timeline")
+	cmd.Flags().IntVar(&limit, "limit", 20, "Max number of executors to return (0 for all)")
+	cmd.Flags().StringVar(&sortBy, "sort", "", "Sort by field (failed-tasks|duration|gc|id)")
+	return cmd
+}
+
+func sortExecutors(execs []client.Executor, sortBy string) {
+	slices.SortFunc(execs, func(a, b client.Executor) int {
+		switch sortBy {
+		case "failed-tasks":
+			return -cmp.Compare(util.Deref(a.FailedTasks), util.Deref(b.FailedTasks))
+		case "duration":
+			return -cmp.Compare(util.Deref(a.TotalDuration), util.Deref(b.TotalDuration))
+		case "gc":
+			return -cmp.Compare(util.Deref(a.TotalGCTime), util.Deref(b.TotalGCTime))
+		case "id":
+			return cmp.Compare(util.Deref(a.Id), util.Deref(b.Id))
+		case "summary":
+			// dead first, then by task time desc
+			aa, ab := util.Deref(a.IsActive), util.Deref(b.IsActive)
+			if aa != ab {
+				if ab {
+					return -1
+				}
+				return 1
+			}
+			return -cmp.Compare(util.Deref(a.TotalDuration), util.Deref(b.TotalDuration))
+		default:
+			aa, ab := util.Deref(a.IsActive), util.Deref(b.IsActive)
+			if aa != ab {
+				if aa {
+					return -1
+				}
+				return 1
+			}
+			return -cmp.Compare(util.Deref(a.TotalDuration), util.Deref(b.TotalDuration))
+		}
+	})
+}
+
+func fetchExecutors(ctx context.Context, c client.ClientWithResponsesInterface, all bool) ([]client.Executor, error) {
+	if all {
+		resp, err := c.ListAllExecutorsWithResponse(ctx, appID)
+		if err != nil {
+			return nil, err
+		}
+		body, err := util.CheckResponse(resp.JSON200, resp.HTTPResponse.Status)
+		if err != nil {
+			return nil, err
+		}
+		return *body, nil
+	}
+	resp, err := c.ListActiveExecutorsWithResponse(ctx, appID)
+	if err != nil {
+		return nil, err
+	}
+	body, err := util.CheckResponse(resp.JSON200, resp.HTTPResponse.Status)
+	if err != nil {
+		return nil, err
+	}
+	return util.Deref(body), nil
+}
+
+func listExecutors(cmd *cobra.Command, c client.ClientWithResponsesInterface, all bool, limit int, sortBy string) error {
+	execs, err := fetchExecutors(cmd.Context(), c, all)
+	if err != nil {
+		return err
+	}
+
+	sortExecutors(execs, sortBy)
+
+	execs, total := util.ApplyLimit(execs, limit)
+
+	return util.PrintOutput(cmd.OutOrStdout(), execs, outputFmt, func(w io.Writer) error {
+		rows := make([]executorRow, len(execs))
+		for i, e := range execs {
+			rows[i] = executorRow{
+				util.Deref(e.Id), util.Deref(e.IsActive), util.Deref(e.HostPort),
+				util.Deref(e.TotalTasks), util.Deref(e.FailedTasks),
+				util.FormatMs(e.TotalDuration), util.FormatMs(e.TotalGCTime),
+				util.DerefBytes(e.TotalInputBytes), util.DerefBytes(e.TotalShuffleRead), util.DerefBytes(e.TotalShuffleWrite),
+			}
+		}
+		if err := util.PrintTable(w, rows); err != nil {
+			return err
+		}
+		util.PrintLimitFooter(w, limit, total, "executors")
+		return nil
+	})
+}
+
+func getExecutor(cmd *cobra.Command, c client.ClientWithResponsesInterface, id string) error {
+	// API has no single-executor endpoint; fetch all and filter
+	execs, err := fetchExecutors(cmd.Context(), c, true)
+	if err != nil {
+		return err
+	}
+
+	idx := slices.IndexFunc(execs, func(e client.Executor) bool {
+		return util.Deref(e.Id) == id
+	})
+	if idx == -1 {
+		return fmt.Errorf("executor %s not found", id)
+	}
+	e := execs[idx]
+
+	return util.PrintOutput(cmd.OutOrStdout(), e, outputFmt, func(w io.Writer) error {
+		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintf(tw, "Executor ID:\t%s\n", util.Deref(e.Id))
+		_, _ = fmt.Fprintf(tw, "Active:\t%v\n", util.Deref(e.IsActive))
+		_, _ = fmt.Fprintf(tw, "Host:\t%s\n", util.Deref(e.HostPort))
+		_, _ = fmt.Fprintf(tw, "Cores:\t%d\n", util.Deref(e.TotalCores))
+		_, _ = fmt.Fprintf(tw, "Max Memory:\t%s\n", util.DerefBytes(e.MaxMemory))
+		_, _ = fmt.Fprintf(tw, "Memory Used:\t%s\n", util.DerefBytes(e.MemoryUsed))
+		_, _ = fmt.Fprintf(tw, "Disk Used:\t%s\n", util.DerefBytes(e.DiskUsed))
+		_, _ = fmt.Fprintf(tw, "Tasks:\t%d (active: %d, failed: %d, completed: %d)\n",
+			util.Deref(e.TotalTasks), util.Deref(e.ActiveTasks), util.Deref(e.FailedTasks), util.Deref(e.CompletedTasks))
+		_, _ = fmt.Fprintf(tw, "Task Time:\t%s\n", util.FormatMs(e.TotalDuration))
+		_, _ = fmt.Fprintf(tw, "GC Time:\t%s\n", util.FormatMs(e.TotalGCTime))
+		_, _ = fmt.Fprintf(tw, "Input:\t%s\n", util.DerefBytes(e.TotalInputBytes))
+		_, _ = fmt.Fprintf(tw, "Shuffle Read:\t%s\n", util.DerefBytes(e.TotalShuffleRead))
+		_, _ = fmt.Fprintf(tw, "Shuffle Write:\t%s\n", util.DerefBytes(e.TotalShuffleWrite))
+		_, _ = fmt.Fprintf(tw, "RDD Blocks:\t%d\n", util.Deref(e.RddBlocks))
+		if e.RemoveReason != nil {
+			_, _ = fmt.Fprintf(tw, "Remove Reason:\t%s\n", *e.RemoveReason)
+		}
+		return tw.Flush()
+	})
+}
+
+func formatSparkTimeShort(s *string) string {
+	if s == nil {
+		return ""
+	}
+	t, err := util.ParseSparkTime(*s)
+	if err != nil {
+		return *s
+	}
+	return t.Format("15:04:05")
+}
+
+func peakMetric(e client.Executor, fn func(*client.PeakMemoryMetrics) *int64) int64 {
+	if e.PeakMemoryMetrics == nil {
+		return 0
+	}
+	return util.Deref(fn(e.PeakMemoryMetrics))
+}
+
+func listExecutorsSummary(cmd *cobra.Command, c client.ClientWithResponsesInterface, limit int, sortBy string) error {
+	execs, err := fetchExecutors(cmd.Context(), c, true)
+	if err != nil {
+		return err
+	}
+
+	if sortBy == "" {
+		sortBy = "summary"
+	}
+	sortExecutors(execs, sortBy)
+
+	execs, total := util.ApplyLimit(execs, limit)
+
+	return util.PrintOutput(cmd.OutOrStdout(), execs, outputFmt, func(w io.Writer) error {
+		rows := make([]executorSummaryRow, len(execs))
+		for i, e := range execs {
+			reason := ""
+			if e.RemoveReason != nil {
+				reason = strings.TrimSpace(*e.RemoveReason)
+				if j := strings.IndexByte(reason, '\n'); j != -1 {
+					reason = reason[:j]
+				}
+			}
+			rows[i] = executorSummaryRow{
+				util.Deref(e.Id), util.Deref(e.IsActive),
+				formatSparkTimeShort(e.AddTime), formatSparkTimeShort(e.RemoveTime),
+				util.Deref(e.TotalTasks),
+				util.FormatBytes(peakMetric(e, func(p *client.PeakMemoryMetrics) *int64 { return p.ProcessTreeJVMRSSMemory })),
+				util.FormatBytes(peakMetric(e, func(p *client.PeakMemoryMetrics) *int64 { return p.JVMHeapMemory })),
+				util.FormatBytes(peakMetric(e, func(p *client.PeakMemoryMetrics) *int64 { return p.DirectPoolMemory })),
+				util.FormatBytes(peakMetric(e, func(p *client.PeakMemoryMetrics) *int64 { return p.JVMOffHeapMemory })),
+				util.FormatMs(e.TotalGCTime),
+				reason,
+			}
+		}
+		if err := util.PrintTable(w, rows); err != nil {
+			return err
+		}
+		util.PrintLimitFooter(w, limit, total, "executors")
+		return nil
+	})
+}
+
+func listExecutorsTimeline(cmd *cobra.Command, c client.ClientWithResponsesInterface) error {
+	execs, err := fetchExecutors(cmd.Context(), c, true)
+	if err != nil {
+		return err
+	}
+
+	var events []rawEvent
+
+	for _, e := range execs {
+		id := util.Deref(e.Id)
+		if e.AddTime != nil {
+			if t, err := util.ParseSparkTime(*e.AddTime); err == nil {
+				events = append(events, rawEvent{time: t, id: id, kind: "started",
+					cores: util.Deref(e.TotalCores), memBytes: util.Deref(e.MaxMemory)})
+			}
+		}
+		if e.RemoveTime != nil {
+			if t, err := util.ParseSparkTime(*e.RemoveTime); err == nil {
+				events = append(events, rawEvent{time: t, id: id, kind: "removed",
+					cores: util.Deref(e.TotalCores), memBytes: util.Deref(e.MaxMemory)})
+			}
+		}
+	}
+
+	sort.Slice(events, func(i, j int) bool { return events[i].time.Before(events[j].time) })
+
+	var activeExecs, totalCores int
+	var totalMem int64
+	snaps := make([]snapshot, len(events))
+	for i, e := range events {
+		switch e.kind {
+		case "started":
+			activeExecs++
+			totalCores += e.cores
+			totalMem += e.memBytes
+		case "removed":
+			activeExecs--
+			totalCores -= e.cores
+			totalMem -= e.memBytes
+		}
+		snaps[i] = snapshot{e.time, e.kind, e.id, activeExecs, totalCores, totalMem}
+	}
+
+	return util.PrintOutput(cmd.OutOrStdout(), snaps, outputFmt, func(w io.Writer) error {
+		tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintf(tw, "TIME\tEVENT\tID\tTOTAL_EXECS\tTOTAL_CORES\tTOTAL_MEMORY\n")
+		for _, s := range snaps {
+			mem := ""
+			if s.TotalMem > 0 {
+				mem = util.FormatBytes(s.TotalMem)
+			}
+			_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%d\t%s\n",
+				s.Time.Format("15:04:05"), s.Event, s.ID, s.Executors, s.TotalCores, mem)
+		}
+		return tw.Flush()
+	})
+}

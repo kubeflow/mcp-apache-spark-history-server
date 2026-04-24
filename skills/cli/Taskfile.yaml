@@ -1,0 +1,199 @@
+version: '3'
+
+vars:
+  GOLANGCI_LINT_VERSION: v2.11.4
+  OAPI_CODEGEN_VERSION: v2.6.0
+  BIN_DIR: ./bin
+  CLIENT_DIR: ./client
+  SPEC: ../../openapi/spark-history-server.yaml
+  SPARK_IMAGE: apache/spark:4.1.0
+  SHS_CONTAINER: shs-e2e-server
+  LINT_FIX: "false"
+
+tasks:
+  install-oapi-codegen:
+    desc: Install oapi-codegen binary
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - GOBIN=$(pwd)/bin go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@{{.OAPI_CODEGEN_VERSION}}
+    status:
+      - test -x {{.BIN_DIR}}/oapi-codegen
+
+  generate:
+    desc: Generate Go client from OpenAPI spec
+    deps: [install-oapi-codegen]
+    cmds:
+      - mkdir -p {{.CLIENT_DIR}}
+      - '{{.BIN_DIR}}/oapi-codegen -generate types -package client -o {{.CLIENT_DIR}}/types.gen.go {{.SPEC}}'
+      - '{{.BIN_DIR}}/oapi-codegen -generate client -package client -o {{.CLIENT_DIR}}/client.gen.go {{.SPEC}}'
+    sources:
+      - '{{.SPEC}}'
+    generates:
+      - '{{.CLIENT_DIR}}/types.gen.go'
+      - '{{.CLIENT_DIR}}/client.gen.go'
+
+  test:
+    desc: Run unit tests
+    cmds:
+      - go test ./... -count=1
+
+  test-e2e:
+    desc: Run e2e tests (starts/stops SHS automatically)
+    deps: [build, start-shs]
+    cmds:
+      - defer: task stop-shs
+      - go test -tags e2e ./e2e/ -v -count=1
+
+  install-golangci-lint:
+    desc: Install golangci-lint binary
+    vars:
+      VERSION: '{{trimPrefix "v" .GOLANGCI_LINT_VERSION}}'
+      OS:
+        sh: uname -s | tr '[:upper:]' '[:lower:]'
+      ARCH:
+        sh: uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/'
+    cmds:
+      - mkdir -p {{.BIN_DIR}}
+      - curl -sSfL -o {{.BIN_DIR}}/golangci-lint.tar.gz
+          https://github.com/golangci/golangci-lint/releases/download/{{.GOLANGCI_LINT_VERSION}}/golangci-lint-{{.VERSION}}-{{.OS}}-{{.ARCH}}.tar.gz
+      - tar -xzf {{.BIN_DIR}}/golangci-lint.tar.gz -C {{.BIN_DIR}} --strip-components=1
+          golangci-lint-{{.VERSION}}-{{.OS}}-{{.ARCH}}/golangci-lint
+      - rm {{.BIN_DIR}}/golangci-lint.tar.gz
+    status:
+      - test -x {{.BIN_DIR}}/golangci-lint
+
+  lint:
+    desc: Run golangci-lint
+    deps: [install-golangci-lint]
+    cmds:
+      - '{{.BIN_DIR}}/golangci-lint run {{if eq .LINT_FIX "true"}}--fix {{end}}./...'
+
+  build:
+    desc: Build the shs binary
+    cmds:
+      - go build -o {{.BIN_DIR}}/shs .
+
+  # You should not need to run this task for the most part. Events are already generated in e2e/ directory
+  # This task is for documenting how to generate data in the future.
+  generate-events:
+    desc: Generate Spark event logs for e2e tests (two apps with different configs)
+    vars:
+      CONTAINER: shs-e2e-generate
+    cmds:
+      - mkdir -p e2e/spark-events
+      # App 1: small memory, broadcast disabled, 4 shuffle partitions → SortMergeJoin
+      - docker rm -f {{.CONTAINER}}
+      - docker run --name {{.CONTAINER}}
+          -v $(pwd)/e2e/generate_events.py:/app/generate_events.py:ro
+          {{.SPARK_IMAGE}}
+          bash -c "mkdir -p /tmp/spark-events && /opt/spark/bin/spark-submit
+            --master 'local[2,4]'
+            --name shs-e2e-app1
+            --conf spark.driver.memory=512m
+            --conf spark.sql.autoBroadcastJoinThreshold=-1
+            --conf spark.sql.shuffle.partitions=4
+            --conf spark.memory.fraction=0.1
+            /app/generate_events.py"
+      - docker cp {{.CONTAINER}}:/tmp/spark-events/. e2e/spark-events/
+      - docker rm {{.CONTAINER}}
+      # App 2: more memory, broadcast enabled, 8 shuffle partitions → BroadcastHashJoin, spill
+      - docker run --name {{.CONTAINER}}
+          -v $(pwd)/e2e/generate_events.py:/app/generate_events.py:ro
+          {{.SPARK_IMAGE}}
+          bash -c "mkdir -p /tmp/spark-events && /opt/spark/bin/spark-submit
+            --master 'local[2,4]'
+            --name shs-e2e-app2
+            --conf spark.driver.memory=1g
+            --conf spark.sql.autoBroadcastJoinThreshold=10485760
+            --conf spark.sql.shuffle.partitions=8
+            --conf spark.shuffle.sort.bypassMergeThreshold=0
+            /app/generate_events.py"
+      - docker cp {{.CONTAINER}}:/tmp/spark-events/. e2e/spark-events/
+      - docker rm {{.CONTAINER}}
+      - chmod o+r e2e/spark-events/*
+
+  # You should not need to run this task for the most part. Events are already generated in e2e/ directory
+  # This task is for documenting how to generate data in the future.
+  generate-events-yarn:
+    desc: Generate a YARN-style multi-attempt app (attempt 1 fails, attempt 2 succeeds)
+    vars:
+      CONTAINER: shs-e2e-generate-yarn
+      YARN_APP_ID: application_1713000000000_0001
+    cmds:
+      # Attempt 1: fails after partial work
+      - docker rm -f {{.CONTAINER}}
+      - docker run --name {{.CONTAINER}}
+          -e SPARK_APP_FAIL=1
+          -v $(pwd)/e2e/generate_events.py:/app/generate_events.py:ro
+          {{.SPARK_IMAGE}}
+          bash -c "mkdir -p /tmp/spark-events && /opt/spark/bin/spark-submit
+            --master 'local[2,4]'
+            --name shs-e2e-yarn
+            --conf spark.driver.memory=512m
+            --conf spark.sql.autoBroadcastJoinThreshold=-1
+            --conf spark.sql.shuffle.partitions=4
+            --conf spark.memory.fraction=0.1
+            /app/generate_events.py || true"
+      - |
+        docker cp "{{.CONTAINER}}:/tmp/spark-events/." e2e/spark-events/yarn-staging
+        mv e2e/spark-events/yarn-staging/local-* e2e/spark-events/yarn-attempt1.zstd
+        rm -rf e2e/spark-events/yarn-staging
+      - docker rm {{.CONTAINER}}
+      # Attempt 2: succeeds with full workload
+      - docker run --name {{.CONTAINER}}
+          -v $(pwd)/e2e/generate_events.py:/app/generate_events.py:ro
+          {{.SPARK_IMAGE}}
+          bash -c "mkdir -p /tmp/spark-events && /opt/spark/bin/spark-submit
+            --master 'local[2,4]'
+            --name shs-e2e-yarn
+            --conf spark.driver.memory=1g
+            --conf spark.sql.autoBroadcastJoinThreshold=10485760
+            --conf spark.sql.shuffle.partitions=8
+            --conf spark.shuffle.sort.bypassMergeThreshold=0
+            /app/generate_events.py"
+      - |
+        docker cp "{{.CONTAINER}}:/tmp/spark-events/." e2e/spark-events/yarn-staging
+        mv e2e/spark-events/yarn-staging/local-* e2e/spark-events/yarn-attempt2.zstd
+        rm -rf e2e/spark-events/yarn-staging
+      - docker rm {{.CONTAINER}}
+      # Rewrite both as YARN-style attempts
+      - |
+        uv run --with zstandard python3 e2e/rewrite_yarn_app.py e2e/spark-events/yarn-attempt1.zstd "e2e/spark-events/{{.YARN_APP_ID}}_1.zstd" \
+          --app-id "{{.YARN_APP_ID}}" --attempt-id "1"
+        uv run --with zstandard python3 e2e/rewrite_yarn_app.py e2e/spark-events/yarn-attempt2.zstd "e2e/spark-events/{{.YARN_APP_ID}}_2.zstd" \
+          --app-id "{{.YARN_APP_ID}}" --attempt-id "2"
+      - rm -f e2e/spark-events/yarn-attempt1.zstd e2e/spark-events/yarn-attempt2.zstd
+      - chmod o+r e2e/spark-events/{{.YARN_APP_ID}}_*.zstd
+
+  start-shs:
+    desc: Start Spark History Server against e2e event logs
+    silent: true
+    cmds:
+      - |
+        if docker inspect --format '{{`{{.State.Running}}`}}' {{.SHS_CONTAINER}} 2>/dev/null | grep -q true; then
+          echo "SHS container '{{.SHS_CONTAINER}}' is already running, skipping."
+          exit 0
+        fi
+        docker rm -f {{.SHS_CONTAINER}} 2>/dev/null || true
+        docker run -d --name {{.SHS_CONTAINER}} \
+          -p 18080:18080 \
+          -v $(pwd)/e2e/spark-events:/tmp/spark-events:ro \
+          -e SPARK_NO_DAEMONIZE=true \
+          -e SPARK_HISTORY_OPTS="-Dspark.history.fs.logDirectory=file:///tmp/spark-events" \
+          {{.SPARK_IMAGE}} \
+          /opt/spark/sbin/start-history-server.sh
+        echo "Waiting for history server..."
+        for i in $(seq 1 30); do
+          if curl -sf http://localhost:18080/api/v1/applications > /dev/null 2>&1; then
+            echo "History server ready at http://localhost:18080"
+            exit 0
+          fi
+          sleep 1
+        done
+        echo "History server failed to start" >&2
+        exit 1
+
+  stop-shs:
+    desc: Stop the e2e Spark History Server
+    cmds:
+      - docker rm -f {{.SHS_CONTAINER}}

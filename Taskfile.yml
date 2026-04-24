@@ -6,6 +6,9 @@ includes:
   k8s:
     taskfile: taskfiles/kind.yaml
     flatten: true
+  cli:
+    taskfile: skills/cli/Taskfile.yaml
+    dir: skills/cli
 
 vars:
   PROJECT_NAME: mcp-apache-spark-history-server
@@ -72,6 +75,7 @@ tasks:
   test-helm:
     desc: Run helm chart unit tests
     cmds:
+      - helm lint ./deploy/kubernetes/helm/mcp-apache-spark-history-server/
       - helm unittest ./deploy/kubernetes/helm/mcp-apache-spark-history-server/
       - echo "✅ Helm chart unit tests completed!"
 
@@ -114,7 +118,7 @@ tasks:
   security:
     desc: Run security scan with bandit
     cmds:
-      - uv run bandit -r . -f json -o bandit-report.json
+      - uv run bandit -r . --exclude src/spark_history_mcp/api_client -f json -o bandit-report.json
       - echo "✅ Security scan completed! Check bandit-report.json"
 
   pre-commit:
@@ -261,6 +265,19 @@ tasks:
       - task: install
       - task: pre-commit-install
       - echo "🎉 Development environment ready!"
+
+  generate-client:
+    desc: Generate Python client from OpenAPI spec
+    cmds:
+      - |
+        echo "🔄 Generating Python client from openapi.yaml..."
+        npx --yes @openapitools/openapi-generator-cli@2.31.0 --openapitools openapi/openapitools.json generate \
+          -g python \
+          -i openapi/spark-history-server.yaml \
+          -o src \
+          --package-name spark_history_mcp.api_client \
+          --additional-properties=generateSourceCodeOnly=true
+        echo "✅ Client generated at src/spark_history_mcp/api_client/"
 
   docker-build:
     desc: Build Docker image
