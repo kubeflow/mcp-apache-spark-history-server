@@ -368,6 +368,7 @@ func TestJSONOutput(t *testing.T) {
 		{"compare_env", []string{"compare", "sql", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "--env", "-o", "json"}, "compare_env.json"},
 		{"compare_plans", []string{"compare", "sql", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "--plans", "6", "6", "-o", "json"}, "compare_plans.json"},
 		{"compare_apps", []string{"compare", "apps", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "-o", "json"}, "compare_apps.json"},
+		{"compare_stages", []string{"compare", "stages", "--app-a", fix.App1.ID, "--app-b", fix.App2.ID, "43", "33", "-o", "json"}, "compare_stages.json"},
 	}
 	for _, tt := range goldenTests {
 		t.Run(tt.name, func(t *testing.T) {
