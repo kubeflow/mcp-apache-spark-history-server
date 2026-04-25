@@ -1,39 +1,75 @@
-# Spark History Server CLI
+# Spark History Server CLI (`shs`)
 
-CLI for [Apache Spark History Server](https://spark.apache.org/docs/latest/monitoring.html#viewing-after-the-fact). Built for human terminals, AI agents, and CI/CD pipelines.
+> **What is a skill?** This project's primary interface is an [MCP server](../../README.md) that AI agents use to analyze Spark applications via the Model Context Protocol. A **skill** is a complementary capability built alongside the MCP server — a different interface for the same underlying data. The CLI (`shs`) is the first skill: a standalone binary that queries the same Spark History Server REST API directly from the terminal, with no MCP protocol, no AI framework, and no running server process.
+
+`shs` is a command-line tool for [Apache Spark History Server](https://spark.apache.org/docs/latest/monitoring.html#viewing-after-the-fact). It lets platform engineers, SREs, data engineers, and coding agents inspect Spark applications, investigate job failures, analyze stage performance, and compare runs — all from the terminal or a shell script.
+
+**Use `shs` when** you know the command you want to run: look up a failed job, find the slowest stage, diff two app configs, or pipe JSON into `jq`. **Use the MCP server when** you want an AI agent to do multi-step investigation via natural language.
+
+## How the CLI Differs from the MCP Server
+
+| | `shs` CLI | MCP Server (`spark-mcp`) |
+|---|---|---|
+| **Primary user** | Humans, shell scripts, CI/CD, coding agents | AI agents and MCP-compatible clients |
+| **Mental model** | "I know the command I want to run" | "Agent, investigate this Spark app" |
+| **Interface** | Terminal command | MCP tool server |
+| **Protocol** | No MCP protocol — direct command execution | Model Context Protocol (MCP) |
+| **Transport** | CLI process calling Spark REST API over HTTP | stdio, streamable-http, or SSE |
+| **Output** | Human-readable table, JSON, YAML | Structured tool responses for agent consumption |
+| **Discovery** | `shs --help`, `shs prime`, docs, examples | Agent calls `tools/list` at runtime |
+| **Runtime** | One process per command | Long-running server or stdio server session |
+| **State** | Stateless | Can maintain config, session, and cache (e.g. ApplicationDiscovery TTL cache) |
+| **Best for** | Fast lookup, automation, CI checks, debugging | Multi-step investigation, natural-language analysis, autonomous workflows |
+| **Failure behavior** | Exit codes, stdout/stderr | Tool call result/errors returned to agent |
+| **Operational footprint** | Lightweight single binary, no dependencies | Server runtime, dependencies, lifecycle, security controls |
+| **AWS EMR** | Config field only | Full Persistent UI + presigned URL session setup |
+| **Multi-server** | `shs apps --all-servers` (apps listing only) | Auto-discovery by app ID across all servers |
+| **Config prefix** | `SHS_CLI__` env vars | `SHS_` env vars |
+| **Binary** | `shs` (compiled Go, no runtime deps) | `spark-mcp` (Python 3.12+, uv, FastMCP) |
 
 ## Installation
+
+From the `skills/cli/` directory:
 
 ```bash
 task build
 ```
 
-The binary is built to `./bin/shs`.
+The binary is built to `./bin/shs`. Add it to your PATH so you can run `shs` directly:
+
+```bash
+export PATH="$(pwd)/bin:$PATH"
+```
+
+Add that export to your `~/.zshrc` or `~/.bashrc` to make it permanent.
 
 ## Quick Start
 
-Create a `config.yaml`:
+A `config.yaml` is already provided in `skills/cli/`:
 
 ```yaml
 servers:
-  default:
+  local:
     default: true
     url: "http://localhost:18080"
 ```
 
-Start Spark History Server:
+Start Spark History Server with sample data (from `skills/cli/`):
 
 ```bash
 task start-shs
 ```
 
+This starts a local SHS via Docker using the pre-generated event logs in `e2e/spark-events/`.
+
 List applications:
 
 ```
 $ shs apps
-ID                   NAME          DURATION  ATTEMPTS
-local-1776286804625  shs-e2e-app2  13.159s   1
-local-1776286786993  shs-e2e-app1  14.47s    1
+ID                              NAME          DURATION  ATTEMPTS
+application_1713000000000_0001  shs-e2e-yarn  13.07s    2
+local-1776286804625             shs-e2e-app2  13.159s   1
+local-1776286786993             shs-e2e-app1  14.47s    1
 ```
 
 See full usage with:
@@ -62,13 +98,19 @@ COMMANDS
   shs sql -a APP_ID EXEC_ID --summary       Include job summaries + aggregate stage metrics
   shs sql -a APP_ID EXEC_ID --initial-plan  Include initial AQE plans (implies --plan)
   shs env -a APP_ID               Show environment/config
-  shs compare --app-a APP1 --app-b APP2 EXEC1 EXEC2  Compare SQL executions across apps
+  shs env -a APP_ID --section S   Show specific section (runtime|spark|system|hadoop|metrics|classpath)
+  shs compare sql --app-a APP1 --app-b APP2 EXEC1 EXEC2        Compare SQL execution metrics
+  shs compare sql --app-a APP1 --app-b APP2 --env               Compare Spark configurations
+  shs compare sql --app-a APP1 --app-b APP2 --plans EXEC1 EXEC2 Compare SQL plan structure
+  shs compare apps --app-a APP1 --app-b APP2                     Compare app-level performance
     --server-a NAME  Server for app A (overrides --server)
     --server-b NAME  Server for app B (overrides --server)
+  shs servers                     List configured servers
   shs version                     CLI + server Spark version
 
 GLOBAL FLAGS
   -a, --app-id STRING     Application ID (required for most commands)
+      --attempt STRING    Application attempt ID (for YARN apps with multiple attempts)
   -s, --server STRING     Server name from config file
   -o, --output FORMAT     txt (default) | json | yaml
   -c, --config PATH       Config file (default: config.yaml)
@@ -81,10 +123,15 @@ LIST FLAGS (apps, jobs, stages, sql)
 
 COMMAND DETAILS
   apps       --status running|completed  --sort name|id|date|duration  --desc
+             --all-servers (query all configured servers)  --attempts (list attempts, requires -a)
   jobs       --status running|succeeded|failed|unknown  --sort failed-tasks|duration|id  --group GROUP
   stages     --status active|complete|pending|failed  --sort failed-tasks|duration|id  --errors
-  executors  --all (include dead)  --summary (peak memory/OOM view)  --sort failed-tasks|duration|gc|id
+  executors  --all (include dead)  --summary (peak memory/OOM view)  --timeline (resource usage over time)
+             --sort failed-tasks|duration|gc|id
   sql        --status completed|running|failed  --sort duration|id  --plan  --summary  --initial-plan
+  env        --section runtime|spark|system|hadoop|metrics|classpath
+  compare    sql (metrics diff)  sql --env (config diff)  sql --plans (plan structure diff)
+             apps (executors, jobs, stages, aggregate I/O)
 
 DEFAULT SORT
   jobs:       failed first, then by duration descending
@@ -112,23 +159,29 @@ COMMON WORKFLOWS
   Find slowest stages:
     shs stages -a APP_ID --sort duration --limit 10
 
-  Check for data skew (look at shuffle and spill metrics):
-    shs stages -a APP_ID STAGE_ID -o json
+  Check for data skew (look at task quantiles in stage detail):
+    shs stages -a APP_ID STAGE_ID
 
   Find executor bottlenecks:
     shs executors -a APP_ID --sort gc
     shs executors -a APP_ID --summary   # peak memory, OOM status, dead first
+    shs executors -a APP_ID --timeline  # resource usage over time
     shs executors -a APP_ID EXECUTOR_ID
 
   Investigate slow SQL queries:
     shs sql -a APP_ID --sort duration --limit 10
-    shs sql -a APP_ID EXEC_ID          # header: status, duration, job IDs
+    shs sql -a APP_ID EXEC_ID            # header: status, duration, job IDs
     shs sql -a APP_ID EXEC_ID --plan     # physical plan + node-level metrics
-    shs sql -a APP_ID EXEC_ID --summary   # jobs + aggregate shuffle/input/spill/GC metrics
+    shs sql -a APP_ID EXEC_ID --summary  # jobs + aggregate shuffle/input/spill/GC metrics
 
   Compare same query across two runs:
-    shs compare --app-a APP1 --app-b APP2 EXEC1 EXEC2  # duration, jobs, stages, shuffle, spill diff
-    shs compare --app-a APP1 --server-a prod --app-b APP2 --server-b staging EXEC1 EXEC2  # cross-server
+    shs compare sql --app-a APP1 --app-b APP2 EXEC1 EXEC2         # metrics diff
+    shs compare sql --app-a APP1 --app-b APP2 --env               # config diff
+    shs compare sql --app-a APP1 --app-b APP2 --plans EXEC1 EXEC2 # plan diff
+    shs compare sql --app-a APP1 --server-a prod --app-b APP2 --server-b staging EXEC1 EXEC2  # cross-server
+
+  Compare app-level performance:
+    shs compare apps --app-a APP1 --app-b APP2
 
   Get Spark config for an app:
     shs env -a APP_ID --section spark
@@ -233,38 +286,90 @@ shs jobs -a APP -o yaml          # full API response as YAML
 
 ## Common Workflows
 
-Investigate failures:
+### Investigate failures
 
 ```bash
-shs jobs -a APP --status failed
-shs stages -a APP --status failed
-shs stages -a APP STAGE --errors
+# Find failed jobs
+shs jobs -a local-1776286786993 --status failed
+
+# Find failed stages
+shs stages -a local-1776286786993 --status failed
+
+# Get error messages from failed tasks in stage 5
+shs stages -a local-1776286786993 5 --errors
+
+# Full task detail as JSON
+shs stages -a local-1776286786993 5 --errors -o json
 ```
 
-Find slow queries:
+### Investigate slow applications
 
 ```bash
-shs sql -a APP --sort duration --limit 10
-shs sql -a APP EXEC_ID --plan
-shs sql -a APP EXEC_ID --summary
+# Find the slowest stages
+shs stages -a local-1776286786993 --sort duration --limit 10
+
+# Drill into a stage — task counts, I/O, shuffle, spill, and task quantiles (p25/p50/p75/max)
+# A large gap between p50 and max executorRunTime indicates data skew
+shs stages -a local-1776286786993 43
+
+# Check for memory pressure and GC overhead
+shs executors -a local-1776286786993 --summary
+shs executors -a local-1776286786993 --sort gc
+shs executors -a local-1776286786993 --timeline
 ```
 
-Compare the same query across two runs:
+### Investigate slow SQL queries
 
 ```bash
-shs compare --app-a APP1 --app-b APP2 6 6
+shs sql -a local-1776286786993 --sort duration --limit 10
+shs sql -a local-1776286786993 8            # header: status, duration, job IDs
+shs sql -a local-1776286786993 8 --plan     # physical plan + per-node metrics
+shs sql -a local-1776286786993 8 --summary  # jobs + aggregate shuffle/spill/GC metrics
 ```
 
-Compare across servers:
+### Compare two runs of the same job
 
 ```bash
-shs compare --server-a prod --server-b staging --app-a APP1 --app-b APP2 6 6
+# Overall app metrics: executors, jobs, stages, I/O, spill, GC
+shs compare apps --app-a local-1776286804625 --app-b local-1776286786993
+
+# SQL execution metrics diff
+shs compare sql --app-a local-1776286804625 --app-b local-1776286786993 8 8
+
+# Config diff — only shows properties that differ between the two apps
+shs compare sql --app-a local-1776286804625 --app-b local-1776286786993 --env
+
+# Plan structure diff — detects join strategy changes (e.g. SortMergeJoin → BroadcastHashJoin)
+shs compare sql --app-a local-1776286804625 --app-b local-1776286786993 --plans 8 8
+
+# Cross-server comparison
+shs compare sql --app-a APP1 --server-a production --app-b APP2 --server-b staging 8 8
 ```
 
-List apps across all configured servers:
+### YARN applications (multi-attempt)
+
+```bash
+# List all attempts with status and duration
+shs apps -a application_1713000000000_0001 --attempts
+
+# Query jobs from a specific attempt
+shs jobs -a application_1713000000000_0001 --attempt 1   # failed attempt
+shs jobs -a application_1713000000000_0001 --attempt 2   # successful attempt
+shs jobs -a application_1713000000000_0001               # latest attempt (default)
+```
+
+### List apps across all servers
 
 ```bash
 shs apps --all-servers
+shs apps --all-servers --sort duration --desc
+```
+
+### JSON output for scripting
+
+```bash
+shs apps -o json | jq '.[].id'
+shs stages -a APP STAGE_ID -o json | jq '.taskMetricDistributions.executorRunTime.max'
 ```
 
 ## AI Agent Usage
@@ -275,14 +380,16 @@ shs apps --all-servers
 shs prime
 ```
 
-Feed this to an AI agent as a system prompt or tool description. The agent can then use `shs` commands to investigate Spark applications autonomously.
+Feed this to an AI agent as a system prompt or tool description. The agent can then use `shs` commands to investigate Spark applications autonomously. See [`examples/compare/`](./examples/compare/) for a worked example of Claude Code analyzing a TPC-DS benchmark across 103 queries with parallel subagents.
 
 ## Development
 
 ```bash
-task build          # Build the binary
+task build          # Build the binary to ./bin/shs (run from skills/cli/)
 task test           # Run unit tests
-task test-e2e       # Run e2e tests (starts/stops SHS automatically)
+task test-e2e       # Run e2e tests (starts/stops SHS automatically via Docker)
 task lint           # Run golangci-lint
-task generate       # Regenerate client from OpenAPI spec
+task generate       # Regenerate client from OpenAPI spec (openapi/spark-history-server.yaml)
+task start-shs      # Start Spark History Server with e2e sample data
+task stop-shs       # Stop the Spark History Server
 ```

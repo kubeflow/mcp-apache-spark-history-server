@@ -7,9 +7,32 @@
 [![Kubeflow](https://img.shields.io/badge/Kubeflow-Official-orange.svg)](https://github.com/kubeflow)
 [![Slack](https://img.shields.io/badge/Slack-CNCF%20%23mcp--apache--spark--history--server-purple.svg)](https://cloud-native.slack.com/archives/C09FRRM6QM7)
 
-> **🤖 Connect AI agents to Apache Spark History Server for intelligent job analysis and performance monitoring**
+> **🤖 Connect AI agents and engineers to Apache Spark History Server for intelligent job analysis, performance monitoring, and terminal-based investigation**
 
-Transform your Spark infrastructure monitoring with AI! This Model Context Protocol (MCP) server enables AI agents to analyze job performance, identify bottlenecks, and provide intelligent insights from your Spark History Server data.
+This project provides two interfaces to your Apache Spark History Server data — an **MCP server** for AI agents doing natural-language investigation, and a **CLI (`shs`)** for engineers and scripts that need direct terminal access:
+
+---
+
+> [!IMPORTANT]
+> ### ✨ NEW — Spark History Server CLI is now available
+> [![SHS CLI](https://img.shields.io/badge/NEW-SHS%20CLI%20%60shs%60-brightgreen?style=for-the-badge&logo=go&logoColor=white)](skills/cli/README.md)
+>
+> A standalone Go binary that queries Spark History Server **directly from your terminal** — no MCP, no AI framework, no daemon process. Inspect jobs, compare runs, investigate failures, and script against the Spark REST API.
+>
+> **[Get started with the SHS CLI →](skills/cli/README.md)**
+
+---
+
+### This project provides two interfaces
+
+| | ⚡ MCP Server | 🛠️ [SHS CLI (`shs`)](skills/cli/) |
+|---|---|---|
+| **For** | AI agents and MCP-compatible clients | Humans, shell scripts, CI/CD, coding agents |
+| **How** | AI calls tools via Model Context Protocol | Direct terminal commands, no protocol overhead |
+| **Example** | *"Why is my ETL job slow?"* → agent investigates | `shs stages -a APP --sort duration` |
+| **Install** | `uv run -m spark_history_mcp.core.main` | `cd skills/cli && go build -o bin/shs .` |
+
+---
 
 ## 🎯 What is This?
 
@@ -305,6 +328,14 @@ SHS_SERVERS_*_TIMEOUT - HTTP request timeout in seconds for a specific server (d
 SHS_SERVERS_*_EMR_CLUSTER_ARN - EMR cluster ARN for a specific server
 SHS_SERVERS_*_INCLUDE_PLAN_DESCRIPTION - Whether to include SQL execution plans by default for a specific server (true/false, default: false)
 ```
+
+## 🛠️ Skills
+
+Skills are standalone capabilities built alongside the MCP server — different interfaces for the same Spark History Server data.
+
+| Skill | Description |
+|-------|-------------|
+| **[CLI (`shs`)](skills/cli/)** | Terminal command-line tool for humans, shell scripts, CI/CD, and coding agents. Query Spark applications directly without MCP or any AI framework. |
 
 ## 🤖 AI Agent Integration
 
