@@ -1,4 +1,4 @@
-# Kubeflow Spark History MCP Server
+# Kubeflow Spark AI Toolkit
 
 [![CI](https://github.com/kubeflow/mcp-apache-spark-history-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kubeflow/mcp-apache-spark-history-server/actions)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
@@ -36,13 +36,18 @@ This project provides two interfaces to your Apache Spark History Server data �
 
 ## 🎯 What is This?
 
-**Spark History Server MCP** bridges AI agents with your existing Apache Spark infrastructure, enabling:
+**Kubeflow Spark AI Toolkit** is a diagnostics toolkit for Apache Spark applications. It provides two interfaces to your Spark History Server data:
 
-- 🔍 **Query job details** through natural language
-- 📊 **Analyze performance metrics** across applications
-- 🔄 **Compare multiple jobs** to identify regressions
-- 🚨 **Investigate failures** with detailed error analysis
-- 📈 **Generate insights** from historical execution data
+- **⚡ MCP Server** — AI agents query Spark data via the Model Context Protocol using natural language
+- **🛠️ CLI (`shs`)** — Engineers and scripts query Spark data directly from the terminal
+
+Both interfaces enable:
+
+- 🔍 **Query job details** — application metadata, stages, executors, SQL queries
+- 📊 **Analyze performance** — identify slow stages, bottlenecks, and resource usage patterns
+- 🔄 **Compare runs** — diff configurations and metrics across applications to catch regressions
+- 🚨 **Investigate failures** — drill into failed tasks with detailed error analysis
+- 📈 **Generate insights** — surface optimization recommendations from historical execution data
 
 📺 **See it in action:**
 
@@ -53,73 +58,73 @@ This project provides two interfaces to your Apache Spark History Server data �
 
 ```mermaid
 graph TB
-    A[🤖 AI Agent/LLM] --> F[📡 MCP Client]
-    B[🦙 LlamaIndex Agent] --> F
-    C[🌐 LangGraph] --> F
-    D[�️ Claudep Desktop] --> F
-    E[🛠️ Amazon Q CLI] --> F
+    subgraph Clients
+        A[🤖 AI Agent / LLM]
+        B[👩‍💻 Engineer / Script / CI]
+    end
 
-    F --> G[⚡ Spark History MCP Server]
+    subgraph Toolkit
+        C[⚡ MCP Server]
+        D[🛠️ CLI - shs]
+    end
 
-    G --> H[🔥 Prod Spark History Server]
-    G --> I[🔥 Staging Spark History Server]
-    G --> J[🔥 Dev Spark History Server]
+    subgraph Spark History Servers
+        E[🔥 Production]
+        F[🔥 Dev]
+    end
 
-    H --> K[📄 Prod Event Logs]
-    I --> L[📄 Staging Event Logs]
-    J --> M[📄 Dev Event Logs]
+    A -->|MCP Protocol| C
+    B -->|Terminal| D
+
+    C -->|REST API| E
+    C -->|REST API| F
+    D -->|REST API| E
+    D -->|REST API| F
 ```
 
-**🔗 Components:**
-- **🔥 Spark History Server**: Your existing infrastructure serving Spark event data
-- **⚡ MCP Server**: This project - provides MCP tools for querying Spark data
-- **🤖 AI Agents**: LangChain, custom agents, or any MCP-compatible client
+## Quick Start
 
-## ⚡ Quick Start
+### CLI (`shs`)
 
-### 📦 Ready-to-Use Package
-The package is published to PyPI: https://pypi.org/project/mcp-apache-spark-history-server/
-
-### 📋 Prerequisites
-- 🔥 Existing Spark History Server (running and accessible)
-- 🐍 Python 3.12+
-- ⚡ [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager
-
-### 🚀 Setup & Testing
+Download the latest binary from [GitHub Releases](https://github.com/kubeflow/mcp-apache-spark-history-server/releases):
 
 ```bash
-git clone https://github.com/kubeflow/mcp-apache-spark-history-server.git
-cd mcp-apache-spark-history-server
+# Linux (amd64)
+curl -sSL https://github.com/kubeflow/mcp-apache-spark-history-server/releases/latest/download/shs-linux-amd64.tar.gz | tar xz
+sudo mv shs /usr/local/bin/
 
-# Install Task (if not already installed)
-brew install go-task  # macOS, see https://taskfile.dev/installation/ for others
-
-# Setup and start testing
-task start-spark-bg            # Start Spark History Server with sample data (default Spark 3.5.5)
-# Or specify a different Spark version:
-# task start-spark-bg spark_version=3.5.2
-task start-mcp-bg             # Start MCP Server
-
-# Optional: Opens MCP Inspector on http://localhost:6274 for interactive testing
-# Requires Node.js: 22.7.5+ (Check https://github.com/modelcontextprotocol/inspector for latest requirements)
-task start-inspector-bg       # Start MCP Inspector
-
-# When done, run `task stop-all`
+# macOS (Apple Silicon)
+curl -sSL https://github.com/kubeflow/mcp-apache-spark-history-server/releases/latest/download/shs-darwin-arm64.tar.gz | tar xz
+sudo mv shs /usr/local/bin/
 ```
 
-If you just want to run the MCP server without cloning the repository:
+Point it at your Spark History Server and start querying:
 
 ```bash
-# Run with uv without installing the module
+shs apps --server http://your-spark-history-server:18080
+shs stages -a <app-id> --sort duration
+```
+
+See the [CLI documentation](skills/cli/README.md) for full usage.
+
+### MCP Server
+
+```bash
+# Run directly with uvx (no install needed)
 uvx --from mcp-apache-spark-history-server spark-mcp
 
-# OR run with pip and python. Use of venv is highly encouraged.
-python3 -m venv spark-mcp && source spark-mcp/bin/activate
+# Or install with pip
 pip install mcp-apache-spark-history-server
 python3 -m spark_history_mcp.core.main
-# Deactivate venv
-deactivate
 ```
+
+The package is published to [PyPI](https://pypi.org/project/mcp-apache-spark-history-server/).
+
+### Prerequisites
+- Existing Spark History Server (running and accessible)
+- **CLI**: No dependencies — single static binary
+- **MCP Server**: Python 3.12+, [uv](https://docs.astral.sh/uv/getting-started/installation/)
+
 ### ⚙️ Server Configuration
 Edit `config.yaml` for your Spark History Server:
 
@@ -161,7 +166,7 @@ See **[TESTING.md](TESTING.md)** for using them.
 ![Job Comparison](screenshots/job-compare.png)
 
 
-## 🛠️ Available Tools
+## 🛠️ MCP Tools
 
 > **Note**: These tools are subject to change as we scale and improve the performance of the MCP server.
 
@@ -329,14 +334,6 @@ SHS_SERVERS_*_EMR_CLUSTER_ARN - EMR cluster ARN for a specific server
 SHS_SERVERS_*_INCLUDE_PLAN_DESCRIPTION - Whether to include SQL execution plans by default for a specific server (true/false, default: false)
 ```
 
-## 🛠️ Skills
-
-Skills are standalone capabilities built alongside the MCP server — different interfaces for the same Spark History Server data.
-
-| Skill | Description |
-|-------|-------------|
-| **[CLI (`shs`)](skills/cli/)** | Terminal command-line tool for humans, shell scripts, CI/CD, and coding agents. Query Spark applications directly without MCP or any AI framework. |
-
 ## 🤖 AI Agent Integration
 
 ### Quick Start Options
@@ -381,6 +378,26 @@ Skills are standalone capabilities built alongside the MCP server — different 
 ✅ Compare execution times and resource usage
 ✅ Identify performance deltas
 ✅ Highlight configuration differences
+```
+
+### Development Setup
+
+```bash
+git clone https://github.com/kubeflow/mcp-apache-spark-history-server.git
+cd mcp-apache-spark-history-server
+
+# Install Task (if not already installed)
+brew install go-task  # macOS, see https://taskfile.dev/installation/ for others
+
+# Start Spark History Server with sample data and MCP server
+task start-spark-bg            # Default Spark 3.5.5
+task start-mcp-bg
+
+# Optional: MCP Inspector on http://localhost:6274
+task start-inspector-bg
+
+# When done
+task stop-all
 ```
 
 ## 🌍 Adopters
