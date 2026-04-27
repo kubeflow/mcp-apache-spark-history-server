@@ -103,9 +103,15 @@ Point it at your Spark History Server and start querying:
 ```bash
 shs apps --server http://your-spark-history-server:18080
 shs stages -a <app-id> --sort duration
+
+# Generate a config file to avoid passing --server every time
+shs setup config > config.yaml
+
+# Generate a skill file for coding agents (e.g. Claude Code)
+shs setup skill > ~/.claude/skills/spark-history.md
 ```
 
-See the [CLI documentation](skills/cli/README.md) for full usage.
+See the [CLI documentation](skills/cli/README.md) for full usage, or check out a [real-world example](skills/cli/examples/compare/README.md) of Claude Code comparing two TPC-DS 3TB benchmark runs.
 
 ### MCP Server
 
@@ -147,15 +153,6 @@ mcp:
   port: "18888"
   debug: true
 ```
-
-
-### 📊 Sample Data
-The repository includes real Spark event logs for testing:
-- `spark-bcec39f6201b42b9925124595baad260` - ✅ Successful ETL job
-- `spark-110be3a8424d4a2789cb88134418217b` - 🔄 Data processing job
-- `spark-cc4d115f011443d787f03a71a476a745` - 📈 Multi-stage analytics job
-
-See **[TESTING.md](TESTING.md)** for using them.
 
 ## 📸 Screenshots
 
@@ -346,6 +343,13 @@ SHS_SERVERS_*_INCLUDE_PLAN_DESCRIPTION - Whether to include SQL execution plans 
 | **[Kiro](examples/integrations/kiro/)** | HTTP | IDE integration, code-centric analysis |
 | **[LangGraph](examples/integrations/langgraph/)** | HTTP | Multi-agent workflows |
 | **[Strands Agents](examples/integrations/strands-agents/)** | HTTP | Multi-agent workflows |
+
+> **Tip:** The `shs` CLI can also generate a skill file for coding agents that support tool use:
+> ```bash
+> shs setup skill > ~/.claude/skills/spark-history.md
+> ```
+> This gives agents like Claude Code direct access to Spark History Server queries without the MCP server.
+> See a [real-world example](skills/cli/examples/compare/README.md) of Claude Code using `shs` to compare two TPC-DS 3TB benchmark runs — dispatching subagents in parallel for per-query root cause analysis.
 
 ## 🎯 Example Use Cases
 
