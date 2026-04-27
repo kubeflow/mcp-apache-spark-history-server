@@ -35,6 +35,7 @@ COMMANDS
     --server-a NAME  Server for app A (overrides --server)
     --server-b NAME  Server for app B (overrides --server)
   shs servers                     List configured servers
+  shs setup config                Print a sample config.yaml to get started
   shs version                     CLI + server Spark version
 
 GLOBAL FLAGS
@@ -64,6 +65,7 @@ COMMAND DETAILS
              apps (executors, jobs, stages, aggregate I/O)  stages (stage metrics + task quantiles)
 
 CONFIG FILE
+  Generate a starter config: shs setup config > config.yaml
   Default path: config.yaml (override with -c or SHS_CLI__CONFIG env var).
 
   servers:
@@ -81,7 +83,7 @@ CONFIG FILE
   Fields per server:
     url             Base URL of the Spark History Server (required)
     default         true to use this server when --server is omitted
-    verify_ssl      TLS verification (default: true)
+    verify_ssl      TLS verification (default: false)
     auth.username   Basic auth username
     auth.password   Basic auth password
     auth.token      Bearer token (alternative to username/password)
