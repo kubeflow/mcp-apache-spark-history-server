@@ -1,0 +1,32 @@
+name: CI - CLI
+
+on:
+  push:
+    branches: [main]
+    paths: ['skills/cli/**']
+  pull_request:
+    branches: [main]
+    paths: ['skills/cli/**']
+
+jobs:
+  ci:
+    name: Lint & E2E
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version-file: skills/cli/go.mod
+          cache-dependency-path: skills/cli/go.sum
+
+      - name: Install Task
+        run: curl -sSL https://github.com/go-task/task/releases/download/v3.50.0/task_linux_amd64.tar.gz | tar xz -C /usr/local/bin task
+
+      - name: Lint
+        run: task cli:lint
+
+      - name: E2E
+        run: task cli:test-e2e
