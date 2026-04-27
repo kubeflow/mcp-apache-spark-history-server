@@ -70,8 +70,10 @@ tasks:
 
   build:
     desc: Build the shs binary
+    vars:
+      VERSION: '{{.VERSION | default "dev"}}'
     cmds:
-      - go build -o {{.BIN_DIR}}/shs .
+      - go build -trimpath -ldflags "-s -w -X github.com/kubeflow/mcp-apache-spark-history-server/skills/cli/cmd.cliVersion={{.VERSION}}" -o {{.BIN_DIR}}/shs .
 
   # You should not need to run this task for the most part. Events are already generated in e2e/ directory
   # This task is for documenting how to generate data in the future.
