@@ -1,0 +1,528 @@
+{
+  "a": {
+    "app": "local-1776286786993",
+    "stageId": 43,
+    "attemptId": 0,
+    "status": "COMPLETE",
+    "description": "$anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768",
+    "durationMs": 2083,
+    "tasks": 3,
+    "failedTasks": 0,
+    "inputBytes": 0,
+    "outputBytes": 57978751,
+    "shuffleRead": 60573008,
+    "shuffleWrite": 0,
+    "spillDisk": 70308061,
+    "spillMemory": 83884800,
+    "gcTimeMs": 96,
+    "taskQuantiles": {
+      "diskBytesSpilled": [
+        17384420,
+        17588552,
+        35335090,
+        35335090
+      ],
+      "duration": [
+        1008,
+        1055,
+        1063,
+        1063
+      ],
+      "executorCpuTime": [
+        907233700,
+        981187400,
+        1003234500,
+        1003234500
+      ],
+      "executorDeserializeCpuTime": [
+        17790628,
+        18406398,
+        26991418,
+        26991418
+      ],
+      "executorDeserializeTime": [
+        17,
+        18,
+        27,
+        27
+      ],
+      "executorRunTime": [
+        972,
+        1031,
+        1042,
+        1042
+      ],
+      "gettingResultTime": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "inputMetrics": {
+        "bytesRead": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "recordsRead": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "jvmGcTime": [
+        18,
+        36,
+        42,
+        42
+      ],
+      "memoryBytesSpilled": [
+        20971200,
+        20971200,
+        41942400,
+        41942400
+      ],
+      "outputMetrics": {
+        "bytesWritten": [
+          14679969,
+          14719199,
+          28579584,
+          28579584
+        ],
+        "recordsWritten": [
+          506324,
+          507705,
+          985971,
+          985971
+        ]
+      },
+      "peakExecutionMemory": [
+        6291392,
+        6291392,
+        12582784,
+        12582784
+      ],
+      "quantiles": [
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "resultSerializationTime": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "resultSize": [
+        5479,
+        5479,
+        5479,
+        5479
+      ],
+      "schedulerDelay": [
+        4,
+        6,
+        9,
+        9
+      ],
+      "shuffleReadMetrics": {
+        "fetchWaitTime": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "localBlocksFetched": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "readBytes": [
+          15329098,
+          15377783,
+          29866128,
+          29866128
+        ],
+        "readRecords": [
+          506324,
+          507705,
+          985971,
+          985971
+        ],
+        "remoteBlocksFetched": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "remoteBytesRead": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "remoteBytesReadToDisk": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "remoteReqsDuration": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "shufflePushReadMetricsDist": {
+          "corruptMergedBlockChunks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "localMergedBlocksFetched": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "localMergedBytesRead": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "localMergedChunksFetched": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "mergedFetchFallbackCount": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "remoteMergedBlocksFetched": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "remoteMergedBytesRead": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "remoteMergedChunksFetched": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "remoteMergedReqsDuration": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "totalBlocksFetched": [
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "shuffleWriteMetrics": {
+        "writeBytes": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "writeRecords": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "writeTime": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  },
+  "b": {
+    "app": "local-1776286804625",
+    "stageId": 33,
+    "attemptId": 0,
+    "status": "COMPLETE",
+    "description": "$anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768",
+    "durationMs": 1407,
+    "tasks": 3,
+    "failedTasks": 0,
+    "inputBytes": 0,
+    "outputBytes": 57979805,
+    "shuffleRead": 60597318,
+    "shuffleWrite": 0,
+    "spillDisk": 0,
+    "spillMemory": 0,
+    "gcTimeMs": 84,
+    "taskQuantiles": {
+      "diskBytesSpilled": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "duration": [
+        273,
+        1118,
+        1264,
+        1264
+      ],
+      "executorCpuTime": [
+        238869660,
+        1039315700,
+        1176103200,
+        1176103200
+      ],
+      "executorDeserializeCpuTime": [
+        16990706,
+        19108628,
+        19336056,
+        19336056
+      ],
+      "executorDeserializeTime": [
+        19,
+        23,
+        25,
+        25
+      ],
+      "executorRunTime": [
+        247,
+        1087,
+        1238,
+        1238
+      ],
+      "gettingResultTime": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "inputMetrics": {
+        "bytesRead": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "recordsRead": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "jvmGcTime": [
+        4,
+        40,
+        40,
+        40
+      ],
+      "memoryBytesSpilled": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "outputMetrics": {
+        "bytesWritten": [
+          7581623,
+          22040502,
+          28357680,
+          28357680
+        ],
+        "recordsWritten": [
+          261511,
+          760358,
+          978131,
+          978131
+        ]
+      },
+      "peakExecutionMemory": [
+        25165792,
+        67108800,
+        83885980,
+        83885980
+      ],
+      "quantiles": [
+        0.25,
+        0.5,
+        0.75,
+        1
+      ],
+      "resultSerializationTime": [
+        0,
+        0,
+        2,
+        2
+      ],
+      "resultSize": [
+        5393,
+        5393,
+        5436,
+        5436
+      ],
+      "schedulerDelay": [
+        3,
+        5,
+        6,
+        6
+      ],
+      "shuffleReadMetrics": {
+        "fetchWaitTime": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "localBlocksFetched": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "readBytes": [
+          7924590,
+          23041606,
+          29631122,
+          29631122
+        ],
+        "readRecords": [
+          261511,
+          760358,
+          978131,
+          978131
+        ],
+        "remoteBlocksFetched": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "remoteBytesRead": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "remoteBytesReadToDisk": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "remoteReqsDuration": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "shufflePushReadMetricsDist": {
+          "corruptMergedBlockChunks": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "localMergedBlocksFetched": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "localMergedBytesRead": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "localMergedChunksFetched": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "mergedFetchFallbackCount": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "remoteMergedBlocksFetched": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "remoteMergedBytesRead": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "remoteMergedChunksFetched": [
+            0,
+            0,
+            0,
+            0
+          ],
+          "remoteMergedReqsDuration": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        "totalBlocksFetched": [
+          2,
+          2,
+          2,
+          2
+        ]
+      },
+      "shuffleWriteMetrics": {
+        "writeBytes": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "writeRecords": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "writeTime": [
+          0,
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  }
+}

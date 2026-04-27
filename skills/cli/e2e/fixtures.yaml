@@ -112,6 +112,12 @@ sql_app2: |
   4   COMPLETED  createOrReplaceTempView at NativeMethodAccessorImpl.java:0  11ms                                    
   5   COMPLETED  createOrReplaceTempView at NativeMethodAccessorImpl.java:0  3ms                                     
 
+sql_app1_desc_filter: |
+  ID  STATUS     DESCRIPTION                                                 DURATION  FAILED_JOBS  SUCCESS_JOBS  RUNNING_JOBS
+  4   COMPLETED  createOrReplaceTempView at NativeMethodAccessorImpl.java:0  12ms                                 
+  5   COMPLETED  createOrReplaceTempView at NativeMethodAccessorImpl.java:0  4ms                                  
+
+
 jobs_app1_sort_id: |
   ID  STATUS     DESCRIPTION                                                        DURATION  TASKS  FAILED_TASKS  STAGES
   22  SUCCEEDED  $anonfun$withThreadLocalCaptured$2 at CompletableFuture.java:1768  79ms      3      0             45,46
@@ -190,6 +196,15 @@ sql6_summary_app1: |
   Failed Jobs:   
   Running Jobs:  
 
+  Aggregate Stage Metrics:
+    Stages:        25
+    Tasks:         47
+    Input:         5.3 MB
+    Shuffle Read:  7.2 MB
+    Shuffle Write: 7.2 MB
+    Spill (Disk):  4.0 MB
+    GC Time:       66ms
+
   Jobs (7):
   ID  STATUS     DURATION  TASKS  FAILED  STAGES
   10  SUCCEEDED  712ms     7      0       12,13,14
@@ -199,15 +214,6 @@ sql6_summary_app1: |
   11  SUCCEEDED  51ms      8      0       16,17,18,15
   8   SUCCEEDED  43ms      2      0       10
   14  SUCCEEDED  37ms      10     0       32,33,34,29,30,31
-
-  Aggregate Stage Metrics:
-    Stages:        25
-    Tasks:         47
-    Input:         5.3 MB
-    Shuffle Read:  7.2 MB
-    Shuffle Write: 7.2 MB
-    Spill (Disk):  4.0 MB
-    GC Time:       66ms
 
 sql6_summary_app2: |
   Execution ID:  6
@@ -219,15 +225,6 @@ sql6_summary_app2: |
   Failed Jobs:   
   Running Jobs:  
 
-  Jobs (6):
-  ID  STATUS     DURATION  TASKS  FAILED  STAGES
-  9   SUCCEEDED  231ms     2      0       11
-  11  SUCCEEDED  114ms     4      0       16,14,15
-  10  SUCCEEDED  68ms      3      0       12,13
-  12  SUCCEEDED  52ms      4      0       17,18,19
-  13  SUCCEEDED  36ms      5      0       20,21,22,23
-  8   SUCCEEDED  34ms      2      0       10
-
   Aggregate Stage Metrics:
     Stages:        14
     Tasks:         20
@@ -236,6 +233,15 @@ sql6_summary_app2: |
     Shuffle Write: 42.0 KB
     Spill (Disk):  0 B
     GC Time:       20ms
+
+  Jobs (6):
+  ID  STATUS     DURATION  TASKS  FAILED  STAGES
+  9   SUCCEEDED  231ms     2      0       11
+  11  SUCCEEDED  114ms     4      0       16,14,15
+  10  SUCCEEDED  68ms      3      0       12,13
+  12  SUCCEEDED  52ms      4      0       17,18,19
+  13  SUCCEEDED  36ms      5      0       20,21,22,23
+  8   SUCCEEDED  34ms      2      0       10
 
 # SHA256 hashes of `shs sql -a APP 6 --initial-plan` output (includes both final and initial plans).
 # Plans are too large to embed; hashes verify they haven't changed.

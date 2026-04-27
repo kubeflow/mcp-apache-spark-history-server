@@ -1,0 +1,109 @@
+name: release-cli
+
+on:
+  push:
+    tags: ['cli/v[0-9]+.[0-9]+.[0-9]+*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: release
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version-file: skills/cli/go.mod
+          cache-dependency-path: skills/cli/go.sum
+
+      - name: Parse version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#cli/}" >> "$GITHUB_OUTPUT"
+
+      - name: Install Task
+        run: curl -sSL https://github.com/go-task/task/releases/download/v3.50.0/task_linux_amd64.tar.gz | tar xz -C /usr/local/bin task
+
+      - name: Build
+        working-directory: skills/cli
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: '0'
+        run: task build VERSION=${{ steps.version.outputs.version }}
+
+      - name: Archive
+        working-directory: skills/cli
+        run: tar czf "shs-${{ steps.version.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz" -C bin shs
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: shs-${{ steps.version.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: skills/cli/shs-${{ steps.version.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      # Checkout with full history so we can generate path-scoped release notes.
+      # GitHub's --generate-notes includes ALL commits since the last tag regardless
+      # of path, which would pollute CLI releases with unrelated MCP server changes.
+      # Instead we use git log filtered to skills/cli/ for accurate changelogs.
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: Parse version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#cli/}" >> "$GITHUB_OUTPUT"
+
+      - name: Download artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: shs-${{ steps.version.outputs.version }}-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: sha256sum shs-*.tar.gz > checksums-sha256.txt
+
+      - name: Generate release notes
+        run: |
+          PREV_TAG=$(git tag --list 'cli/v*' --sort=-v:refname | sed -n '2p')
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..${GITHUB_REF_NAME}"
+          else
+            RANGE="${GITHUB_REF_NAME}"
+          fi
+          echo "## What's Changed" > notes.md
+          git log "$RANGE" --oneline -- skills/cli/ >> notes.md
+          if [ ! -s notes.md ] || [ "$(wc -l < notes.md)" -eq 1 ]; then
+            echo "No CLI-specific changes found in this range." >> notes.md
+          fi
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "SHS CLI ${{ steps.version.outputs.version }}" \
+            --notes-file notes.md \
+            shs-*.tar.gz checksums-sha256.txt
