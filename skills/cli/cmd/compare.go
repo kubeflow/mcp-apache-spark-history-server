@@ -11,5 +11,6 @@ func newCompareCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newCompareSQLCmd())
 	cmd.AddCommand(newCompareAppsCmd())
+	cmd.AddCommand(newCompareStagesCmd())
 	return cmd
 }

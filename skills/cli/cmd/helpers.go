@@ -25,7 +25,7 @@ func aggStages(stages []client.StageData, jobStageIDs map[int]bool) stageAggrega
 	seen := map[int]bool{}
 	for _, s := range stages {
 		sid := util.Deref(s.StageId)
-		if !jobStageIDs[sid] || seen[sid] {
+		if (jobStageIDs != nil && !jobStageIDs[sid]) || seen[sid] {
 			continue
 		}
 		seen[sid] = true

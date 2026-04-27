@@ -31,6 +31,7 @@ COMMANDS
   shs compare sql --app-a APP1 --app-b APP2 --env               Compare Spark configurations
   shs compare sql --app-a APP1 --app-b APP2 --plans EXEC1 EXEC2 Compare SQL plan structure
   shs compare apps --app-a APP1 --app-b APP2                     Compare app-level performance
+  shs compare stages --app-a APP1 --app-b APP2 STAGE1 STAGE2    Compare stage metrics + task quantiles
     --server-a NAME  Server for app A (overrides --server)
     --server-b NAME  Server for app B (overrides --server)
   shs servers                     List configured servers
@@ -45,9 +46,10 @@ GLOBAL FLAGS
       --timeout DURATION  HTTP timeout (default: 10s)
 
 LIST FLAGS (apps, jobs, stages, sql)
-  --limit N       Max results, default 20. Use --limit 0 for all.
-  --status VALUE  Filter by status (values vary per command).
-  --sort FIELD    Sort field (values vary per command).
+  --limit N            Max results, default 20. Use --limit 0 for all.
+  --status VALUE       Filter by status (values vary per command).
+  --sort FIELD         Sort field (values vary per command).
+  --description TEXT   (sql only) Filter by description substring (case-insensitive).
 
 COMMAND DETAILS
   apps       --status running|completed  --sort name|id|date|duration  --desc
@@ -56,10 +58,10 @@ COMMAND DETAILS
   stages     --status active|complete|pending|failed  --sort failed-tasks|duration|id  --errors
   executors  --all (include dead)  --summary (peak memory/OOM view)  --timeline (resource usage over time)
              --sort failed-tasks|duration|gc|id
-  sql        --status completed|running|failed  --sort duration|id  --plan  --summary  --initial-plan
+  sql        --status completed|running|failed  --sort duration|id  --description TEXT  --plan  --summary  --initial-plan
   env        --section runtime|spark|system|hadoop|metrics|classpath
   compare    sql (default: metrics diff)  sql --env (config diff)  sql --plans (plan structure diff)
-             apps (executors, jobs, stages, aggregate I/O)
+             apps (executors, jobs, stages, aggregate I/O)  stages (stage metrics + task quantiles)
 
 CONFIG FILE
   Default path: config.yaml (override with -c or SHS_CLI__CONFIG env var).
@@ -128,6 +130,10 @@ COMMON WORKFLOWS
     shs executors -a APP_ID --timeline  # resource usage: executor count, cores, memory over time
     shs executors -a APP_ID EXECUTOR_ID
 
+  Find SQL executions by description:
+    shs sql -a APP_ID --description "benchmark q5"
+    shs sql -a APP_ID --description "benchmark q5" --status completed
+
   Investigate slow SQL queries:
     shs sql -a APP_ID --sort duration --limit 10
     shs sql -a APP_ID EXEC_ID          # header: status, duration, job IDs
@@ -142,6 +148,10 @@ COMMON WORKFLOWS
 
   Compare app-level performance:
     shs compare apps --app-a APP1 --app-b APP2                      # executors, jobs, stages, I/O, spill, GC
+
+  Compare two stages (e.g. same stage across runs):
+    shs compare stages --app-a APP1 --app-b APP2 STAGE1 STAGE2     # metrics + task quantile distributions
+    shs compare stages --server-a prod --server-b staging --app-a APP1 --app-b APP2 STAGE1 STAGE2  # cross-server
 
   Get Spark config for an app:
     shs env -a APP_ID --section spark

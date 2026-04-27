@@ -29,11 +29,13 @@ type sqlRow struct {
 
 func newSQLCmd() *cobra.Command {
 	var status string
+	var description string
 	var limit int
 	var sortBy string
 	var showInitialPlan bool
 	var showPlan bool
 	var showSummary bool
+	var showStages bool
 
 	cmd := &cobra.Command{
 		Use:     "sql [executionId]",
@@ -53,21 +55,23 @@ func newSQLCmd() *cobra.Command {
 				if showInitialPlan {
 					showPlan = true
 				}
-				return getSQLExecution(cmd, c, id, showPlan, showInitialPlan, showSummary)
+				return getSQLExecution(cmd, c, id, showPlan, showInitialPlan, showSummary, showStages, limit)
 			}
-			if showSummary || showInitialPlan {
-				return fmt.Errorf("--summary and --initial-plan require an execution ID")
+			if showSummary || showInitialPlan || showStages {
+				return fmt.Errorf("--summary, --stages, and --initial-plan require an execution ID")
 			}
-			return listSQLExecutions(cmd, c, status, limit, sortBy)
+			return listSQLExecutions(cmd, c, status, description, limit, sortBy)
 		},
 	}
 
 	cmd.Flags().StringVar(&status, "status", "", "Filter by status (completed|running|failed)")
-	cmd.Flags().IntVar(&limit, "limit", 20, "Max number of executions to return (0 for all)")
+	cmd.Flags().StringVar(&description, "description", "", "Filter by description (case-insensitive substring match)")
+	cmd.Flags().IntVar(&limit, "limit", 20, "Max rows per table (0 for all)")
 	cmd.Flags().StringVar(&sortBy, "sort", "", "Sort by field (duration|id)")
 	cmd.Flags().BoolVar(&showPlan, "plan", false, "Include query plan and node metrics")
 	cmd.Flags().BoolVar(&showInitialPlan, "initial-plan", false, "Include initial plans (implies --plan)")
 	cmd.Flags().BoolVar(&showSummary, "summary", false, "Include job summaries + aggregate stage metrics")
+	cmd.Flags().BoolVar(&showStages, "stages", false, "List individual stages with key metrics")
 	return cmd
 }
 
@@ -83,9 +87,10 @@ type sqlSummaryExec struct {
 }
 
 type sqlDetail struct {
-	Execution sqlSummaryExec    `json:"execution" yaml:"execution"`
-	Jobs      []client.Job      `json:"jobs,omitempty" yaml:"jobs,omitempty"`
-	Stages    *stageAggregation `json:"stageMetrics,omitempty" yaml:"stageMetrics,omitempty"`
+	Execution sqlSummaryExec     `json:"execution" yaml:"execution"`
+	Jobs      []client.Job       `json:"jobs,omitempty" yaml:"jobs,omitempty"`
+	Stages    *stageAggregation  `json:"stageMetrics,omitempty" yaml:"stageMetrics,omitempty"`
+	StageList []client.StageData `json:"stages,omitempty" yaml:"stages,omitempty"`
 }
 
 var sqlStatusPriority = map[string]int{
@@ -122,7 +127,7 @@ func sortSQLExecutions(execs []client.SQLExecution, sortBy string) {
 	})
 }
 
-func listSQLExecutions(cmd *cobra.Command, c client.ClientWithResponsesInterface, status string, limit int, sortBy string) error {
+func listSQLExecutions(cmd *cobra.Command, c client.ClientWithResponsesInterface, status string, description string, limit int, sortBy string) error {
 	details := false
 	allResults := math.MaxInt32
 	params := &client.ListSQLExecutionsParams{Details: &details, Length: &allResults}
@@ -136,6 +141,12 @@ func listSQLExecutions(cmd *cobra.Command, c client.ClientWithResponsesInterface
 	}
 
 	execs := *body
+	if description != "" {
+		lower := strings.ToLower(description)
+		execs = slices.DeleteFunc(execs, func(e client.SQLExecution) bool {
+			return !strings.Contains(strings.ToLower(util.Deref(e.Description)), lower)
+		})
+	}
 	if status != "" {
 		upper := strings.ToUpper(status)
 		execs = slices.DeleteFunc(execs, func(e client.SQLExecution) bool {
@@ -270,7 +281,29 @@ func formatSQLJobs(w io.Writer, jobs []client.Job) {
 	_ = tw.Flush()
 }
 
-func getSQLExecution(cmd *cobra.Command, c client.ClientWithResponsesInterface, id int, showPlan bool, showInitialPlan bool, showSummary bool) error {
+func fetchSQLStages(ctx context.Context, c client.ClientWithResponsesInterface, jobs []client.Job) ([]client.StageData, error) {
+	stagesResp, err := c.ListStagesWithResponse(ctx, appID, &client.ListStagesParams{})
+	if err != nil {
+		return nil, err
+	}
+	if stagesResp.JSON200 == nil {
+		return nil, nil
+	}
+	wantIDs := stageIDsFromJobs(jobs)
+	seen := map[int]bool{}
+	var matched []client.StageData
+	for _, s := range *stagesResp.JSON200 {
+		sid := util.Deref(s.StageId)
+		if wantIDs[sid] && !seen[sid] {
+			seen[sid] = true
+			matched = append(matched, s)
+		}
+	}
+	sortStages(matched, "")
+	return matched, nil
+}
+
+func getSQLExecution(cmd *cobra.Command, c client.ClientWithResponsesInterface, id int, showPlan bool, showInitialPlan bool, showSummary bool, showStages bool, limit int) error {
 	params := &client.GetSQLExecutionParams{}
 	resp, err := c.GetSQLExecutionWithResponse(cmd.Context(), appID, id, params)
 	if err != nil {
@@ -281,29 +314,31 @@ func getSQLExecution(cmd *cobra.Command, c client.ClientWithResponsesInterface, 
 		return err
 	}
 
+	needJobs := showSummary || showStages
 	var jobs []client.Job
+	var stageList []client.StageData
 	var stages *stageAggregation
-	if showSummary {
+	if needJobs {
 		ids := collectJobIds(e)
 		if len(ids) > 0 {
 			jobs, err = fetchSQLJobs(cmd.Context(), c, ids)
 			if err != nil {
 				return err
 			}
-			stagesResp, err := c.ListStagesWithResponse(cmd.Context(), appID, &client.ListStagesParams{})
+			stageList, err = fetchSQLStages(cmd.Context(), c, jobs)
 			if err != nil {
 				return err
 			}
-			if stagesResp.JSON200 != nil {
-				agg := aggStages(*stagesResp.JSON200, stageIDsFromJobs(jobs))
+			if showSummary && len(stageList) > 0 {
+				agg := aggStages(stageList, nil)
 				stages = &agg
 			}
 		}
 	}
 
 	var output any = e
-	if showSummary {
-		output = sqlDetail{
+	if showSummary || showStages {
+		detail := sqlDetail{
 			Execution: sqlSummaryExec{
 				ID: e.Id, Status: e.Status, Description: e.Description,
 				SubmissionTime: e.SubmissionTime, Duration: e.Duration,
@@ -313,6 +348,10 @@ func getSQLExecution(cmd *cobra.Command, c client.ClientWithResponsesInterface, 
 			Jobs:   jobs,
 			Stages: stages,
 		}
+		if showStages {
+			detail.StageList = stageList
+		}
+		output = detail
 	}
 
 	return util.PrintOutput(cmd.OutOrStdout(), output, outputFmt, func(w io.Writer) error {
@@ -341,10 +380,6 @@ func getSQLExecution(cmd *cobra.Command, c client.ClientWithResponsesInterface, 
 				_, _ = fmt.Fprint(w, metrics)
 			}
 		}
-		if len(jobs) > 0 {
-			_, _ = fmt.Fprintf(w, "\nJobs (%d):\n", len(jobs))
-			formatSQLJobs(w, jobs)
-		}
 		if stages != nil {
 			_, _ = fmt.Fprintf(w, "\nAggregate Stage Metrics:\n")
 			_, _ = fmt.Fprintf(w, "  Stages:        %d\n", stages.Count)
@@ -354,6 +389,29 @@ func getSQLExecution(cmd *cobra.Command, c client.ClientWithResponsesInterface, 
 			_, _ = fmt.Fprintf(w, "  Shuffle Write: %s\n", util.FormatBytes(stages.ShuffleWrite))
 			_, _ = fmt.Fprintf(w, "  Spill (Disk):  %s\n", util.FormatBytes(stages.SpillDisk))
 			_, _ = fmt.Fprintf(w, "  GC Time:       %s\n", util.FormatMsVal(stages.GCTime))
+		}
+		if len(jobs) > 0 {
+			displayJobs, totalJobs := util.ApplyLimit(jobs, limit)
+			_, _ = fmt.Fprintf(w, "\nJobs (%d):\n", len(jobs))
+			formatSQLJobs(w, displayJobs)
+			util.PrintLimitFooter(w, limit, totalJobs, "jobs")
+		}
+		if len(stageList) > 0 && showStages {
+			displayStages, totalStages := util.ApplyLimit(stageList, limit)
+			_, _ = fmt.Fprintf(w, "\nStages (%d):\n", len(stageList))
+			rows := make([]stageRow, len(displayStages))
+			for i, s := range displayStages {
+				rows[i] = stageRow{
+					util.Deref(s.StageId), util.Deref(s.AttemptId), string(util.Deref(s.Status)), stageDesc(s),
+					util.Deref(s.NumTasks), util.Deref(s.NumFailedTasks),
+					stageDuration(s).Truncate(time.Millisecond).String(),
+					util.DerefBytes(s.InputBytes), util.DerefBytes(s.ShuffleReadBytes), util.DerefBytes(s.ShuffleWriteBytes),
+				}
+			}
+			if err := util.PrintTable(w, rows); err != nil {
+				return err
+			}
+			util.PrintLimitFooter(w, limit, totalStages, "stages")
 		}
 		return tw.Flush()
 	})
