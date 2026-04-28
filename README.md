@@ -75,24 +75,14 @@ A standalone Go binary — no MCP, no dependencies, no running daemon. Query you
 ### Install
 
 ```bash
-# Replace VERSION with the latest CLI release (e.g. v1.0.0)
-# See: https://github.com/kubeflow/mcp-apache-spark-history-server/releases
-VERSION=v1.0.0
+# Auto-detect latest version, OS, and architecture
+VERSION=$(curl -s https://api.github.com/repos/kubeflow/mcp-apache-spark-history-server/releases | grep -m1 '"tag_name": "cli/' | cut -d'"' -f4 | sed 's|cli/||')
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+[ "$ARCH" = "x86_64" ] && ARCH="amd64"
+[ "$ARCH" = "aarch64" ] && ARCH="arm64"
 
-# macOS (Apple Silicon)
-curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-darwin-arm64.tar.gz" | tar xz
-sudo mv shs /usr/local/bin/
-
-# macOS (Intel)
-curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-darwin-amd64.tar.gz" | tar xz
-sudo mv shs /usr/local/bin/
-
-# Linux (amd64)
-curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-linux-amd64.tar.gz" | tar xz
-sudo mv shs /usr/local/bin/
-
-# Linux (arm64)
-curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-linux-arm64.tar.gz" | tar xz
+curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-${OS}-${ARCH}.tar.gz" | tar xz
 sudo mv shs /usr/local/bin/
 ```
 
@@ -112,7 +102,7 @@ shs compare apps --app-a APP1 --app-b APP2
 shs setup skill > ~/.claude/skills/spark-history.md
 ```
 
-**[Full CLI documentation →](skills/cli/README.md)** — install, config, all commands, workflows, YARN support, JSON scripting, and coding agent skill setup.
+**[CLI documentation](skills/cli/README.md)** for full usage, or check out a [real-world example](skills/cli/examples/compare/README.md) of Claude Code comparing two **TPC-DS 3TB benchmark** runs.
 
 ---
 

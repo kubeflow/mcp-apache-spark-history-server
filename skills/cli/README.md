@@ -1,11 +1,9 @@
 <div align="center">
 
 
-# 🎉 ✨ NEW ✨ 🎉
+## Spark History Server CLI
 
-## `shs` — Spark History Server CLI is here!
-
-![NEW](https://img.shields.io/badge/🆕%20Just%20Launched-SHS%20CLI-brightgreen?style=for-the-badge)
+![NEW](https://img.shields.io/badge/Spark-SHS%20CLI-brightgreen?style=for-the-badge)
 ![Go](https://img.shields.io/badge/Go-Standalone%20Binary-00ADD8?style=for-the-badge&logo=go)
 ![No Dependencies](https://img.shields.io/badge/No%20Deps-Zero%20Setup-orange?style=for-the-badge)
 
@@ -17,9 +15,6 @@ No MCP server. No Python. No daemon. Just `shs`.
 ---
 
 </div>
-
-# Spark History Server CLI (`shs`)
-
 
 `shs` is a CLI for [Apache Spark History Server](https://spark.apache.org/docs/latest/monitoring.html#viewing-after-the-fact) — a standalone Go binary that lets platform engineers, SREs, data engineers, and coding agents query Spark applications directly from the terminal. Inspect jobs, investigate failures, analyze stage performance, compare runs, and script against the Spark REST API. No MCP server, no Python runtime, no running daemon — just a single binary.
 
@@ -53,23 +48,14 @@ No MCP server. No Python. No daemon. Just `shs`.
 Download the latest release for your platform from the [GitHub Releases page](https://github.com/kubeflow/mcp-apache-spark-history-server/releases). CLI releases are tagged `cli/v*`.
 
 ```bash
-# Replace VERSION with the latest cli/v* release (e.g. v1.0.0)
-VERSION=v1.0.0
+# Auto-detect latest version, OS, and architecture
+VERSION=$(curl -s https://api.github.com/repos/kubeflow/mcp-apache-spark-history-server/releases | grep -m1 '"tag_name": "cli/' | cut -d'"' -f4 | sed 's|cli/||')
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+[ "$ARCH" = "x86_64" ] && ARCH="amd64"
+[ "$ARCH" = "aarch64" ] && ARCH="arm64"
 
-# macOS (Apple Silicon)
-curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-darwin-arm64.tar.gz" | tar xz
-sudo mv shs /usr/local/bin/
-
-# macOS (Intel)
-curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-darwin-amd64.tar.gz" | tar xz
-sudo mv shs /usr/local/bin/
-
-# Linux (amd64)
-curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-linux-amd64.tar.gz" | tar xz
-sudo mv shs /usr/local/bin/
-
-# Linux (arm64)
-curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-linux-arm64.tar.gz" | tar xz
+curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-${OS}-${ARCH}.tar.gz" | tar xz
 sudo mv shs /usr/local/bin/
 ```
 
