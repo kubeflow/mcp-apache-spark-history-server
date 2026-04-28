@@ -1,8 +1,22 @@
-# Spark History Server CLI (`shs`)
+<div align="center">
 
-> **What is a skill?** This project's primary interface is an [MCP server](../../README.md) that AI agents use to analyze Spark applications via the Model Context Protocol. A **skill** is a complementary capability built alongside the MCP server — a different interface for the same underlying data. The CLI (`shs`) is the first skill: a standalone binary that queries the same Spark History Server REST API directly from the terminal, with no MCP protocol, no AI framework, and no running server process.
 
-`shs` is a command-line tool for [Apache Spark History Server](https://spark.apache.org/docs/latest/monitoring.html#viewing-after-the-fact). It lets platform engineers, SREs, data engineers, and coding agents inspect Spark applications, investigate job failures, analyze stage performance, and compare runs — all from the terminal or a shell script.
+## Spark History Server CLI
+
+![NEW](https://img.shields.io/badge/Spark-SHS%20CLI-brightgreen?style=for-the-badge)
+![Go](https://img.shields.io/badge/Go-Standalone%20Binary-00ADD8?style=for-the-badge&logo=go)
+![No Dependencies](https://img.shields.io/badge/No%20Deps-Zero%20Setup-orange?style=for-the-badge)
+
+**A standalone Go binary for querying Spark History Server directly from your terminal.**
+No MCP server. No Python. No daemon. Just `shs`.
+
+[⬇️ Install now](#installation) · [⚡ Quick Start](#quick-start) · [📖 Full Docs](../../README.md)
+
+---
+
+</div>
+
+`shs` is a CLI for [Apache Spark History Server](https://spark.apache.org/docs/latest/monitoring.html#viewing-after-the-fact) — a standalone Go binary that lets platform engineers, SREs, data engineers, and coding agents query Spark applications directly from the terminal. Inspect jobs, investigate failures, analyze stage performance, compare runs, and script against the Spark REST API. No MCP server, no Python runtime, no running daemon — just a single binary.
 
 **Use `shs` when** you know the command you want to run: look up a failed job, find the slowest stage, diff two app configs, or pipe JSON into `jq`. **Use the MCP server when** you want an AI agent to do multi-step investigation via natural language.
 
@@ -28,6 +42,24 @@
 | **Binary** | `shs` (compiled Go, no runtime deps) | `spark-mcp` (Python 3.12+, uv, FastMCP) |
 
 ## Installation
+
+### Download binary (recommended)
+
+Download the latest release for your platform from the [GitHub Releases page](https://github.com/kubeflow/mcp-apache-spark-history-server/releases). CLI releases are tagged `cli/v*`.
+
+```bash
+# Auto-detect latest version, OS, and architecture
+VERSION=$(curl -s https://api.github.com/repos/kubeflow/mcp-apache-spark-history-server/releases | grep -m1 '"tag_name": "cli/' | cut -d'"' -f4 | sed 's|cli/||')
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+[ "$ARCH" = "x86_64" ] && ARCH="amd64"
+[ "$ARCH" = "aarch64" ] && ARCH="arm64"
+
+curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-${OS}-${ARCH}.tar.gz" | tar xz
+sudo mv shs /usr/local/bin/
+```
+
+### Build from source
 
 From the `skills/cli/` directory:
 
@@ -270,7 +302,8 @@ Env vars merge on top of the config file, so you can keep a base config and over
 | `shs sql -a APP EXEC_ID` | SQL execution header |
 | `shs sql -a APP EXEC_ID --plan` | Query plan and node metrics |
 | `shs sql -a APP EXEC_ID --summary` | Job summaries and aggregate stage metrics |
-| `shs compare --app-a A --app-b B E1 E2` | Compare SQL executions across apps |
+| `shs compare sql --app-a A --app-b B E1 E2` | Compare SQL execution metrics across apps |
+| `shs compare apps --app-a A --app-b B` | Compare app-level performance metrics |
 | `shs env -a APP` | Environment and Spark config |
 | `shs version` | CLI and server Spark version |
 

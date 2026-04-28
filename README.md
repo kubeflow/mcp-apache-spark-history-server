@@ -7,9 +7,7 @@
 [![Kubeflow](https://img.shields.io/badge/Kubeflow-Official-orange.svg)](https://github.com/kubeflow)
 [![Slack](https://img.shields.io/badge/Slack-CNCF%20%23mcp--apache--spark--history--server-purple.svg)](https://cloud-native.slack.com/archives/C09FRRM6QM7)
 
-> **🤖 Connect AI agents and engineers to Apache Spark History Server for intelligent job analysis, performance monitoring, and terminal-based investigation**
-
-This project provides two interfaces to your Apache Spark History Server data — an **MCP server** for AI agents doing natural-language investigation, and a **CLI (`shs`)** for engineers and scripts that need direct terminal access:
+> **Connect AI agents and engineers to Apache Spark History Server for intelligent job analysis, performance monitoring, and investigation**
 
 ---
 
@@ -23,36 +21,20 @@ This project provides two interfaces to your Apache Spark History Server data �
 
 ---
 
-### This project provides two interfaces
 
-| | ⚡ MCP Server | 🛠️ [SHS CLI (`shs`)](skills/cli/) |
+This project provides **two interfaces** to your Spark History Server data:
+
+| | 🛠️ [SHS CLI (`shs`)](#️-shs-cli-shs--for-engineers--scripts) | ⚡ [MCP Server](#-mcp-server--for-ai-agents) |
 |---|---|---|
-| **For** | AI agents and MCP-compatible clients | Humans, shell scripts, CI/CD, coding agents |
-| **How** | AI calls tools via Model Context Protocol | Direct terminal commands, no protocol overhead |
-| **Example** | *"Why is my ETL job slow?"* → agent investigates | `shs stages -a APP --sort duration` |
-| **Install** | `uv run -m spark_history_mcp.core.main` | `cd skills/cli && go build -o bin/shs .` |
-
----
-
-## 🎯 What is This?
-
-**Kubeflow Spark AI Toolkit** is a diagnostics toolkit for Apache Spark applications. It provides two interfaces to your Spark History Server data:
-
-- **⚡ MCP Server** — AI agents query Spark data via the Model Context Protocol using natural language
-- **🛠️ CLI (`shs`)** — Engineers and scripts query Spark data directly from the terminal
-
-Both interfaces enable:
-
-- 🔍 **Query job details** — application metadata, stages, executors, SQL queries
-- 📊 **Analyze performance** — identify slow stages, bottlenecks, and resource usage patterns
-- 🔄 **Compare runs** — diff configurations and metrics across applications to catch regressions
-- 🚨 **Investigate failures** — drill into failed tasks with detailed error analysis
-- 📈 **Generate insights** — surface optimization recommendations from historical execution data
+| **For** | Engineers, shell scripts, CI/CD, coding agents | AI agents and MCP-compatible clients |
+| **Mental model** | "I know the command I want to run" | "Agent, investigate this Spark app" |
+| **Install** | Single static binary — no dependencies | Python 3.12+, uv |
+| **Get started** | [CLI docs →](skills/cli/README.md) | [MCP docs →](#-mcp-server--for-ai-agents) |
 
 📺 **See it in action:**
-
 [![Watch the demo video](https://img.shields.io/badge/YouTube-Watch%20Demo-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=e3P_2_RiUHw)
 
+---
 
 ## 🏗️ Architecture
 
@@ -61,59 +43,76 @@ graph TB
     subgraph Clients
         A[🤖 AI Agent / LLM]
         B[👩‍💻 Engineer / Script / CI]
+        C[🔧 Coding Agent - Claude Code / Kiro]
     end
 
-    subgraph Toolkit
-        C[⚡ MCP Server]
-        D[🛠️ CLI - shs]
+    subgraph "Kubeflow Spark AI Toolkit"
+        D[⚡ MCP Server]
+        E[🛠️ CLI - shs]
     end
 
-    subgraph Spark History Servers
-        E[🔥 Production]
-        F[🔥 Dev]
+    subgraph "Spark History Servers"
+        F[🔥 Production]
+        G[🔥 Staging / Dev]
     end
 
-    A -->|MCP Protocol| C
-    B -->|Terminal| D
+    A -->|MCP Protocol| D
+    B -->|Terminal commands| E
+    C -->|shs skill file| E
 
-    C -->|REST API| E
-    C -->|REST API| F
-    D -->|REST API| E
     D -->|REST API| F
+    D -->|REST API| G
+    E -->|REST API| F
+    E -->|REST API| G
 ```
 
-## Quick Start
+---
 
-### CLI (`shs`)
+## 🛠️ SHS CLI (`shs`) — For Engineers & Scripts
 
-Download the latest binary from [GitHub Releases](https://github.com/kubeflow/mcp-apache-spark-history-server/releases):
+A standalone Go binary — no MCP, no dependencies, no running daemon. Query your Spark History Server directly from the terminal, shell scripts, or CI/CD pipelines. Also works as a **skill** for coding agents like Claude Code and Kiro.
+
+### Install
 
 ```bash
-# Linux (amd64)
-curl -sSL https://github.com/kubeflow/mcp-apache-spark-history-server/releases/latest/download/shs-linux-amd64.tar.gz | tar xz
-sudo mv shs /usr/local/bin/
+# Auto-detect latest version, OS, and architecture
+VERSION=$(curl -s https://api.github.com/repos/kubeflow/mcp-apache-spark-history-server/releases | grep -m1 '"tag_name": "cli/' | cut -d'"' -f4 | sed 's|cli/||')
+OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+ARCH=$(uname -m)
+[ "$ARCH" = "x86_64" ] && ARCH="amd64"
+[ "$ARCH" = "aarch64" ] && ARCH="arm64"
 
-# macOS (Apple Silicon)
-curl -sSL https://github.com/kubeflow/mcp-apache-spark-history-server/releases/latest/download/shs-darwin-arm64.tar.gz | tar xz
+curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-${OS}-${ARCH}.tar.gz" | tar xz
 sudo mv shs /usr/local/bin/
 ```
 
-Point it at your Spark History Server and start querying:
+### Quick Start
 
 ```bash
-shs apps --server http://your-spark-history-server:18080
-shs stages -a <app-id> --sort duration
+# Generate a config file
+shs setup config > config.yaml   # then set your Spark History Server URL
 
-# Generate a config file to avoid passing --server every time
-shs setup config > config.yaml
+# Explore applications
+shs apps
+shs jobs -a APP_ID --status failed
+shs stages -a APP_ID --sort duration
+shs compare apps --app-a APP1 --app-b APP2
 
-# Generate a skill file for coding agents (e.g. Claude Code)
+# Use as a skill with Claude Code or Kiro
 shs setup skill > ~/.claude/skills/spark-history.md
 ```
 
-See the [CLI documentation](skills/cli/README.md) for full usage, or check out a [real-world example](skills/cli/examples/compare/README.md) of Claude Code comparing two TPC-DS 3TB benchmark runs.
+**[CLI documentation](skills/cli/README.md)** for full usage, or check out a [real-world example](skills/cli/examples/compare/README.md) of Claude Code comparing two **TPC-DS 3TB benchmark** runs.
 
-### MCP Server
+---
+
+## ⚡ MCP Server — For AI Agents
+
+An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that exposes Spark History Server data as tools for AI agents. Agents query your Spark infrastructure using natural language — the server handles tool selection, multi-server routing, and structured data retrieval.
+
+**Use the MCP server when** you want an AI agent to conduct multi-step investigations, synthesize findings across tools, or answer natural-language questions about your Spark applications.
+
+### Install
 
 ```bash
 # Run directly with uvx (no install needed)
@@ -121,154 +120,51 @@ uvx --from mcp-apache-spark-history-server spark-mcp
 
 # Or install with pip
 pip install mcp-apache-spark-history-server
-python3 -m spark_history_mcp.core.main
+spark-mcp
 ```
 
 The package is published to [PyPI](https://pypi.org/project/mcp-apache-spark-history-server/).
 
-### Prerequisites
-- Existing Spark History Server (running and accessible)
-- **CLI**: No dependencies — single static binary
-- **MCP Server**: Python 3.12+, [uv](https://docs.astral.sh/uv/getting-started/installation/)
+### Configure
 
-### ⚙️ Server Configuration
-Edit `config.yaml` for your Spark History Server:
+Edit `config.yaml`:
 
-**Config File Options:**
-- Command line: `--config /path/to/config.yaml` or `-c /path/to/config.yaml`
-- Environment variable: `SHS_MCP_CONFIG=/path/to/config.yaml`
-- Default: `./config.yaml`
 ```yaml
 servers:
   local:
     default: true
     url: "http://your-spark-history-server:18080"
-    auth:  # optional
+    auth:            # optional
       username: "user"
       password: "pass"
-    include_plan_description: false  # optional, whether to include SQL execution plans by default (default: false)
+    include_plan_description: false   # include SQL plans by default (default: false)
 mcp:
   transports:
-    - streamable-http # streamable-http or stdio.
+    - streamable-http   # or: stdio
   port: "18888"
-  debug: true
+  debug: false
 ```
 
-## 📸 Screenshots
+Environment variable overrides:
 
-### 🔍 Get Spark Application
-![Get Application](screenshots/get-application.png)
-
-### ⚡ Job Performance Comparison
-![Job Comparison](screenshots/job-compare.png)
-
-
-## 🛠️ MCP Tools
-
-> **Note**: These tools are subject to change as we scale and improve the performance of the MCP server.
-
-The MCP server provides **18 specialized tools** organized by analysis patterns. LLMs can intelligently select and combine these tools based on user queries:
-
-### 📊 Application Information
-*Basic application metadata and overview*
-| 🔧 Tool | 📝 Description |
-|---------|----------------|
-| `list_applications` | 📋 Get a list of all applications available on the Spark History Server with optional filtering by status, date ranges, and limits |
-| `get_application` | 📊 Get detailed information about a specific Spark application including status, resource usage, duration, and attempt details |
-
-### 🔗 Job Analysis
-*Job-level performance analysis and identification*
-| 🔧 Tool | 📝 Description |
-|---------|----------------|
-| `list_jobs` | 🔗 Get a list of all jobs for a Spark application with optional status filtering |
-| `list_slowest_jobs` | ⏱️ Get the N slowest jobs for a Spark application (excludes running jobs by default) |
-
-### ⚡ Stage Analysis
-*Stage-level performance deep dive and task metrics*
-| 🔧 Tool | 📝 Description |
-|---------|----------------|
-| `list_stages` | ⚡ Get a list of all stages for a Spark application with optional status filtering and summaries |
-| `list_slowest_stages` | 🐌 Get the N slowest stages for a Spark application (excludes running stages by default) |
-| `get_stage` | 🎯 Get information about a specific stage with optional attempt ID and summary metrics |
-| `get_stage_task_summary` | 📊 Get statistical distributions of task metrics for a specific stage (execution times, memory usage, I/O metrics) |
-
-### 🖥️ Executor & Resource Analysis
-*Resource utilization, executor performance, and allocation tracking*
-| 🔧 Tool | 📝 Description |
-|---------|----------------|
-| `list_executors` | 🖥️ Get executor information with optional inactive executor inclusion |
-| `get_executor` | 🔍 Get information about a specific executor including resource allocation, task statistics, and performance metrics |
-| `get_executor_summary` | 📈 Aggregates metrics across all executors (memory usage, disk usage, task counts, performance metrics) |
-| `get_resource_usage_timeline` | 📅 Get chronological view of resource allocation and usage patterns including executor additions/removals |
-
-### ⚙️ Configuration & Environment
-*Spark configuration, environment variables, and runtime settings*
-| 🔧 Tool | 📝 Description |
-|---------|----------------|
-| `get_environment` | ⚙️ Get comprehensive Spark runtime configuration including JVM info, Spark properties, system properties, and classpath |
-
-### 🔎 SQL & Query Analysis
-*SQL performance analysis and execution plan comparison*
-| 🔧 Tool | 📝 Description |
-|---------|----------------|
-| `list_slowest_sql_queries` | 🐌 Get the top N slowest SQL queries for an application with detailed execution metrics and optional plan descriptions |
-| `compare_sql_execution_plans` | 🔍 Compare SQL execution plans between two Spark jobs, analyzing logical/physical plans and execution metrics |
-
-### 🚨 Performance & Bottleneck Analysis
-*Intelligent bottleneck identification and performance recommendations*
-| 🔧 Tool | 📝 Description |
-|---------|----------------|
-| `get_job_bottlenecks` | 🚨 Identify performance bottlenecks by analyzing stages, tasks, and executors with actionable recommendations |
-
-### 🔄 Comparative Analysis
-*Cross-application comparison for regression detection and optimization*
-| 🔧 Tool | 📝 Description |
-|---------|----------------|
-| `compare_job_environments` | ⚙️ Compare Spark environment configurations between two jobs to identify differences in properties and settings |
-| `compare_job_performance` | 📈 Compare performance metrics between two Spark jobs including execution times, resource usage, and task distribution |
-
-### 🤖 How LLMs Use These Tools
-
-**Query Pattern Examples:**
-- *"Show me all applications between 12 AM and 1 AM on 2025-06-27"* → `list_applications`
-- *"Why is my job slow?"* → `get_job_bottlenecks` + `list_slowest_stages` + `get_executor_summary`
-- *"Compare today vs yesterday"* → `compare_job_performance` + `compare_job_environments`
-- *"What's wrong with stage 5?"* → `get_stage` + `get_stage_task_summary`
-- *"Show me resource usage over time"* → `get_resource_usage_timeline` + `get_executor_summary`
-- *"Find my slowest SQL queries"* → `list_slowest_sql_queries` + `compare_sql_execution_plans`
-
-## 📔 AWS Integration Guides
-
-If you are an existing AWS user looking to analyze your Spark Applications, we provide detailed setup guides for:
-
-- **[AWS Glue Users](examples/aws/glue/README.md)** - Connect to Glue Spark History Server
-- **[Amazon EMR Users](examples/aws/emr/README.md)** - Use EMR Persistent UI for Spark analysis
-
-These guides provide step-by-step instructions for setting up the Spark History Server MCP with your AWS services.
-
-## 🚀 Kubernetes Deployment
-
-Deploy using Kubernetes with Helm:
-
-> ⚠️ **Work in Progress**: We are still testing and will soon publish the container image and Helm registry to GitHub for easy deployment.
-
-```bash
-# 📦 Deploy with Helm
-helm install spark-history-mcp ./deploy/kubernetes/helm/spark-history-mcp/
-
-# 🎯 Production configuration
-helm install spark-history-mcp ./deploy/kubernetes/helm/spark-history-mcp/ \
-  --set replicaCount=3 \
-  --set autoscaling.enabled=true \
-  --set monitoring.enabled=true
+```
+SHS_MCP_PORT          Port for MCP server (default: 18888)
+SHS_MCP_TRANSPORT     Transport mode: streamable-http or stdio
+SHS_MCP_DEBUG         Enable debug mode (default: false)
+SHS_MCP_ADDRESS       Bind address (default: localhost)
+SHS_SERVERS_*_URL     URL for a specific server
+SHS_SERVERS_*_AUTH_USERNAME
+SHS_SERVERS_*_AUTH_PASSWORD
+SHS_SERVERS_*_AUTH_TOKEN
+SHS_SERVERS_*_VERIFY_SSL
+SHS_SERVERS_*_TIMEOUT
+SHS_SERVERS_*_EMR_CLUSTER_ARN
+SHS_SERVERS_*_INCLUDE_PLAN_DESCRIPTION
 ```
 
-📚 See [`deploy/kubernetes/helm/`](deploy/kubernetes/helm/) for complete deployment manifests and configuration options.
+### Multi-Server Setup
 
-> **Note**: When using Secret Store CSI Driver authentication, you must create a `SecretProviderClass` externally before deploying the chart.
-
-## 🌐 Multi-Spark History Server Setup
-Setup multiple Spark history servers in the config.yaml and choose which server you want the LLM to interact with for each query.
+Configure multiple Spark History Servers and route queries to specific ones:
 
 ```yaml
 servers:
@@ -282,152 +178,170 @@ servers:
     url: "http://staging-spark-history:18080"
 ```
 
-💁 User Query: "Can you get application <app_id> using production server?"
+Agents can target a specific server per query:
 
-🤖 AI Tool Request:
-```json
-{
-  "app_id": "<app_id>",
-  "server": "production"
-}
-```
-🤖 AI Tool Response:
-```json
-{
-  "id": "<app_id>>",
-  "name": "app_name",
-  "coresGranted": null,
-  "maxCores": null,
-  "coresPerExecutor": null,
-  "memoryPerExecutorMB": null,
-  "attempts": [
-    {
-      "attemptId": null,
-      "startTime": "2023-09-06T04:44:37.006000Z",
-      "endTime": "2023-09-06T04:45:40.431000Z",
-      "lastUpdated": "2023-09-06T04:45:42Z",
-      "duration": 63425,
-      "sparkUser": "spark",
-      "appSparkVersion": "3.3.0",
-      "completed": true
-    }
-  ]
-}
-```
+> *"Get application `<app_id>` from the production server"*
 
-### 🔐 Environment Variables
-```
-SHS_MCP_PORT - Port for MCP server (default: 18888)
-SHS_MCP_DEBUG - Enable debug mode (default: false)
-SHS_MCP_ADDRESS - Address for MCP server (default: localhost)
-SHS_MCP_TRANSPORT - MCP transport mode (default: streamable-http)
-SHS_SERVERS_*_URL - URL for a specific server
-SHS_SERVERS_*_AUTH_USERNAME - Username for a specific server
-SHS_SERVERS_*_AUTH_PASSWORD - Password for a specific server
-SHS_SERVERS_*_AUTH_TOKEN - Token for a specific server
-SHS_SERVERS_*_VERIFY_SSL - Whether to verify SSL for a specific server (true/false)
-SHS_SERVERS_*_TIMEOUT - HTTP request timeout in seconds for a specific server (default: 30)
-SHS_SERVERS_*_EMR_CLUSTER_ARN - EMR cluster ARN for a specific server
-SHS_SERVERS_*_INCLUDE_PLAN_DESCRIPTION - Whether to include SQL execution plans by default for a specific server (true/false, default: false)
-```
+### Connect an AI Agent
 
-## 🤖 AI Agent Integration
+| Agent | Transport | Guide |
+|-------|-----------|-------|
+| **Claude Desktop** | stdio | [Setup →](examples/integrations/claude-desktop/) |
+| **Amazon Q CLI** | stdio | [Setup →](examples/integrations/amazon-q-cli/) |
+| **Kiro** | streamable-http | [Setup →](examples/integrations/kiro/) |
+| **LangGraph** | streamable-http | [Setup →](examples/integrations/langgraph/) |
+| **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
+| **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |
 
-### Quick Start Options
+### Available Tools (19)
 
-| Integration | Transport | Best For |
-|-------------|-----------|----------|
-| **[Local Testing](TESTING.md)** | HTTP | Development, testing tools |
-| **[Claude Desktop](examples/integrations/claude-desktop/)** | STDIO | Interactive analysis |
-| **[Amazon Q CLI](examples/integrations/amazon-q-cli/)** | STDIO | Command-line automation |
-| **[Kiro](examples/integrations/kiro/)** | HTTP | IDE integration, code-centric analysis |
-| **[LangGraph](examples/integrations/langgraph/)** | HTTP | Multi-agent workflows |
-| **[Strands Agents](examples/integrations/strands-agents/)** | HTTP | Multi-agent workflows |
+#### Application Information
+| Tool | Description |
+|------|-------------|
+| `list_applications` | List applications with optional status, date, and limit filters |
+| `get_application` | Get application detail: status, resources, duration, attempts |
 
-> **Tip:** The `shs` CLI can also generate a skill file for coding agents that support tool use:
-> ```bash
-> shs setup skill > ~/.claude/skills/spark-history.md
-> ```
-> This gives agents like Claude Code direct access to Spark History Server queries without the MCP server.
-> See a [real-world example](skills/cli/examples/compare/README.md) of Claude Code using `shs` to compare two TPC-DS 3TB benchmark runs — dispatching subagents in parallel for per-query root cause analysis.
+#### Job Analysis
+| Tool | Description |
+|------|-------------|
+| `list_jobs` | List jobs with status filtering |
+| `list_slowest_jobs` | Top N slowest jobs |
 
-## 🎯 Example Use Cases
+#### Stage Analysis
+| Tool | Description |
+|------|-------------|
+| `list_stages` | List stages with status filtering |
+| `list_slowest_stages` | Top N slowest stages |
+| `get_stage` | Stage detail with attempt and summary metrics |
+| `get_stage_task_summary` | Task metric distributions (execution time, memory, I/O, spill) |
 
-### 🔍 Performance Investigation
-```
-🤖 AI Query: "Why is my ETL job running slower than usual?"
+#### Executor & Resource Analysis
+| Tool | Description |
+|------|-------------|
+| `list_executors` | List executors (active and optionally inactive) |
+| `get_executor` | Executor detail: resources, task stats, performance |
+| `get_executor_summary` | Aggregate metrics across all executors |
+| `get_resource_usage_timeline` | Chronological executor add/remove with resource totals |
 
-📊 MCP Actions:
-✅ Analyze application metrics
-✅ Compare with historical performance
-✅ Identify bottleneck stages
-✅ Generate optimization recommendations
-```
+#### Configuration & Environment
+| Tool | Description |
+|------|-------------|
+| `get_environment` | Spark config, JVM info, system properties, classpath |
 
-### 🚨 Failure Analysis
-```
-🤖 AI Query: "What caused job 42 to fail?"
+#### SQL & Query Analysis
+| Tool | Description |
+|------|-------------|
+| `list_slowest_sql_queries` | Top N slowest SQL executions with metrics |
+| `get_sql_execution` | SQL execution detail with optional plan and node metrics |
+| `compare_sql_execution_plans` | Compare SQL plans and metrics between two jobs |
 
-🔍 MCP Actions:
-✅ Examine failed tasks and error messages
-✅ Review executor logs and resource usage
-✅ Identify root cause and suggest fixes
-```
+#### Performance & Bottleneck Analysis
+| Tool | Description |
+|------|-------------|
+| `get_job_bottlenecks` | Identify bottlenecks across stages, tasks, and executors |
 
-### 📈 Comparative Analysis
-```
-🤖 AI Query: "Compare today's batch job with yesterday's run"
+#### Comparative Analysis
+| Tool | Description |
+|------|-------------|
+| `compare_job_environments` | Diff Spark configs between two applications |
+| `compare_job_performance` | Diff performance metrics between two applications |
 
-📊 MCP Actions:
-✅ Compare execution times and resource usage
-✅ Identify performance deltas
-✅ Highlight configuration differences
+#### Example Agent Queries
+- *"Why is my ETL job running slower than yesterday?"* → `get_job_bottlenecks` + `list_slowest_stages` + `compare_job_performance`
+- *"What caused job 42 to fail?"* → `list_jobs` + `get_stage` + `get_stage_task_summary`
+- *"Compare today's batch with yesterday's run"* → `compare_job_performance` + `compare_job_environments`
+- *"Find my slowest SQL queries and explain why"* → `list_slowest_sql_queries` + `get_sql_execution` + `compare_sql_execution_plans`
+
+---
+
+## 📸 Screenshots
+
+### 🔍 Get Spark Application
+![Get Application](screenshots/get-application.png)
+
+### ⚡ Job Performance Comparison
+![Job Comparison](screenshots/job-compare.png)
+
+---
+
+## 🚀 Kubernetes Deployment
+
+Deploy the MCP server using Helm:
+
+```bash
+helm install spark-history-mcp ./deploy/kubernetes/helm/mcp-apache-spark-history-server/
+
+# Production configuration
+helm install spark-history-mcp ./deploy/kubernetes/helm/mcp-apache-spark-history-server/ \
+  --set replicaCount=3 \
+  --set autoscaling.enabled=true
 ```
 
-### Development Setup
+See [`deploy/kubernetes/helm/`](deploy/kubernetes/helm/) for full configuration options.
+
+When deployed in Kubernetes, connect Claude Desktop via `mcp-remote`:
+```bash
+kubectl port-forward svc/mcp-apache-spark-history-server 18888:18888
+```
+
+---
+
+## 📔 AWS Integration
+
+- **[AWS Glue](examples/aws/glue/README.md)** — Connect to Glue Spark History Server
+- **[Amazon EMR](examples/aws/emr/README.md)** — Use EMR Persistent UI for Spark analysis
+
+---
+
+## 🔧 Development Setup
 
 ```bash
 git clone https://github.com/kubeflow/mcp-apache-spark-history-server.git
 cd mcp-apache-spark-history-server
 
-# Install Task (if not already installed)
-brew install go-task  # macOS, see https://taskfile.dev/installation/ for others
+# Install Task runner
+brew install go-task   # macOS; see https://taskfile.dev/installation/ for others
 
-# Start Spark History Server with sample data and MCP server
-task start-spark-bg            # Default Spark 3.5.5
-task start-mcp-bg
-
-# Optional: MCP Inspector on http://localhost:6274
-task start-inspector-bg
-
-# When done
+# MCP Server
+task install           # install Python dependencies
+task start-spark-bg    # start Spark History Server with sample data
+task start-mcp-bg      # start MCP server
+task start-inspector-bg  # open MCP Inspector at http://localhost:6274
 task stop-all
+
+# CLI
+cd skills/cli
+task build             # build ./bin/shs
+task test              # unit tests
+task test-e2e          # e2e tests (starts/stops Docker SHS automatically)
+task start-shs         # start SHS with CLI e2e sample data
 ```
+
+---
 
 ## 🌍 Adopters
 
-Are you using **MCP Apache Spark History Server**? We'd love to know! Add your organization or name to our [ADOPTERS.md](ADOPTERS.md) and help grow the community.
+Using this project? Add your organization to [ADOPTERS.md](ADOPTERS.md) and help grow the community.
 
 ## 🤝 Contributing
 
-Check [CONTRIBUTING.md](CONTRIBUTING.md) for full guidelines on contributions
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📄 License
 
-Apache License 2.0 - see [LICENSE](LICENSE) file for details.
-
+Apache License 2.0 — see [LICENSE](LICENSE).
 
 ## 📝 Trademark Notice
 
-*This project is built for use with Apache Spark™ History Server. Not affiliated with or endorsed by the Apache Software Foundation.*
+*Built for use with Apache Spark™ History Server. Not affiliated with or endorsed by the Apache Software Foundation.*
 
 ---
 
 <div align="center">
 
-**🔥 Connect your Spark infrastructure to AI agents**
+**Connect your Spark infrastructure to AI agents and engineers**
 
-[🚀 Get Started](#-quick-start) | [🛠️ View Tools](#%EF%B8%8F-available-tools) | [🧪 Test Now](TESTING.md) | [🤝 Contribute](#-contributing)
+[🛠️ SHS CLI](skills/cli/README.md) · [⚡ MCP Server](#-mcp-server--for-ai-agents) · [🧪 Test](TESTING.md) · [🤝 Contribute](#-contributing)
 
 *Built by the community, for the community* 💙
 
