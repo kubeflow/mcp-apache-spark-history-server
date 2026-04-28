@@ -1,3 +1,23 @@
+<div align="center">
+
+
+# 🎉 ✨ NEW ✨ 🎉
+
+## `shs` — Spark History Server CLI is here!
+
+![NEW](https://img.shields.io/badge/🆕%20Just%20Launched-SHS%20CLI-brightgreen?style=for-the-badge)
+![Go](https://img.shields.io/badge/Go-Standalone%20Binary-00ADD8?style=for-the-badge&logo=go)
+![No Dependencies](https://img.shields.io/badge/No%20Deps-Zero%20Setup-orange?style=for-the-badge)
+
+**A standalone Go binary for querying Spark History Server directly from your terminal.**
+No MCP server. No Python. No daemon. Just `shs`.**
+
+[⬇️ Install now](#installation) · [⚡ Quick Start](#quick-start) · [📖 Full Docs](../../README.md)
+
+---
+
+</div>
+
 # Spark History Server CLI (`shs`)
 
 > **What is a skill?** This project's primary interface is an [MCP server](../../README.md) that AI agents use to analyze Spark applications via the Model Context Protocol. A **skill** is a complementary capability built alongside the MCP server — a different interface for the same underlying data. The CLI (`shs`) is the first skill: a standalone binary that queries the same Spark History Server REST API directly from the terminal, with no MCP protocol, no AI framework, and no running server process.
@@ -270,7 +290,8 @@ Env vars merge on top of the config file, so you can keep a base config and over
 | `shs sql -a APP EXEC_ID` | SQL execution header |
 | `shs sql -a APP EXEC_ID --plan` | Query plan and node metrics |
 | `shs sql -a APP EXEC_ID --summary` | Job summaries and aggregate stage metrics |
-| `shs compare --app-a A --app-b B E1 E2` | Compare SQL executions across apps |
+| `shs compare sql --app-a A --app-b B E1 E2` | Compare SQL execution metrics across apps |
+| `shs compare apps --app-a A --app-b B` | Compare app-level performance metrics |
 | `shs env -a APP` | Environment and Spark config |
 | `shs version` | CLI and server Spark version |
 
