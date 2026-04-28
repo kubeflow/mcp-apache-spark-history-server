@@ -10,7 +10,7 @@
 ![No Dependencies](https://img.shields.io/badge/No%20Deps-Zero%20Setup-orange?style=for-the-badge)
 
 **A standalone Go binary for querying Spark History Server directly from your terminal.**
-No MCP server. No Python. No daemon. Just `shs`.**
+No MCP server. No Python. No daemon. Just `shs`.
 
 [⬇️ Install now](#installation) · [⚡ Quick Start](#quick-start) · [📖 Full Docs](../../README.md)
 
@@ -20,9 +20,8 @@ No MCP server. No Python. No daemon. Just `shs`.**
 
 # Spark History Server CLI (`shs`)
 
-> **What is a skill?** This project's primary interface is an [MCP server](../../README.md) that AI agents use to analyze Spark applications via the Model Context Protocol. A **skill** is a complementary capability built alongside the MCP server — a different interface for the same underlying data. The CLI (`shs`) is the first skill: a standalone binary that queries the same Spark History Server REST API directly from the terminal, with no MCP protocol, no AI framework, and no running server process.
 
-`shs` is a command-line tool for [Apache Spark History Server](https://spark.apache.org/docs/latest/monitoring.html#viewing-after-the-fact). It lets platform engineers, SREs, data engineers, and coding agents inspect Spark applications, investigate job failures, analyze stage performance, and compare runs — all from the terminal or a shell script.
+`shs` is a CLI for [Apache Spark History Server](https://spark.apache.org/docs/latest/monitoring.html#viewing-after-the-fact) — a standalone Go binary that lets platform engineers, SREs, data engineers, and coding agents query Spark applications directly from the terminal. Inspect jobs, investigate failures, analyze stage performance, compare runs, and script against the Spark REST API. No MCP server, no Python runtime, no running daemon — just a single binary.
 
 **Use `shs` when** you know the command you want to run: look up a failed job, find the slowest stage, diff two app configs, or pipe JSON into `jq`. **Use the MCP server when** you want an AI agent to do multi-step investigation via natural language.
 
@@ -48,6 +47,33 @@ No MCP server. No Python. No daemon. Just `shs`.**
 | **Binary** | `shs` (compiled Go, no runtime deps) | `spark-mcp` (Python 3.12+, uv, FastMCP) |
 
 ## Installation
+
+### Download binary (recommended)
+
+Download the latest release for your platform from the [GitHub Releases page](https://github.com/kubeflow/mcp-apache-spark-history-server/releases). CLI releases are tagged `cli/v*`.
+
+```bash
+# Replace VERSION with the latest cli/v* release (e.g. v1.0.0)
+VERSION=v1.0.0
+
+# macOS (Apple Silicon)
+curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-darwin-arm64.tar.gz" | tar xz
+sudo mv shs /usr/local/bin/
+
+# macOS (Intel)
+curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-darwin-amd64.tar.gz" | tar xz
+sudo mv shs /usr/local/bin/
+
+# Linux (amd64)
+curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-linux-amd64.tar.gz" | tar xz
+sudo mv shs /usr/local/bin/
+
+# Linux (arm64)
+curl -sSL "https://github.com/kubeflow/mcp-apache-spark-history-server/releases/download/cli%2F${VERSION}/shs-${VERSION}-linux-arm64.tar.gz" | tar xz
+sudo mv shs /usr/local/bin/
+```
+
+### Build from source
 
 From the `skills/cli/` directory:
 
