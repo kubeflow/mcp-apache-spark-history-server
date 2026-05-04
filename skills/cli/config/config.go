@@ -71,7 +71,16 @@ func setDefault(k *koanf.Koanf) error {
 }
 
 type Config struct {
-	Servers map[string]Server `koanf:"servers" yaml:"servers"`
+	Servers        map[string]Server `koanf:"servers" yaml:"servers"`
+	AwsTroubleshooting *AwsTroubleshooting `koanf:"aws_troubleshooting" yaml:"aws_troubleshooting,omitempty"`
+}
+
+// AwsTroubleshooting configures the AWS Spark Troubleshooting integration.
+// If this section is present in config, troubleshooting is enabled.
+// AWS credentials are resolved via the default credential chain
+// (env vars, shared credentials, IAM roles, etc.).
+type AwsTroubleshooting struct {
+	Region string `koanf:"region" yaml:"region"`
 }
 
 type Server struct {
