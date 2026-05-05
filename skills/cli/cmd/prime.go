@@ -35,6 +35,8 @@ COMMANDS
     --server-a NAME  Server for app A (overrides --server)
     --server-b NAME  Server for app B (overrides --server)
   shs servers                     List configured servers
+  shs troubleshoot -a STEP_ID --cluster CLUSTER_ID          Analyze failed EMR EC2 step (requires aws_troubleshooting config)
+  shs troubleshoot -a APP_ID --emr-serverless-app ID --job-run ID  Analyze failed EMR Serverless job run
   shs setup config                Print a sample config.yaml to get started
   shs version                     CLI + server Spark version
 
@@ -157,6 +159,10 @@ COMMON WORKFLOWS
 
   Get Spark config for an app:
     shs env -a APP_ID --section spark
+
+  Troubleshoot a failed EMR step (requires aws_troubleshooting config + AWS credentials):
+    shs troubleshoot -a STEP_ID --cluster j-XXXXX
+    # Returns root cause analysis and auto-chains to code recommendation if applicable
 
 DATA MODEL
   Application  A Spark app with one or more attempts. YARN apps may have multiple
