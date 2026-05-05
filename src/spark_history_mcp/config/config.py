@@ -106,7 +106,7 @@ class McpConfig(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
 
 
-class TroubleshootingConfig(BaseSettings):
+class AwsTroubleshootingConfig(BaseSettings):
     """Configuration for AWS Spark troubleshooting integration."""
 
     enabled: bool = False
@@ -123,7 +123,7 @@ class Config(BaseSettings):
         "local": ServerConfig(url="http://localhost:18080", default=True),
     }
     mcp: Optional[McpConfig] = McpConfig(transports=["streamable-http"])
-    aws_troubleshooting: Optional[TroubleshootingConfig] = None
+    aws_troubleshooting: Optional[AwsTroubleshootingConfig] = None
     model_config = SettingsConfigDict(
         env_prefix="SHS_",
         env_nested_delimiter="_",

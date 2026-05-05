@@ -12,7 +12,7 @@ from typing import Any, Dict
 from mcp.client.session import ClientSession
 from mcp_proxy_for_aws.client import aws_iam_streamablehttp_client
 
-from spark_history_mcp.config.config import TroubleshootingConfig
+from spark_history_mcp.config.config import AwsTroubleshootingConfig
 from spark_history_mcp.core.app import mcp
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ _SERVICE = "sagemaker-unified-studio-mcp"
 
 
 async def _call_remote_tool(
-    config: TroubleshootingConfig,
+    config: AwsTroubleshootingConfig,
     server_path: str,
     tool_name: str,
     arguments: Dict[str, Any],
@@ -52,7 +52,7 @@ async def _call_remote_tool(
     return {"error": "No text content in response"}
 
 
-def register_troubleshooting_tools(config: TroubleshootingConfig):
+def register_troubleshooting_tools(config: AwsTroubleshootingConfig):
     """Register AWS troubleshooting tools with the MCP server."""
 
     @mcp.tool()

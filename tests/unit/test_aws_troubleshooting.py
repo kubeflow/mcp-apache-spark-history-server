@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from spark_history_mcp.config.config import TroubleshootingConfig
+from spark_history_mcp.config.config import AwsTroubleshootingConfig
 from spark_history_mcp.tools.aws_troubleshooting import (
     _call_remote_tool,
     register_troubleshooting_tools,
@@ -14,12 +14,14 @@ from spark_history_mcp.tools.aws_troubleshooting import (
 
 @pytest.fixture
 def troubleshooting_config():
-    return TroubleshootingConfig(enabled=True, region="us-east-1")
+    return AwsTroubleshootingConfig(enabled=True, region="us-east-1")
 
 
 @pytest.fixture
 def troubleshooting_config_with_profile():
-    return TroubleshootingConfig(enabled=True, region="us-west-2", profile="my-profile")
+    return AwsTroubleshootingConfig(
+        enabled=True, region="us-west-2", profile="my-profile"
+    )
 
 
 class TestCallRemoteTool:
@@ -128,17 +130,19 @@ class TestRegisterTroubleshootingTools:
         assert "aws_spark_code_recommendation" in new_tools
 
 
-class TestTroubleshootingConfig:
+class TestAwsTroubleshootingConfig:
     def test_defaults(self):
         """Test default config values."""
-        config = TroubleshootingConfig()
+        config = AwsTroubleshootingConfig()
         assert config.enabled is False
         assert config.region == "us-east-1"
         assert config.profile is None
 
     def test_custom_values(self):
         """Test custom config values."""
-        config = TroubleshootingConfig(enabled=True, region="eu-west-1", profile="prod")
+        config = AwsTroubleshootingConfig(
+            enabled=True, region="eu-west-1", profile="prod"
+        )
         assert config.enabled is True
         assert config.region == "eu-west-1"
         assert config.profile == "prod"
