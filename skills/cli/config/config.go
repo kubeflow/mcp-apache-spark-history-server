@@ -71,7 +71,7 @@ func setDefault(k *koanf.Koanf) error {
 }
 
 type Config struct {
-	Servers        map[string]Server `koanf:"servers" yaml:"servers"`
+	Servers            map[string]Server   `koanf:"servers" yaml:"servers"`
 	AwsTroubleshooting *AwsTroubleshooting `koanf:"aws_troubleshooting" yaml:"aws_troubleshooting,omitempty"`
 }
 
