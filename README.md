@@ -193,7 +193,7 @@ Agents can target a specific server per query:
 | **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
 | **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |
 
-### Available Tools (19)
+### Available Tools (21)
 
 #### Application Information
 | Tool | Description |
@@ -246,6 +246,14 @@ Agents can target a specific server per query:
 | `compare_job_environments` | Diff Spark configs between two applications |
 | `compare_job_performance` | Diff performance metrics between two applications |
 
+#### AWS Spark Troubleshooting (opt-in)
+| Tool | Description |
+|------|-------------|
+| `aws_analyze_spark_workload` | One-shot root cause analysis of failed/slow Spark workloads |
+| `aws_spark_code_recommendation` | Code fix recommendations for identified Spark issues |
+
+> Requires `troubleshooting.enabled: true` in config.yaml and valid AWS credentials. See [AWS Integration](#-aws-integration).
+
 #### Example Agent Queries
 - *"Why is my ETL job running slower than yesterday?"* → `get_job_bottlenecks` + `list_slowest_stages` + `compare_job_performance`
 - *"What caused job 42 to fail?"* → `list_jobs` + `get_stage` + `get_stage_task_summary`
@@ -290,6 +298,13 @@ kubectl port-forward svc/mcp-apache-spark-history-server 18888:18888
 
 - **[AWS Glue](examples/aws/glue/README.md)** — Connect to Glue Spark History Server
 - **[Amazon EMR](examples/aws/emr/README.md)** — Use EMR Persistent UI for Spark analysis
+- **AWS Spark Troubleshooting** — One-shot root cause analysis and code fix recommendations for failed Spark workloads (EMR EC2, EMR Serverless). Enable via:
+  ```yaml
+  troubleshooting:
+    enabled: true
+    region: us-east-1
+    profile: default  # optional
+  ```
 
 ---
 
