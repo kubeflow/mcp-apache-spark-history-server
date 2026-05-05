@@ -300,7 +300,7 @@ kubectl port-forward svc/mcp-apache-spark-history-server 18888:18888
 - **[Amazon EMR](examples/aws/emr/README.md)** — Use EMR Persistent UI for Spark analysis
 - **AWS Spark Troubleshooting** — One-shot root cause analysis and code fix recommendations for failed Spark workloads (EMR EC2, EMR Serverless). Enable via:
   ```yaml
-  troubleshooting:
+  aws_troubleshooting:
     enabled: true
     region: us-east-1
     profile: default  # optional

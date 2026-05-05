@@ -123,7 +123,7 @@ class Config(BaseSettings):
         "local": ServerConfig(url="http://localhost:18080", default=True),
     }
     mcp: Optional[McpConfig] = McpConfig(transports=["streamable-http"])
-    troubleshooting: Optional[TroubleshootingConfig] = None
+    aws_troubleshooting: Optional[TroubleshootingConfig] = None
     model_config = SettingsConfigDict(
         env_prefix="SHS_",
         env_nested_delimiter="_",

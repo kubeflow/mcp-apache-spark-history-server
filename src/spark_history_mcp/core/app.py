@@ -73,12 +73,12 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
 
 def run(config: Config):
     # Register AWS troubleshooting tools if enabled
-    if config.troubleshooting and config.troubleshooting.enabled:
+    if config.aws_troubleshooting and config.aws_troubleshooting.enabled:
         from spark_history_mcp.tools.aws_troubleshooting import (
             register_troubleshooting_tools,
         )
 
-        register_troubleshooting_tools(config.troubleshooting)
+        register_troubleshooting_tools(config.aws_troubleshooting)
 
     mcp.settings.host = config.mcp.address
     mcp.settings.port = int(config.mcp.port)

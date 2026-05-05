@@ -46,7 +46,7 @@ mcp:
 # Enables aws_analyze_spark_workload and aws_spark_code_recommendation tools
 # that connect to the SageMaker Unified Studio MCP endpoint for one-shot
 # root cause analysis and code fix recommendations.
-# troubleshooting:
+# aws_troubleshooting:
 #   enabled: true
 #   region: us-east-1
 #   profile: default  # optional, uses default credential chain if omitted
