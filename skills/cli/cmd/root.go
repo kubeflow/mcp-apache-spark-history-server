@@ -49,6 +49,7 @@ func init() {
 		newCompareCmd(),
 		newServersCmd(),
 		newSetupCmd(),
+		newTroubleshootCmd(),
 	)
 }
 

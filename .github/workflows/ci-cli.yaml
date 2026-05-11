@@ -28,5 +28,9 @@ jobs:
       - name: Lint
         run: task cli:lint
 
+      - name: Build with AWS tag
+        working-directory: skills/cli
+        run: go build -tags aws ./...
+
       - name: E2E
         run: task cli:test-e2e

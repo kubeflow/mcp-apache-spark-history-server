@@ -405,6 +405,42 @@ shs apps -o json | jq '.[].id'
 shs stages -a APP STAGE_ID -o json | jq '.taskMetricDistributions.executorRunTime.max'
 ```
 
+## AWS Spark Troubleshooting
+
+One-shot root cause analysis and code fix recommendations for failed Spark workloads on EMR. Uses the AWS Spark Troubleshooting Agent via the SageMaker Unified Studio MCP endpoint.
+
+### Configuration
+
+Add to your `config.yaml`:
+
+```yaml
+aws_troubleshooting:
+  region: us-east-1
+```
+
+AWS credentials are resolved via the [default credential chain](https://docs.aws.amazon.com/sdk-for-go/v2/developer-guide/configure-sdk.html#credentials) (environment variables, shared credentials, IAM roles). Set `AWS_PROFILE` if you need a specific profile.
+
+### Usage
+
+```bash
+# EMR on EC2 — analyze a failed step
+shs troubleshoot -a <step-id> --cluster <cluster-id>
+
+# EMR Serverless — analyze a failed job run
+shs troubleshoot -a <app-id> --emr-serverless-app <application-id> --job-run <job-run-id>
+```
+
+If the analysis identifies a code issue, the CLI automatically chains to the code recommendation endpoint and displays a suggested diff.
+
+### Build tag
+
+The AWS SDK dependency is gated behind a build tag. Release binaries include it by default. To build without AWS support (smaller binary):
+
+```bash
+go build ./...              # no AWS SDK linked
+go build -tags aws ./...    # full troubleshooting support
+```
+
 ## AI Agent Usage
 
 `shs prime` prints a complete CLI reference designed for LLM context windows — commands, flags, workflows, data model, and tips:
