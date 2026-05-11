@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -72,13 +73,22 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
 
 
 def run(config: Config):
-    # Register AWS troubleshooting tools if enabled
-    if config.aws_troubleshooting and config.aws_troubleshooting.enabled:
-        from spark_history_mcp.tools.aws_troubleshooting import (
-            register_troubleshooting_tools,
-        )
+    # Auto-detect AWS credentials and register troubleshooting tools if available
+    try:
+        import boto3
 
-        register_troubleshooting_tools(config.aws_troubleshooting)
+        session = boto3.Session(region_name=os.environ.get("AWS_REGION"))
+        creds = session.get_credentials()
+        if creds is not None and session.region_name:
+            from spark_history_mcp.tools.aws_troubleshooting import (
+                register_troubleshooting_tools,
+            )
+
+            register_troubleshooting_tools(session.region_name)
+    except Exception as e:  # noqa: BLE001
+        logging.getLogger(__name__).debug(
+            "AWS troubleshooting tools not registered: %s", e
+        )
 
     mcp.settings.host = config.mcp.address
     mcp.settings.port = int(config.mcp.port)

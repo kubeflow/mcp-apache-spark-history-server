@@ -2,7 +2,7 @@
 
 These tools forward calls to the SageMaker Unified Studio MCP endpoints
 for Spark workload analysis and code recommendations. They are only
-registered when troubleshooting is enabled in config.yaml.
+registered when AWS credentials and region are detected at startup.
 """
 
 import json
@@ -12,7 +12,6 @@ from typing import Any, Dict
 from mcp.client.session import ClientSession
 from mcp_proxy_for_aws.client import aws_iam_streamablehttp_client
 
-from spark_history_mcp.config.config import AwsTroubleshootingConfig
 from spark_history_mcp.core.app import mcp
 
 logger = logging.getLogger(__name__)
@@ -22,23 +21,19 @@ _SERVICE = "sagemaker-unified-studio-mcp"
 
 
 async def _call_remote_tool(
-    config: AwsTroubleshootingConfig,
+    region: str,
     server_path: str,
     tool_name: str,
     arguments: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Call a tool on the remote AWS MCP endpoint."""
-    endpoint = f"{_BASE_URL.format(region=config.region)}/{server_path}/mcp"
+    endpoint = f"{_BASE_URL.format(region=region)}/{server_path}/mcp"
 
-    kwargs: Dict[str, Any] = {
-        "endpoint": endpoint,
-        "aws_region": config.region,
-        "aws_service": _SERVICE,
-    }
-    if config.profile:
-        kwargs["aws_profile"] = config.profile
-
-    client = aws_iam_streamablehttp_client(**kwargs)
+    client = aws_iam_streamablehttp_client(
+        endpoint=endpoint,
+        aws_region=region,
+        aws_service=_SERVICE,
+    )
     async with client as (read, write, _):
         async with ClientSession(read, write) as session:
             await session.initialize()
@@ -52,7 +47,7 @@ async def _call_remote_tool(
     return {"error": "No text content in response"}
 
 
-def register_troubleshooting_tools(config: AwsTroubleshootingConfig):
+def register_troubleshooting_tools(region: str):
     """Register AWS troubleshooting tools with the MCP server."""
 
     @mcp.tool()
@@ -67,7 +62,6 @@ def register_troubleshooting_tools(config: AwsTroubleshootingConfig):
 
         Args:
             platform_type: One of EMR_EC2 or EMR_SERVERLESS
-                (TODO: EMR_EKS support coming soon)
             platform_params: Platform-specific parameters. For EMR_EC2:
                 cluster_id and step_id. For EMR_SERVERLESS: application_id
                 and job_run_id.
@@ -76,7 +70,7 @@ def register_troubleshooting_tools(config: AwsTroubleshootingConfig):
             Analysis result with root cause, recommendations, and next actions.
         """
         return await _call_remote_tool(
-            config,
+            region,
             "spark-troubleshooting",
             "analyze_spark_workload",
             {
@@ -97,7 +91,6 @@ def register_troubleshooting_tools(config: AwsTroubleshootingConfig):
 
         Args:
             platform_type: One of EMR_EC2 or EMR_SERVERLESS
-                (TODO: EMR_EKS support coming soon)
             platform_params: Platform-specific parameters. For EMR_EC2:
                 cluster_id and step_id. For EMR_SERVERLESS: application_id
                 and job_run_id.
@@ -106,7 +99,7 @@ def register_troubleshooting_tools(config: AwsTroubleshootingConfig):
             Code recommendation with suggested fixes.
         """
         return await _call_remote_tool(
-            config,
+            region,
             "spark-code-recommendation",
             "spark_code_recommendation",
             {
@@ -115,4 +108,4 @@ def register_troubleshooting_tools(config: AwsTroubleshootingConfig):
             },
         )
 
-    logger.info("AWS troubleshooting tools registered (region=%s)", config.region)
+    logger.info("AWS troubleshooting tools registered (region=%s)", region)

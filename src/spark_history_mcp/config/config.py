@@ -106,16 +106,6 @@ class McpConfig(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
 
 
-class AwsTroubleshootingConfig(BaseSettings):
-    """Configuration for AWS Spark troubleshooting integration."""
-
-    enabled: bool = False
-    region: str = "us-east-1"
-    profile: Optional[str] = None
-
-    model_config = SettingsConfigDict(extra="ignore")
-
-
 class Config(BaseSettings):
     """Configuration for the Spark client."""
 
@@ -123,7 +113,6 @@ class Config(BaseSettings):
         "local": ServerConfig(url="http://localhost:18080", default=True),
     }
     mcp: Optional[McpConfig] = McpConfig(transports=["streamable-http"])
-    aws_troubleshooting: Optional[AwsTroubleshootingConfig] = None
     model_config = SettingsConfigDict(
         env_prefix="SHS_",
         env_nested_delimiter="_",
