@@ -87,6 +87,11 @@ func runTroubleshoot(platformType string, platformParams map[string]string) erro
 
 func callMCPTool(ctx context.Context, awsCfg aws.Config, region, serverPath, toolName string, arguments map[string]any) (map[string]any, error) {
 	endpoint := fmt.Sprintf(defaultEndpointPattern+"/%s/mcp", region, serverPath)
+	return callMCPToolWithEndpoint(endpoint, awsCfg, region, toolName, arguments)
+}
+
+func callMCPToolWithEndpoint(endpoint string, awsCfg aws.Config, region, toolName string, arguments map[string]any) (map[string]any, error) {
+	ctx := context.Background()
 
 	reqBody := mcpRequest{
 		JSONRPC: "2.0",
