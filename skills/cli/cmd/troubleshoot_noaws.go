@@ -7,12 +7,8 @@
 
 package cmd
 
-import (
-	"fmt"
+import "fmt"
 
-	"github.com/kubeflow/mcp-apache-spark-history-server/skills/cli/config"
-)
-
-func runTroubleshoot(_ *config.AwsTroubleshooting, _ string, _ map[string]string) error {
+func runTroubleshoot(_ string, _ map[string]string) error {
 	return fmt.Errorf("troubleshooting requires the 'aws' build tag; rebuild with: go build -tags aws")
 }

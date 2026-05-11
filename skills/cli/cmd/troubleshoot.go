@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/kubeflow/mcp-apache-spark-history-server/skills/cli/config"
 	"github.com/spf13/cobra"
 )
 
@@ -20,23 +19,16 @@ func newTroubleshootCmd() *cobra.Command {
 		Long: `Analyze a failed or slow Spark workload using the AWS Spark Troubleshooting Agent.
 Supports EMR on EC2 and EMR Serverless platforms.
 
-Requires the aws_troubleshooting section in config.yaml and valid AWS credentials.`,
+Requires valid AWS credentials (via environment variables, shared credentials, or IAM roles)
+and AWS_REGION to be set.`,
 		PreRunE: requireAppID,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.Load(configPath)
-			if err != nil {
-				return err
-			}
-			if cfg.AwsTroubleshooting == nil {
-				return fmt.Errorf("aws_troubleshooting section not found in config")
-			}
-
 			platformType, platformParams, err := resolvePlatform()
 			if err != nil {
 				return err
 			}
 
-			return runTroubleshoot(cfg.AwsTroubleshooting, platformType, platformParams)
+			return runTroubleshoot(platformType, platformParams)
 		},
 	}
 

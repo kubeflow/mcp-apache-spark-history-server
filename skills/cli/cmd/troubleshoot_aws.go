@@ -17,12 +17,11 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/kubeflow/mcp-apache-spark-history-server/skills/cli/config"
 )
 
 const (
 	// Default endpoint pattern for the SageMaker Unified Studio MCP service.
-	// The region is interpolated at runtime.
+	// The region is interpolated at runtime from the AWS config.
 	defaultEndpointPattern = "https://sagemaker-unified-studio-mcp.%s.api.aws"
 	sigV4Service           = "sagemaker-unified-studio-mcp"
 	httpTimeout            = 180 * time.Second
@@ -40,17 +39,23 @@ type mcpParams struct {
 	Arguments map[string]any `json:"arguments"`
 }
 
-func runTroubleshoot(cfg *config.AwsTroubleshooting, platformType string, platformParams map[string]string) error {
+func runTroubleshoot(platformType string, platformParams map[string]string) error {
 	ctx := context.Background()
 
-	// Use the default AWS credential chain (env vars, shared credentials, IAM roles, etc.)
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(cfg.Region))
+	// Use the default AWS credential chain (env vars, shared credentials, IAM roles)
+	// Region is resolved from AWS_REGION, AWS_DEFAULT_REGION, or shared config.
+	awsCfg, err := awsconfig.LoadDefaultConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("loading AWS config: %w", err)
 	}
 
+	region := awsCfg.Region
+	if region == "" {
+		return fmt.Errorf("AWS region not configured; set AWS_REGION environment variable")
+	}
+
 	fmt.Println("Analyzing Spark workload...")
-	analysisResult, err := callMCPTool(ctx, awsCfg, cfg.Region, "spark-troubleshooting", "analyze_spark_workload", map[string]any{
+	analysisResult, err := callMCPTool(ctx, awsCfg, region, "spark-troubleshooting", "analyze_spark_workload", map[string]any{
 		"platform_type":   platformType,
 		"platform_params": platformParams,
 	})
@@ -65,7 +70,7 @@ func runTroubleshoot(cfg *config.AwsTroubleshooting, platformType string, platfo
 	if nextAction, ok := analysisResult["next_action"]; ok {
 		if actionStr, ok := nextAction.(string); ok && strings.Contains(actionStr, "spark_code_recommendation") {
 			fmt.Println("\nGetting code recommendations...")
-			codeResult, err := callMCPTool(ctx, awsCfg, cfg.Region, "spark-code-recommendation", "spark_code_recommendation", map[string]any{
+			codeResult, err := callMCPTool(ctx, awsCfg, region, "spark-code-recommendation", "spark_code_recommendation", map[string]any{
 				"platform_type":   platformType,
 				"platform_params": platformParams,
 			})
