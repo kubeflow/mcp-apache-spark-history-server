@@ -1,7 +1,7 @@
 """Tests for AWS Spark Troubleshooting tools."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -54,6 +54,7 @@ class TestCallRemoteTool:
             endpoint="https://sagemaker-unified-studio-mcp.us-east-1.api.aws/spark-troubleshooting/mcp",
             aws_region="us-east-1",
             aws_service="sagemaker-unified-studio-mcp",
+            headers=ANY,
         )
 
     @pytest.mark.asyncio
@@ -88,6 +89,7 @@ class TestCallRemoteTool:
             endpoint="https://sagemaker-unified-studio-mcp.eu-west-1.api.aws/spark-code-recommendation/mcp",
             aws_region="eu-west-1",
             aws_service="sagemaker-unified-studio-mcp",
+            headers=ANY,
         )
 
 

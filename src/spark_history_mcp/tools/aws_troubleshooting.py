@@ -7,6 +7,7 @@ registered when AWS credentials and region are detected at startup.
 
 import json
 import logging
+from importlib.metadata import version as pkg_version
 from typing import Any, Dict
 
 from mcp.client.session import ClientSession
@@ -16,6 +17,12 @@ from spark_history_mcp.core.app import mcp
 
 logger = logging.getLogger(__name__)
 
+_PKG_NAME = "mcp-apache-spark-history-server"
+try:
+    _VERSION = pkg_version(_PKG_NAME)
+except Exception:
+    _VERSION = "unknown"
+_USER_AGENT = f"kubeflow/{_PKG_NAME}/{_VERSION}"
 _BASE_URL = "https://sagemaker-unified-studio-mcp.{region}.api.aws"
 _SERVICE = "sagemaker-unified-studio-mcp"
 
@@ -33,6 +40,7 @@ async def _call_remote_tool(
         endpoint=endpoint,
         aws_region=region,
         aws_service=_SERVICE,
+        headers={"User-Agent": _USER_AGENT},
     )
     async with client as (read, write, _):
         async with ClientSession(read, write) as session:
