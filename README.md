@@ -298,7 +298,7 @@ kubectl port-forward svc/mcp-apache-spark-history-server 18888:18888
 
 - **[AWS Glue](examples/aws/glue/README.md)** — Connect to Glue Spark History Server
 - **[Amazon EMR](examples/aws/emr/README.md)** — Use EMR Persistent UI for Spark analysis
-- **AWS Spark Troubleshooting** — One-shot root cause analysis and code fix recommendations for failed Spark workloads (EMR EC2, EMR Serverless). Automatically available when AWS credentials and `AWS_REGION` are configured. Set `AWS_PROFILE` if using a named profile.
+- **AWS Spark Troubleshooting** — One-shot root cause analysis and code fix recommendations for failed Spark workloads (EMR EC2, EMR Serverless). Automatically available when AWS credentials and region are configured. See [IAM setup guide](https://docs.aws.amazon.com/emr/latest/ReleaseGuide/spark-troubleshooting-agent-iam-setup.html) for required permissions.
 
 ---
 

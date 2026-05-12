@@ -411,14 +411,17 @@ One-shot root cause analysis and code fix recommendations for failed Spark workl
 
 ### Configuration
 
-Add to your `config.yaml`:
+No config file changes needed. AWS credentials and region are resolved via the [default credential chain](https://docs.aws.amazon.com/sdk-for-go/v2/developer-guide/configure-sdk.html#credentials) (environment variables, shared credentials file, IAM roles, etc.).
 
-```yaml
-aws_troubleshooting:
-  region: us-east-1
+```bash
+# Example: set via environment variables
+export AWS_REGION=us-east-1          # or configure in ~/.aws/config
+export AWS_PROFILE=my-profile        # optional
 ```
 
-AWS credentials are resolved via the [default credential chain](https://docs.aws.amazon.com/sdk-for-go/v2/developer-guide/configure-sdk.html#credentials) (environment variables, shared credentials, IAM roles). Set `AWS_PROFILE` if you need a specific profile.
+### IAM Permissions
+
+Your IAM role needs permissions to access the SageMaker Unified Studio MCP endpoint and the relevant EMR/Serverless APIs. See the [IAM setup guide](https://docs.aws.amazon.com/emr/latest/ReleaseGuide/spark-troubleshooting-agent-iam-setup.html) for required policies.
 
 ### Usage
 
