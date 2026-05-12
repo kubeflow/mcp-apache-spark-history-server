@@ -27,7 +27,8 @@ dependencies = [
     "boto3~=1.42",
     "pydantic-settings~=2.13",
     "requests[socks]~=2.32",
-    "pysocks~=1.7"
+    "pysocks~=1.7",
+    "mcp-proxy-for-aws>=1.0,<2.0"
 ]
 
 [build-system]
