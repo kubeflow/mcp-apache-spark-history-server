@@ -77,7 +77,7 @@ def run(config: Config):
     try:
         import boto3
 
-        session = boto3.Session(region_name=os.environ.get("AWS_REGION"))
+        session = boto3.Session()
         creds = session.get_credentials()
         if creds is not None and session.region_name:
             from spark_history_mcp.tools.aws_troubleshooting import (

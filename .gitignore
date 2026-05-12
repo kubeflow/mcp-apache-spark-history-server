@@ -278,6 +278,3 @@ kubeconfig.yaml
 
 # OpenAPI Generator metadata
 src/.openapi-generator/
-
-# AI agent workspace (personal dev aid, not project source)
-.aidev/

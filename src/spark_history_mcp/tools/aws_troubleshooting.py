@@ -17,6 +17,7 @@ from spark_history_mcp.core.app import mcp
 
 logger = logging.getLogger(__name__)
 
+# Distribution name differs from package name (spark_history_mcp), must be hardcoded
 _PKG_NAME = "mcp-apache-spark-history-server"
 try:
     _VERSION = pkg_version(_PKG_NAME)
