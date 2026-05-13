@@ -87,33 +87,36 @@ func TestLogsResultJSONOmitsEmpty(t *testing.T) {
 	}
 }
 
-// TestLogsCommandFlagValidation exercises the RunE guard rails without an HTTP
-// call. These paths fail before reaching newClient(), so no mock is needed.
+// TestLogsCommandFlagValidation exercises the cobra flag-group guards
+// (MarkFlagsOneRequired / MarkFlagsMutuallyExclusive) declared on the logs
+// command. Validation fires before PreRunE/RunE, so no HTTP mock is needed.
+// Assertions match keywords inside cobra's built-in group error messages
+// rather than exact strings so a cobra-version bump does not break tests.
 func TestLogsCommandFlagValidation(t *testing.T) {
 	tests := []struct {
-		name    string
-		flags   []string
-		wantErr string
+		name        string
+		flags       []string
+		wantKeyword []string
 	}{
 		{
-			name:    "no executor no task",
-			flags:   []string{},
-			wantErr: "exactly one of --executor or --task is required",
+			name:        "no executor no task",
+			flags:       []string{},
+			wantKeyword: []string{"at least one of", "executor", "task"},
 		},
 		{
-			name:    "both executor and task",
-			flags:   []string{"--executor", "1", "--task", "5"},
-			wantErr: "exactly one of --executor or --task is required",
+			name:        "both executor and task",
+			flags:       []string{"--executor", "1", "--task", "5"},
+			wantKeyword: []string{"none of the others can be", "executor", "task"},
 		},
 		{
-			name:    "stage without task",
-			flags:   []string{"--executor", "1", "--stage", "2"},
-			wantErr: "--stage is only valid with --task",
+			name:        "stage with executor",
+			flags:       []string{"--executor", "1", "--stage", "2"},
+			wantKeyword: []string{"none of the others can be", "executor", "stage"},
 		},
 		{
-			name:    "stage-attempt without task",
-			flags:   []string{"--executor", "1", "--stage-attempt", "0"},
-			wantErr: "--stage-attempt is only valid with --task",
+			name:        "stage-attempt with executor",
+			flags:       []string{"--executor", "1", "--stage-attempt", "0"},
+			wantKeyword: []string{"none of the others can be", "executor", "stage-attempt"},
 		},
 	}
 
@@ -125,21 +128,22 @@ func TestLogsCommandFlagValidation(t *testing.T) {
 			appID = "application_test_00001"
 
 			cmd := newLogsCmd()
-			// silence any incidental stdout.
 			var buf bytes.Buffer
 			cmd.SetOut(&buf)
 			cmd.SetErr(&buf)
+			// SilenceUsage/Errors prevent cobra from printing usage to the
+			// test buffer when group validation fails.
+			cmd.SilenceUsage = true
+			cmd.SilenceErrors = true
 			cmd.SetArgs(tt.flags)
-			// parse flags explicitly so Changed() works, then invoke RunE.
-			if err := cmd.ParseFlags(tt.flags); err != nil {
-				t.Fatalf("parse flags: %v", err)
-			}
-			err := cmd.RunE(cmd, []string{})
+			err := cmd.Execute()
 			if err == nil {
-				t.Fatalf("expected error %q, got nil", tt.wantErr)
+				t.Fatalf("expected error with keywords %v, got nil", tt.wantKeyword)
 			}
-			if !strings.Contains(err.Error(), tt.wantErr) {
-				t.Fatalf("want error containing %q, got %q", tt.wantErr, err.Error())
+			for _, kw := range tt.wantKeyword {
+				if !strings.Contains(err.Error(), kw) {
+					t.Fatalf("want error containing %q, got %q", kw, err.Error())
+				}
 			}
 		})
 	}

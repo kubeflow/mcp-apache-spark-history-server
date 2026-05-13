@@ -51,25 +51,13 @@ one stage will match.`,
   shs logs -a APP --attempt 1 --task 145 --stage 12`,
 		PreRunE: requireAppID,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			hasExec := executorID != ""
-			hasTask := cmd.Flags().Changed("task")
-			if hasExec == hasTask {
-				return fmt.Errorf("exactly one of --executor or --task is required")
-			}
-			if !hasTask && cmd.Flags().Changed("stage") {
-				return fmt.Errorf("--stage is only valid with --task")
-			}
-			if !hasTask && cmd.Flags().Changed("stage-attempt") {
-				return fmt.Errorf("--stage-attempt is only valid with --task")
-			}
-
 			c, err := newClient()
 			if err != nil {
 				return err
 			}
 
 			var result *LogsResult
-			if hasExec {
+			if executorID != "" {
 				result, err = resolveByExecutor(cmd.Context(), c, executorID)
 			} else {
 				var stagePtr *int
@@ -129,6 +117,11 @@ one stage will match.`,
 	cmd.Flags().Int64VarP(&taskID, "task", "t", 0, "Task ID (mutually exclusive with --executor)")
 	cmd.Flags().IntVar(&stageID, "stage", 0, "Stage ID (optional; narrows --task search)")
 	cmd.Flags().IntVar(&stageAttemptID, "stage-attempt", 0, "Stage attempt ID (optional; defaults to latest attempt)")
+
+	cmd.MarkFlagsOneRequired("executor", "task")
+	cmd.MarkFlagsMutuallyExclusive("executor", "task")
+	cmd.MarkFlagsMutuallyExclusive("executor", "stage")
+	cmd.MarkFlagsMutuallyExclusive("executor", "stage-attempt")
 	return cmd
 }
 
