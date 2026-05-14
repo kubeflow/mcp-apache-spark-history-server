@@ -12,6 +12,7 @@ from spark_history_mcp.models.spark_types import (
     TaskMetricDistributions,
 )
 from spark_history_mcp.tools.tools import (
+    _calculate_executor_metrics,
     get_application,
     get_client_or_default,
     get_sql_execution,
@@ -394,6 +395,51 @@ class TestTools(unittest.TestCase):
             get_application("non-existent-app")
 
         self.assertIn("Application not found", str(context.exception))
+
+    def test_calculate_executor_metrics_handles_missing_memory_metrics(self):
+        """Test executor summary handles executors without memoryMetrics.
+
+        ExecutorSummary.memory_metrics and the inner used_*_storage_memory
+        fields are declared Optional in models.spark_types, and Spark History
+        Server may return executors (e.g. the driver entry, or executors from
+        replayed event logs missing executor metrics events) without these
+        fields populated. The summary aggregation must not crash in that case.
+        """
+        executor_without_memory = MagicMock()
+        executor_without_memory.is_active = True
+        executor_without_memory.memory_metrics = None
+        executor_without_memory.disk_used = 10
+        executor_without_memory.completed_tasks = 2
+        executor_without_memory.failed_tasks = 1
+        executor_without_memory.total_duration = 100
+        executor_without_memory.total_gc_time = 5
+        executor_without_memory.total_input_bytes = 20
+        executor_without_memory.total_shuffle_read = 30
+        executor_without_memory.total_shuffle_write = 40
+
+        memory_metrics = MagicMock()
+        memory_metrics.used_on_heap_storage_memory = 7
+        memory_metrics.used_off_heap_storage_memory = None
+        executor_with_partial_memory = MagicMock()
+        executor_with_partial_memory.is_active = False
+        executor_with_partial_memory.memory_metrics = memory_metrics
+        executor_with_partial_memory.disk_used = 1
+        executor_with_partial_memory.completed_tasks = 3
+        executor_with_partial_memory.failed_tasks = 0
+        executor_with_partial_memory.total_duration = 200
+        executor_with_partial_memory.total_gc_time = 6
+        executor_with_partial_memory.total_input_bytes = 21
+        executor_with_partial_memory.total_shuffle_read = 31
+        executor_with_partial_memory.total_shuffle_write = 41
+
+        result = _calculate_executor_metrics(
+            [executor_without_memory, executor_with_partial_memory]
+        )
+
+        self.assertEqual(result["total_executors"], 2)
+        self.assertEqual(result["active_executors"], 1)
+        self.assertEqual(result["memory_used"], 7)
+        self.assertEqual(result["disk_used"], 11)
 
     # Tests for list_applications tool
     @patch("spark_history_mcp.tools.tools.mcp.get_context")
