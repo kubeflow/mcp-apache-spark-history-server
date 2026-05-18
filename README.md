@@ -252,7 +252,7 @@ Agents can target a specific server per query:
 | `aws_analyze_spark_workload` | One-shot root cause analysis of failed/slow Spark workloads |
 | `aws_spark_code_recommendation` | Code fix recommendations for identified Spark issues |
 
-> Requires `troubleshooting.enabled: true` in config.yaml and valid AWS credentials. See [AWS Integration](#-aws-integration).
+> Automatically available when AWS credentials and region are configured. See [IAM setup guide](https://docs.aws.amazon.com/emr/latest/ReleaseGuide/spark-troubleshooting-agent-iam-setup.html).
 
 #### Example Agent Queries
 - *"Why is my ETL job running slower than yesterday?"* → `get_job_bottlenecks` + `list_slowest_stages` + `compare_job_performance`
