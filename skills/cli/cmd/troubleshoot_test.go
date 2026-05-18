@@ -7,8 +7,8 @@ import (
 )
 
 func TestResolvePlatform_EMR_EC2(t *testing.T) {
-	appID = "s-XXXXX"
-	clusterID = "j-12345"
+	emrEC2Cluster = "j-12345"
+	emrEC2Step = "s-XXXXX"
 	emrServerlessApp = ""
 
 	pType, params, err := resolvePlatform()
@@ -24,9 +24,19 @@ func TestResolvePlatform_EMR_EC2(t *testing.T) {
 	}
 }
 
+func TestResolvePlatform_EMR_EC2_MissingStep(t *testing.T) {
+	emrEC2Cluster = "j-12345"
+	emrEC2Step = ""
+	emrServerlessApp = ""
+
+	_, _, err := resolvePlatform()
+	if err == nil {
+		t.Fatal("expected error when --emr-ec2-step missing")
+	}
+}
+
 func TestResolvePlatform_EMRServerless(t *testing.T) {
-	appID = ""
-	clusterID = ""
+	emrEC2Cluster = ""
 	emrServerlessApp = "00abc"
 	emrServerlessRun = "00xyz"
 
@@ -43,13 +53,13 @@ func TestResolvePlatform_EMRServerless(t *testing.T) {
 	}
 }
 
-func TestResolvePlatform_EMRServerlessMissingRunID(t *testing.T) {
-	clusterID = ""
+func TestResolvePlatform_EMRServerlessMissingRun(t *testing.T) {
+	emrEC2Cluster = ""
 	emrServerlessApp = "00abc"
 	emrServerlessRun = ""
 
 	_, _, err := resolvePlatform()
 	if err == nil {
-		t.Fatal("expected error when --job-run missing")
+		t.Fatal("expected error when --emr-serverless-run missing")
 	}
 }

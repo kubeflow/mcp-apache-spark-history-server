@@ -7,7 +7,8 @@ import (
 )
 
 var (
-	clusterID        string
+	emrEC2Cluster    string
+	emrEC2Step       string
 	emrServerlessApp string
 	emrServerlessRun string
 )
@@ -20,8 +21,7 @@ func newTroubleshootCmd() *cobra.Command {
 Supports EMR on EC2 and EMR Serverless platforms.
 
 Requires valid AWS credentials (via environment variables, shared credentials, or IAM roles)
-and AWS_REGION to be set.`,
-		PreRunE: requireAppID,
+and a configured AWS region.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			platformType, platformParams, err := resolvePlatform()
 			if err != nil {
@@ -32,29 +32,30 @@ and AWS_REGION to be set.`,
 		},
 	}
 
-	cmd.Flags().StringVar(&clusterID, "cluster", "", "EMR cluster ID (e.g., j-XXXXX)")
+	cmd.Flags().StringVar(&emrEC2Cluster, "emr-ec2-cluster", "", "EMR EC2 cluster ID (e.g., j-XXXXX)")
+	cmd.Flags().StringVar(&emrEC2Step, "emr-ec2-step", "", "EMR EC2 step ID (e.g., s-XXXXX)")
 	cmd.Flags().StringVar(&emrServerlessApp, "emr-serverless-app", "", "EMR Serverless application ID")
-	cmd.Flags().StringVar(&emrServerlessRun, "job-run", "", "EMR Serverless job run ID")
-	cmd.MarkFlagsMutuallyExclusive("cluster", "emr-serverless-app")
-	cmd.MarkFlagsOneRequired("cluster", "emr-serverless-app")
+	cmd.Flags().StringVar(&emrServerlessRun, "emr-serverless-run", "", "EMR Serverless job run ID")
+	cmd.MarkFlagsMutuallyExclusive("emr-ec2-cluster", "emr-serverless-app")
+	cmd.MarkFlagsOneRequired("emr-ec2-cluster", "emr-serverless-app")
 
 	return cmd
 }
 
 func resolvePlatform() (string, map[string]string, error) {
 	switch {
-	case clusterID != "":
-		if appID == "" {
-			return "", nil, fmt.Errorf("--app-id is required for EMR EC2 troubleshooting")
+	case emrEC2Cluster != "":
+		if emrEC2Step == "" {
+			return "", nil, fmt.Errorf("--emr-ec2-step is required with --emr-ec2-cluster")
 		}
 		return "EMR_EC2", map[string]string{
-			"cluster_id": clusterID,
-			"step_id":    appID,
+			"cluster_id": emrEC2Cluster,
+			"step_id":    emrEC2Step,
 		}, nil
 
 	case emrServerlessApp != "":
 		if emrServerlessRun == "" {
-			return "", nil, fmt.Errorf("--job-run is required with --emr-serverless-app")
+			return "", nil, fmt.Errorf("--emr-serverless-run is required with --emr-serverless-app")
 		}
 		return "EMR_SERVERLESS", map[string]string{
 			"application_id": emrServerlessApp,
@@ -62,6 +63,6 @@ func resolvePlatform() (string, map[string]string, error) {
 		}, nil
 
 	default:
-		return "", nil, fmt.Errorf("specify --cluster or --emr-serverless-app")
+		return "", nil, fmt.Errorf("specify --emr-ec2-cluster or --emr-serverless-app")
 	}
 }
