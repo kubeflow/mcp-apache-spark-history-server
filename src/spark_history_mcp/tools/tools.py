@@ -595,14 +595,19 @@ def compare_job_environments(
 
 def _calculate_executor_metrics(executors):
     """Calculate executor summary metrics from executor list."""
+
+    def memory_used(executor):
+        metrics = executor.memory_metrics
+        if metrics is None:
+            return 0
+        return (metrics.used_on_heap_storage_memory or 0) + (
+            metrics.used_off_heap_storage_memory or 0
+        )
+
     return {
         "total_executors": len(executors),
         "active_executors": sum(1 for e in executors if e.is_active),
-        "memory_used": sum(
-            e.memory_metrics.used_on_heap_storage_memory
-            + e.memory_metrics.used_off_heap_storage_memory
-            for e in executors
-        ),
+        "memory_used": sum(memory_used(e) for e in executors),
         "disk_used": sum(e.disk_used for e in executors),
         "completed_tasks": sum(e.completed_tasks for e in executors),
         "failed_tasks": sum(e.failed_tasks for e in executors),
