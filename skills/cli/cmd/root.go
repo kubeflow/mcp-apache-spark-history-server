@@ -44,7 +44,7 @@ func init() {
 		newSQLCmd(),
 		newEnvironmentCmd(),
 		//newStorageCmd(),
-		//newLogsCmd(),
+		newLogsCmd(),
 		newPrimeCmd(),
 		newCompareCmd(),
 		newServersCmd(),
