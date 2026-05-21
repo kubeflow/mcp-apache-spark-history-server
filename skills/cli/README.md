@@ -124,6 +124,9 @@ COMMANDS
   shs stages -a APP_ID STAGE --errors  Show failed tasks with errors
   shs executors -a APP_ID         List active executors
   shs executors -a APP_ID EXEC    Get executor detail
+  shs logs -a APP_ID --executor EXEC          Get stdout/stderr/spark.log URLs for executor
+  shs logs -a APP_ID --task TASK              Get log URLs for task (auto-scans stages)
+  shs logs -a APP_ID --task TASK --stage S    Faster: known stage
   shs sql -a APP_ID               List SQL executions
   shs sql -a APP_ID EXEC_ID       Get SQL execution header (status, duration, job IDs)
   shs sql -a APP_ID EXEC_ID --plan          Include query plan and node metrics
@@ -160,6 +163,8 @@ COMMAND DETAILS
   stages     --status active|complete|pending|failed  --sort failed-tasks|duration|id  --errors
   executors  --all (include dead)  --summary (peak memory/OOM view)  --timeline (resource usage over time)
              --sort failed-tasks|duration|gc|id
+  logs       --executor EXEC | --task TASK (mutually exclusive)
+             --stage STAGE (optional, narrows --task search)  --stage-attempt N (optional)
   sql        --status completed|running|failed  --sort duration|id  --plan  --summary  --initial-plan
   env        --section runtime|spark|system|hadoop|metrics|classpath
   compare    sql (metrics diff)  sql --env (config diff)  sql --plans (plan structure diff)
@@ -199,6 +204,11 @@ COMMON WORKFLOWS
     shs executors -a APP_ID --summary   # peak memory, OOM status, dead first
     shs executors -a APP_ID --timeline  # resource usage over time
     shs executors -a APP_ID EXECUTOR_ID
+
+  Get log URLs (stdout/stderr/spark.log):
+    shs logs -a APP_ID --executor EXECUTOR_ID         # all logs for an executor
+    shs logs -a APP_ID --task TASK_ID                 # auto-scan stages by task ID
+    shs logs -a APP_ID --task TASK_ID --stage STAGE   # faster when stage known
 
   Investigate slow SQL queries:
     shs sql -a APP_ID --sort duration --limit 10
