@@ -124,6 +124,8 @@ COMMANDS
   shs stages -a APP_ID STAGE --errors  Show failed tasks with errors
   shs executors -a APP_ID         List active executors
   shs executors -a APP_ID EXEC    Get executor detail
+  shs threaddump -a APP_ID driver         JVM thread dump for the driver (running app only)
+  shs threaddump -a APP_ID EXEC           JVM thread dump for an executor
   shs logs -a APP_ID --executor EXEC          Get stdout/stderr/spark.log URLs for executor
   shs logs -a APP_ID --task TASK              Get log URLs for task (auto-scans stages)
   shs logs -a APP_ID --task TASK --stage S    Faster: known stage
@@ -163,6 +165,10 @@ COMMAND DETAILS
   stages     --status active|complete|pending|failed  --sort failed-tasks|duration|id  --errors
   executors  --all (include dead)  --summary (peak memory/OOM view)  --timeline (resource usage over time)
              --sort failed-tasks|duration|gc|id
+  threaddump --state STATE (RUNNABLE|BLOCKED|WAITING|TIMED_WAITING|...)
+             --name SUBSTR (case-insensitive name match)  --blocked-only (only locked/blocked threads)
+             Endpoint requires the application to be running (live driver UI). Default output is a
+             thread summary table; use -o json|yaml for full stack traces.
   logs       --executor EXEC | --task TASK (mutually exclusive)
              --stage STAGE (optional, narrows --task search)  --stage-attempt N (optional)
   sql        --status completed|running|failed  --sort duration|id  --plan  --summary  --initial-plan
@@ -204,6 +210,13 @@ COMMON WORKFLOWS
     shs executors -a APP_ID --summary   # peak memory, OOM status, dead first
     shs executors -a APP_ID --timeline  # resource usage over time
     shs executors -a APP_ID EXECUTOR_ID
+
+  Inspect a hung driver or executor (running apps only):
+    shs threaddump -a APP_ID driver                       # all driver threads
+    shs threaddump -a APP_ID driver --state BLOCKED       # filter by JVM state
+    shs threaddump -a APP_ID driver --name dispatcher     # name substring
+    shs threaddump -a APP_ID driver --blocked-only        # threads with a lock or blocking owner
+    shs threaddump -a APP_ID 1 -o json > exec1.json       # full stack traces for executor 1
 
   Get log URLs (stdout/stderr/spark.log):
     shs logs -a APP_ID --executor EXECUTOR_ID         # all logs for an executor
@@ -308,6 +321,8 @@ Env vars merge on top of the config file, so you can keep a base config and over
 | `shs stages -a APP STAGE --errors` | Failed tasks with error messages |
 | `shs executors -a APP` | List executors |
 | `shs executors -a APP --summary` | Peak memory and OOM status |
+| `shs threaddump -a APP driver` | JVM thread dump for the driver (running apps only) |
+| `shs threaddump -a APP EXEC` | JVM thread dump for an executor |
 | `shs sql -a APP` | List SQL executions |
 | `shs sql -a APP EXEC_ID` | SQL execution header |
 | `shs sql -a APP EXEC_ID --plan` | Query plan and node metrics |
