@@ -70,7 +70,7 @@ graph TB
 
 ## 🛠️ SHS CLI (`shs`) — For Engineers & Scripts
 
-A standalone Go binary — no MCP, no dependencies, no running daemon. Query your Spark History Server directly from the terminal, shell scripts, or CI/CD pipelines. Also works as a **skill** for coding agents like Claude Code and Kiro.
+A standalone Go binary. Query your Spark History Server directly from the terminal, shell scripts, or CI/CD pipelines. Also works as a **skill** for coding agents like Claude Code and Kiro.
 
 ### Install
 
@@ -119,7 +119,7 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that 
 uvx --from mcp-apache-spark-history-server spark-mcp
 
 # Or install with pip
-pip install mcp-apache-spark-history-server
+uv tool install mcp-apache-spark-history-server
 spark-mcp
 ```
 
@@ -127,7 +127,7 @@ The package is published to [PyPI](https://pypi.org/project/mcp-apache-spark-his
 
 ### Configure
 
-Edit `config.yaml`:
+Basic configuration below. Create a file named `config.yaml`:
 
 ```yaml
 servers:
@@ -145,7 +145,7 @@ mcp:
   debug: false
 ```
 
-Environment variable overrides:
+Configurations can be overriden with environment variables.
 
 ```
 SHS_MCP_PORT          Port for MCP server (default: 18888)
@@ -187,13 +187,16 @@ Agents can target a specific server per query:
 | Agent | Transport | Guide |
 |-------|-----------|-------|
 | **Claude Desktop** | stdio | [Setup →](examples/integrations/claude-desktop/) |
-| **Amazon Q CLI** | stdio | [Setup →](examples/integrations/amazon-q-cli/) |
+| **Claude Code** | stdio or streamable-http  | [Setup →](examples/integrations/claude-desktop/) |
 | **Kiro** | streamable-http | [Setup →](examples/integrations/kiro/) |
 | **LangGraph** | streamable-http | [Setup →](examples/integrations/langgraph/) |
 | **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
 | **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |
 
 ### Available Tools (21)
+
+<details>
+<summary>Available Tools</summary>
 
 #### Application Information
 | Tool | Description |
@@ -253,6 +256,8 @@ Agents can target a specific server per query:
 | `aws_spark_code_recommendation` | Code fix recommendations for identified Spark issues |
 
 > Automatically available when AWS credentials and region are configured. See [IAM setup guide](https://docs.aws.amazon.com/emr/latest/ReleaseGuide/spark-troubleshooting-agent-iam-setup.html).
+
+</details>
 
 #### Example Agent Queries
 - *"Why is my ETL job running slower than yesterday?"* → `get_job_bottlenecks` + `list_slowest_stages` + `compare_job_performance`
