@@ -41,6 +41,7 @@ func init() {
 		newJobsCmd(),
 		newStagesCmd(),
 		newExecutorsCmd(),
+		newThreaddumpCmd(),
 		newSQLCmd(),
 		newEnvironmentCmd(),
 		//newStorageCmd(),
