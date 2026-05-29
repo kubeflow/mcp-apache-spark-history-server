@@ -77,7 +77,13 @@ Add that export to your `~/.zshrc` or `~/.bashrc` to make it permanent.
 
 ## Quick Start
 
-A `config.yaml` is already provided in `skills/cli/`:
+Create a starter configuration file.
+
+```bash
+shs setup config > config.yaml
+```
+
+`config.yaml` looks like:
 
 ```yaml
 servers:
@@ -275,11 +281,20 @@ The config file defines one or more Spark History Server connections:
 
 ```yaml
 servers:
-  default:
-    default: true
-    url: "http://localhost:18080"
+  # minimal config for a local Spark History Server
+  local:
+    default: true # mark as default server
+    url: http://localhost:18080
+    verify_ssl: false
+  # remote server with auth and SSL
   production:
-    url: "https://shs.prod.example.com"
+    default: false
+    url: https://spark-history.example.com
+    verify_ssl: true
+    # use token or username/password
+    auth:
+      token: your-token-here # bearer token
+    emr_cluster_arn: arn:aws:emr:us-east-1:123456789012:cluster/j-EXAMPLE # optional: for EMR-based clusters
 ```
 
 Use `--server` or `-s` to target a specific server:

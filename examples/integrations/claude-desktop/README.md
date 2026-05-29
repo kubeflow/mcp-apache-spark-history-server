@@ -37,13 +37,12 @@ curl http://localhost:18080/api/v1/applications
 {
     "mcpServers": {
         "mcp-apache-spark-history-server": {
-            "command": "/full/path/to/uv",
+            "command": "uv",
             "args": [
                 "run",
-                "--directory",
-                "/path/to/mcp-apache-spark-history-server",
-                "-m",
-                "spark_history_mcp.core.main"
+                "--from",
+                "mcp-apache-spark-history-server",
+                "spark-mcp",
             ],
             "env": {
                 "SHS_MCP_TRANSPORT": "stdio"
@@ -52,12 +51,6 @@ curl http://localhost:18080/api/v1/applications
     }
 }
 ```
-
-**⚠️ Important**:
-- Replace `/full/path/to/uv` with the full path to `uv` (run `which uv` to find it). Claude Desktop does not inherit your shell PATH.
-- Replace `/path/to/mcp-apache-spark-history-server` with your actual repository path.
-- `--directory` is required (not `--project`) so that `config.yaml` is found at runtime.
-- `SHS_MCP_TRANSPORT` must be set to `stdio` since Claude Desktop uses stdio transport.
 
 2. **Restart Claude Desktop**
 
@@ -136,3 +129,32 @@ ssh -L 18080:remote-server:18080 user@server
 - **No tools**: Restart Claude Desktop
 - **No apps found**: Ensure Spark History Server is running and accessible
 - **Server disconnected (local)**: Ensure `command` uses the full path to `uv` (run `which uv` to find it) and `--directory` is used instead of `--project`
+
+# Claude Code
+
+1. **Create a configuration file**
+
+```yaml
+servers:
+  local:
+    default: true
+    url: "http://localhost:18080"
+mcp:
+  transports:
+    - stdio
+```
+
+2. **Add MCP server**
+
+```bash
+claude mcp add \
+  --transport stdio \
+    shs-mcp -- uvx --from mcp-apache-spark-history-server spark-mcp --config config.yaml
+```
+
+3. **Verify**
+
+```bash
+claude mcp list
+shs-mcp: uvx --from mcp-apache-spark-history-server spark-mcp --config conf.yaml - ✓ Connected
+```
