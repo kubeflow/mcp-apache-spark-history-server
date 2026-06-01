@@ -8,6 +8,9 @@ on:
     branches: [main]
     paths: ['skills/cli/**']
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     name: Lint & E2E
