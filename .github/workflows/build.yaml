@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   pre-commit:
     name: Code Quality Checks
@@ -13,6 +16,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      with:
+        persist-credentials: false
 
     - name: Enable caching and define a custom cache key suffix
       id: setup-uv
