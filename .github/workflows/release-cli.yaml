@@ -4,13 +4,12 @@ on:
   push:
     tags: ['cli/v[0-9]+.[0-9]+.[0-9]+*']
 
-permissions:
-  contents: write
-
 jobs:
   build:
     runs-on: ubuntu-latest
     environment: release
+    permissions:
+      contents: write
     strategy:
       matrix:
         include:
@@ -25,12 +24,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: skills/cli/go.mod
           cache-dependency-path: skills/cli/go.sum
+          cache: false
 
       - name: Parse version from tag
         id: version
@@ -45,11 +47,14 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: '0'
-        run: task build VERSION=${{ steps.version.outputs.version }}
+          STEPS_VERSION_OUTPUTS_VERSION: ${{ steps.version.outputs.version }}
+        run: task build VERSION=${STEPS_VERSION_OUTPUTS_VERSION}
 
       - name: Archive
         working-directory: skills/cli
-        run: tar czf "shs-${{ steps.version.outputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz" -C bin shs
+        run: tar czf "shs-${STEPS_VERSION_OUTPUTS_VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz" -C bin shs
+        env:
+          STEPS_VERSION_OUTPUTS_VERSION: ${{ steps.version.outputs.version }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -61,6 +66,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment: release
+    permissions:
+      contents: write
     steps:
       # Checkout with full history so we can generate path-scoped release notes.
       # GitHub's --generate-notes includes ALL commits since the last tag regardless
@@ -70,6 +77,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Parse version from tag
         id: version
@@ -101,9 +109,10 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          STEPS_VERSION_OUTPUTS_VERSION: ${{ steps.version.outputs.version }}
         run: |
           gh release create "$GITHUB_REF_NAME" \
             --repo "$GITHUB_REPOSITORY" \
-            --title "SHS CLI ${{ steps.version.outputs.version }}" \
+            --title "SHS CLI ${STEPS_VERSION_OUTPUTS_VERSION}" \
             --notes-file notes.md \
             shs-*.tar.gz checksums-sha256.txt
