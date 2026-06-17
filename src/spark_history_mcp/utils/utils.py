@@ -7,9 +7,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-import requests
-
 from spark_history_mcp.api.spark_client import SparkRestClient
+from spark_history_mcp.api_client.exceptions import ApiException
 
 logger = logging.getLogger(__name__)
 
@@ -32,30 +31,26 @@ def parallel_execute(
     errors = []
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all tasks
         future_to_name = {executor.submit(func): name for name, func in api_calls}
 
-        # Collect results as they complete
         for future in as_completed(future_to_name, timeout=timeout):
             name = future_to_name[future]
             try:
                 result = future.result()
                 results[name] = result
-            except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 500:
-                    # Try to extract the actual error from response text
-                    error_text = (
-                        e.response.text if hasattr(e.response, "text") else str(e)
-                    )
-                    if (
-                        "OutOfMemoryError" in error_text
-                        or "Java heap space" in error_text
-                    ):
-                        error_msg = f"{name} failed: Spark History Server out of memory (increase SPARK_DAEMON_MEMORY)"
+            except ApiException as e:
+                # The generated client raises ApiException (e.g. ServiceException
+                # for 5xx); detect out-of-memory from the response body.
+                status = getattr(e, "status", None)
+                body = e.body or ""
+                if (
+                    status is not None
+                    and 500 <= status <= 599
+                    and ("OutOfMemoryError" in body or "Java heap space" in body)
+                ):
+                    error_msg = f"{name} failed: Spark History Server out of memory (increase SPARK_DAEMON_MEMORY)"
                 else:
-                    error_msg = (
-                        f"{name} failed: HTTP {e.response.status_code} - {str(e)}"
-                    )
+                    error_msg = f"{name} failed: HTTP {status} - {str(e)}"
                 errors.append(error_msg)
             except Exception as e:
                 error_msg = f"{name} failed: {str(e)}"
@@ -82,7 +77,6 @@ class ApplicationDiscovery:
         if app_id in self._cache and not self._is_expired(self._cache[app_id]):
             return self._cache[app_id]["servers"]
 
-        # Search all servers
         servers = []
         for server_name, client in self.clients.items():
             logger.debug(f"Checking for application '{app_id}' in '{server_name}'")
@@ -111,6 +105,5 @@ class ApplicationDiscovery:
         if not servers:
             raise ValueError(f"Application '{app_id}' not found on any server")
 
-        # Use first server found
         chosen_server = servers[0]
         return self.clients[chosen_server], chosen_server

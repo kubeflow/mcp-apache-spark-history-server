@@ -1,10 +1,9 @@
-import json
 import logging
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from datetime import datetime
+from functools import partial
 from typing import Optional
 
 from mcp.server.fastmcp import FastMCP
@@ -17,20 +16,17 @@ from spark_history_mcp.config.config import Config
 from ..utils.utils import ApplicationDiscovery
 
 
+def _emr_cookie_reauth(emr_client: EMRPersistentUIClient) -> str:
+    """Re-establish the EMR session and return a fresh Cookie header value."""
+    emr_client.setup_http_session()
+    return emr_client.cookie_header()
+
+
 @dataclass
 class AppContext:
     clients: dict[str, SparkRestClient]
     default_client: Optional[SparkRestClient] = None
     app_discovery: Optional[ApplicationDiscovery] = None
-
-
-class DateTimeEncoder(json.JSONEncoder):
-    """Custom JSON encoder that handles datetime objects."""
-
-    def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        return super().default(obj)
 
 
 @asynccontextmanager
@@ -48,15 +44,19 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
             emr_client = EMRPersistentUIClient(server_config)
 
             # Initialize EMR client (create persistent UI, get presigned URL, setup session)
-            base_url, session = emr_client.initialize()
+            base_url, _session = emr_client.initialize()
 
             # Create a modified server config with the base URL
             emr_server_config = server_config.model_copy()
             emr_server_config.url = base_url
 
-            # Create SparkRestClient with the session
+            # Route EMR through the generated client using the session cookies as
+            # a Cookie header, with a re-auth callback to refresh on 401/403.
             spark_client = SparkRestClient(emr_server_config)
-            spark_client.session = session  # Use the authenticated session
+            spark_client.configure_cookies(
+                emr_client.cookie_header(),
+                reauth=partial(_emr_cookie_reauth, emr_client),
+            )
 
             clients[name] = spark_client
         else:

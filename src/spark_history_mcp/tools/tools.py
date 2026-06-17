@@ -1,26 +1,73 @@
 import heapq
 import logging
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Union
 
+from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.job import Job
+from spark_history_mcp.api_client.models.sql_execution import SQLExecution
+from spark_history_mcp.api_client.models.stage_data import StageData
+from spark_history_mcp.api_client.models.task_metrics_summary import TaskMetricsSummary
 from spark_history_mcp.core.app import mcp
 from spark_history_mcp.models.mcp_types import (
     JobSummary,
     SqlQuerySummary,
 )
-from spark_history_mcp.models.spark_types import (
-    ApplicationInfo,
-    ExecutionData,
-    JobData,
-    JobExecutionStatus,
-    SQLExecutionStatus,
-    StageData,
-    StageStatus,
-    TaskMetricDistributions,
-)
 
 from ..utils.utils import parallel_execute
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_spark_datetime(
+    value: Union[str, int, float, datetime, None],
+) -> Optional[datetime]:
+    """Parse a Spark REST API timestamp into a ``datetime``.
+
+    The OpenAPI-generated models expose timestamps as ISO strings (e.g.
+    ``"2025-08-05T00:52:08.178GMT"``). This helper normalises the various
+    representations the API and tests may produce:
+
+    * ``None`` -> ``None``
+    * ``datetime`` -> returned unchanged (used by unit tests with mocks)
+    * epoch milliseconds (``int``/``float``) -> converted via ``fromtimestamp``
+    * ``"...GMT"`` strings -> parsed as UTC
+    * other ISO-8601 strings -> parsed via ``datetime.fromisoformat``
+
+    Returns ``None`` when the value cannot be parsed, so callers can treat an
+    unparseable timestamp the same as a missing one.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, (int, float)):
+        return datetime.fromtimestamp(value / 1000)
+    if isinstance(value, str):
+        if value.endswith("GMT"):
+            try:
+                return datetime.strptime(
+                    value.replace("GMT", "+0000"), "%Y-%m-%dT%H:%M:%S.%f%z"
+                )
+            except ValueError:
+                return None
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _duration_seconds(start: Any, end: Any) -> float:
+    """Return the duration in seconds between two Spark timestamps.
+
+    Returns ``0`` when either endpoint is missing or unparseable.
+    """
+    start_dt = _parse_spark_datetime(start)
+    end_dt = _parse_spark_datetime(end)
+    if start_dt and end_dt:
+        return (end_dt - start_dt).total_seconds()
+    return 0
 
 
 def get_client_or_default(
@@ -72,7 +119,7 @@ def list_applications(
     min_end_date: Optional[str] = None,
     max_end_date: Optional[str] = None,
     limit: Optional[int] = None,
-) -> list[ApplicationInfo]:
+) -> list[Application]:
     """
     Get a list of applications from the Spark History Server.
 
@@ -90,7 +137,7 @@ def list_applications(
         - Examples: 2015-02-10, 2015-02-03T16:42:40.000GMT
         - Timezone: All values are interpreted as GMT.
     Returns:
-        List of ApplicationInfo objects for all applications
+        List of Application objects for all applications
     """
     ctx = mcp.get_context()
 
@@ -131,7 +178,7 @@ def list_applications(
 
 
 @mcp.tool()
-def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInfo:
+def get_application(app_id: str, server: Optional[str] = None) -> Application:
     """
     Get detailed information about a specific Spark application.
 
@@ -143,7 +190,7 @@ def get_application(app_id: str, server: Optional[str] = None) -> ApplicationInf
         server: Optional server name to use (uses default if not specified)
 
     Returns:
-        ApplicationInfo object containing application details
+        Application object containing application details
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
@@ -156,6 +203,7 @@ def list_jobs(
     app_id: str,
     server: Optional[str] = None,
     status: Optional[list[str]] = None,
+    app_attempt_id: Optional[str] = None,
     offset: int = 0,
     length: Optional[int] = None,
 ) -> list:
@@ -169,11 +217,12 @@ def list_jobs(
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         status: Optional list of job status values to filter by
+        app_attempt_id: Optional YARN application attempt ID (latest if omitted)
         offset: Number of jobs to skip from the start (default: 0)
         length: Maximum number of jobs to return (default: None, returns all)
 
     Returns:
-        List of JobData objects for the application
+        List of Job objects for the application
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
@@ -183,12 +232,12 @@ def list_jobs(
     if length is not None and length < 0:
         raise ValueError("length must be non-negative")
 
-    job_statuses = None
-    if status:
-        job_statuses = [JobExecutionStatus.from_string(s) for s in status]
-
     return client.list_jobs(
-        app_id=app_id, status=job_statuses, offset=offset, length=length
+        app_id=app_id,
+        status=status,
+        app_attempt_id=app_attempt_id,
+        offset=offset,
+        length=length,
     )
 
 
@@ -198,7 +247,7 @@ def list_slowest_jobs(
     server: Optional[str] = None,
     include_running: bool = False,
     n: int = 5,
-) -> List[JobData]:
+) -> List[Job]:
     """
     Get the N slowest jobs for a Spark application.
 
@@ -211,12 +260,11 @@ def list_slowest_jobs(
         n: Number of slowest jobs to return (default: 5)
 
     Returns:
-        List of JobData objects for the slowest jobs, or empty list if no jobs found
+        List of Job objects for the slowest jobs, or empty list if no jobs found
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
-    # Get all jobs
     jobs = client.list_jobs(app_id=app_id)
 
     if not jobs:
@@ -224,15 +272,13 @@ def list_slowest_jobs(
 
     # Filter out running jobs if not included
     if not include_running:
-        jobs = [job for job in jobs if job.status != JobExecutionStatus.RUNNING.value]
+        jobs = [job for job in jobs if job.status != "RUNNING"]
 
     if not jobs:
         return []
 
     def get_job_duration(job):
-        if job.completion_time and job.submission_time:
-            return (job.completion_time - job.submission_time).total_seconds()
-        return 0
+        return _duration_seconds(job.submission_time, job.completion_time)
 
     return heapq.nlargest(n, jobs, key=get_job_duration)
 
@@ -243,6 +289,7 @@ def list_stages(
     server: Optional[str] = None,
     status: Optional[list[str]] = None,
     with_summaries: bool = False,
+    app_attempt_id: Optional[str] = None,
     offset: int = 0,
     length: Optional[int] = None,
 ) -> list:
@@ -258,6 +305,7 @@ def list_stages(
         server: Optional server name to use (uses default if not specified)
         status: Optional list of stage status values to filter by
         with_summaries: Whether to include summary metrics in the response
+        app_attempt_id: Optional YARN application attempt ID (latest if omitted)
         offset: Number of stages to skip from the start (default: 0)
         length: Maximum number of stages to return (default: None, returns all)
 
@@ -272,14 +320,11 @@ def list_stages(
     if length is not None and length < 0:
         raise ValueError("length must be non-negative")
 
-    stage_statuses = None
-    if status:
-        stage_statuses = [StageStatus.from_string(s) for s in status]
-
     return client.list_stages(
         app_id=app_id,
-        status=stage_statuses,
+        status=status,
         with_summaries=with_summaries,
+        app_attempt_id=app_attempt_id,
         offset=offset,
         length=length,
     )
@@ -319,11 +364,7 @@ def list_slowest_stages(
         return []
 
     def get_stage_duration(stage: StageData):
-        if stage.completion_time and stage.first_task_launched_time:
-            return (
-                stage.completion_time - stage.first_task_launched_time
-            ).total_seconds()
-        return 0
+        return _duration_seconds(stage.first_task_launched_time, stage.completion_time)
 
     return heapq.nlargest(n, stages, key=get_stage_duration)
 
@@ -395,7 +436,9 @@ def get_stage(
 
 
 @mcp.tool()
-def get_environment(app_id: str, server: Optional[str] = None):
+def get_environment(
+    app_id: str, server: Optional[str] = None, app_attempt_id: Optional[str] = None
+):
     """
     Get the comprehensive Spark runtime configuration for a Spark application.
 
@@ -405,6 +448,7 @@ def get_environment(app_id: str, server: Optional[str] = None):
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
+        app_attempt_id: Optional YARN application attempt ID (latest if omitted)
 
     Returns:
         ApplicationEnvironmentInfo object containing environment details
@@ -412,7 +456,7 @@ def get_environment(app_id: str, server: Optional[str] = None):
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
-    return client.get_environment(app_id=app_id)
+    return client.get_environment(app_id=app_id, app_attempt_id=app_attempt_id)
 
 
 @mcp.tool()
@@ -420,6 +464,7 @@ def list_executors(
     app_id: str,
     server: Optional[str] = None,
     include_inactive: bool = False,
+    app_attempt_id: Optional[str] = None,
     offset: int = 0,
     length: Optional[int] = None,
 ):
@@ -434,6 +479,7 @@ def list_executors(
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         include_inactive: Whether to include inactive executors (default: False)
+        app_attempt_id: Optional YARN application attempt ID (latest if omitted)
         offset: Number of executors to skip from the start (default: 0)
         length: Maximum number of executors to return (default: None, returns all)
 
@@ -449,9 +495,13 @@ def list_executors(
         raise ValueError("length must be non-negative")
 
     if include_inactive:
-        return client.list_all_executors(app_id=app_id, offset=offset, length=length)
+        return client.list_all_executors(
+            app_id=app_id, app_attempt_id=app_attempt_id, offset=offset, length=length
+        )
     else:
-        return client.list_executors(app_id=app_id, offset=offset, length=length)
+        return client.list_executors(
+            app_id=app_id, app_attempt_id=app_attempt_id, offset=offset, length=length
+        )
 
 
 @mcp.tool()
@@ -710,7 +760,7 @@ def compare_job_performance(
             return {"count": len(jobs), "total_duration": 0, "avg_duration": 0}
 
         durations = [
-            (j.completion_time - j.submission_time).total_seconds()
+            _duration_seconds(j.submission_time, j.completion_time)
             for j in completed_jobs
         ]
 
@@ -907,7 +957,7 @@ def get_stage_task_summary(
     attempt_id: int = 0,
     server: Optional[str] = None,
     quantiles: str = "0.05,0.25,0.5,0.75,0.95",
-) -> TaskMetricDistributions:
+) -> TaskMetricsSummary:
     """
     Get a summary of task metrics for a specific stage.
 
@@ -922,7 +972,7 @@ def get_stage_task_summary(
         quantiles: Comma-separated list of quantiles to use for summary metrics
 
     Returns:
-        TaskMetricDistributions object containing metric distributions
+        TaskMetricsSummary object containing metric distributions
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
@@ -961,7 +1011,7 @@ def truncate_plan_description(plan_desc: str, max_length: int) -> str:
 def list_slowest_sql_queries(
     app_id: str,
     server: Optional[str] = None,
-    attempt_id: Optional[str] = None,
+    app_attempt_id: Optional[str] = None,
     top_n: int = 1,
     page_size: int = 100,
     include_running: bool = False,
@@ -974,7 +1024,7 @@ def list_slowest_sql_queries(
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
-        attempt_id: Optional attempt ID
+        app_attempt_id: Optional YARN application attempt ID
         top_n: Number of slowest queries to return (default: 1)
         page_size: Number of executions to fetch per page (default: 100)
         include_running: Whether to include running queries (default: False)
@@ -993,14 +1043,14 @@ def list_slowest_sql_queries(
     else:
         include_plan_description = True
 
-    all_executions: List[ExecutionData] = []
+    all_executions: List[SQLExecution] = []
     offset = 0
 
     # Fetch all pages of SQL executions
     while True:
-        executions: List[ExecutionData] = client.get_sql_list(
+        executions: List[SQLExecution] = client.get_sql_list(
             app_id=app_id,
-            attempt_id=attempt_id,
+            app_attempt_id=app_attempt_id,
             details=True,
             plan_description=True,
             offset=offset,
@@ -1019,20 +1069,20 @@ def list_slowest_sql_queries(
 
     # Filter out running queries if not included
     if not include_running:
-        all_executions = [
-            e for e in all_executions if e.status != SQLExecutionStatus.RUNNING.value
-        ]
+        all_executions = [e for e in all_executions if e.status != "RUNNING"]
 
     # Get the top N slowest executions
-    slowest_executions = heapq.nlargest(top_n, all_executions, key=lambda e: e.duration)
+    slowest_executions = heapq.nlargest(
+        top_n, all_executions, key=lambda e: e.duration or 0
+    )
 
     # Create simplified results without additional API calls. Raw object is too verbose.
     simplified_results = []
     for execution in slowest_executions:
         job_summary = JobSummary(
-            success_job_ids=execution.success_job_ids,
-            failed_job_ids=execution.failed_job_ids,
-            running_job_ids=execution.running_job_ids,
+            success_job_ids=execution.success_job_ids or [],
+            failed_job_ids=execution.failed_job_ids or [],
+            running_job_ids=execution.running_job_ids or [],
         )
 
         # Handle plan description based on include_plan_description flag
@@ -1047,9 +1097,7 @@ def list_slowest_sql_queries(
             duration=execution.duration,
             description=execution.description,
             status=execution.status,
-            submission_time=execution.submission_time.isoformat()
-            if execution.submission_time
-            else None,
+            submission_time=execution.submission_time,
             plan_description=plan_description,
             job_summary=job_summary,
         )
@@ -1064,10 +1112,10 @@ def get_sql_execution(
     app_id: str,
     execution_id: int,
     server: Optional[str] = None,
-    attempt_id: Optional[str] = None,
+    app_attempt_id: Optional[str] = None,
     details: bool = True,
     plan_description: bool = True,
-) -> ExecutionData:
+) -> SQLExecution:
     """
     Get detailed information about a specific SQL execution.
 
@@ -1080,12 +1128,12 @@ def get_sql_execution(
         app_id: The Spark application ID
         execution_id: The SQL execution ID
         server: Optional server name to use (uses default if not specified)
-        attempt_id: Optional application attempt ID
+        app_attempt_id: Optional YARN application attempt ID
         details: Whether to include execution details (default: True)
         plan_description: Whether to include plan description (default: True)
 
     Returns:
-        ExecutionData object containing SQL execution details including
+        SQLExecution object containing SQL execution details including
         status, duration, associated job IDs, and execution plan nodes/edges
     """
     ctx = mcp.get_context()
@@ -1094,7 +1142,7 @@ def get_sql_execution(
     return client.get_sql_execution(
         app_id=app_id,
         execution_id=execution_id,
-        attempt_id=attempt_id,
+        app_attempt_id=app_attempt_id,
         details=details,
         plan_description=plan_description,
     )
@@ -1170,11 +1218,9 @@ def get_job_bottlenecks(
                     "stage_id": stage.stage_id,
                     "attempt_id": stage.attempt_id,
                     "name": stage.name,
-                    "duration_seconds": (
-                        stage.completion_time - stage.submission_time
-                    ).total_seconds()
-                    if stage.completion_time and stage.submission_time
-                    else 0,
+                    "duration_seconds": _duration_seconds(
+                        stage.submission_time, stage.completion_time
+                    ),
                     "task_count": stage.num_tasks,
                     "failed_tasks": stage.num_failed_tasks,
                 }
@@ -1184,11 +1230,9 @@ def get_job_bottlenecks(
                 {
                     "job_id": job.job_id,
                     "name": job.name,
-                    "duration_seconds": (
-                        job.completion_time - job.submission_time
-                    ).total_seconds()
-                    if job.completion_time and job.submission_time
-                    else 0,
+                    "duration_seconds": _duration_seconds(
+                        job.submission_time, job.completion_time
+                    ),
                     "failed_tasks": job.num_failed_tasks,
                     "status": job.status,
                 }
@@ -1279,7 +1323,7 @@ def get_resource_usage_timeline(
         if executor.add_time:
             timeline_events.append(
                 {
-                    "timestamp": executor.add_time,
+                    "timestamp": _parse_spark_datetime(executor.add_time),
                     "type": "executor_add",
                     "executor_id": executor.id,
                     "cores": executor.total_cores,
@@ -1292,7 +1336,7 @@ def get_resource_usage_timeline(
         if executor.remove_time:
             timeline_events.append(
                 {
-                    "timestamp": executor.remove_time,
+                    "timestamp": _parse_spark_datetime(executor.remove_time),
                     "type": "executor_remove",
                     "executor_id": executor.id,
                     "reason": executor.remove_reason,
@@ -1304,7 +1348,7 @@ def get_resource_usage_timeline(
         if stage.submission_time:
             timeline_events.append(
                 {
-                    "timestamp": stage.submission_time,
+                    "timestamp": _parse_spark_datetime(stage.submission_time),
                     "type": "stage_start",
                     "stage_id": stage.stage_id,
                     "attempt_id": stage.attempt_id,
@@ -1316,16 +1360,14 @@ def get_resource_usage_timeline(
         if stage.completion_time:
             timeline_events.append(
                 {
-                    "timestamp": stage.completion_time,
+                    "timestamp": _parse_spark_datetime(stage.completion_time),
                     "type": "stage_end",
                     "stage_id": stage.stage_id,
                     "attempt_id": stage.attempt_id,
                     "status": stage.status,
-                    "duration_seconds": (
-                        stage.completion_time - stage.submission_time
-                    ).total_seconds()
-                    if stage.submission_time
-                    else 0,
+                    "duration_seconds": _duration_seconds(
+                        stage.submission_time, stage.completion_time
+                    ),
                 }
             )
 

@@ -1,192 +1,190 @@
-import re
-from typing import Any, Dict, List, Optional, Type, TypeVar
-from urllib.parse import urljoin
+"""Thin facade over the OpenAPI-generated Spark History Server client.
 
-import requests
-from pydantic import BaseModel
+:class:`SparkRestClient` wraps the generated ``DefaultApi`` and returns the
+generated Pydantic models directly. All HTTP goes through the generated
+(``urllib3``-based) client, so the OpenAPI spec is the single source of truth
+for the SHS REST surface. The facade adds client-side ``offset``/``length``
+pagination and list-of-string status filtering on top.
 
-from spark_history_mcp.config.config import ServerConfig
-from spark_history_mcp.models.spark_types import (
-    ApplicationAttemptInfo,
-    ApplicationEnvironmentInfo,
-    ApplicationInfo,
-    ExecutionData,
-    ExecutorSummary,
-    JobData,
-    JobExecutionStatus,
-    ProcessSummary,
-    RDDStorageInfo,
-    StageData,
-    StageStatus,
-    TaskData,
-    TaskMetricDistributions,
-    TaskStatus,
-    ThreadStackTrace,
-    VersionInfo,
+A specific YARN application attempt is addressed by embedding the attempt id in
+the application path (``/applications/{base-app-id}/{attempt-id}/...``). Every
+application-scoped method takes an optional ``app_attempt_id`` that is composed
+into the application id; omitting it selects the latest/only attempt. There is
+no implicit retry against a hard-coded attempt id.
+
+**Authentication.** Username/password (basic) and bearer tokens are applied as
+an ``Authorization`` header. EMR persistent-UI servers authenticate with a
+session cookie instead: :meth:`configure_cookies` installs a ``Cookie`` header
+on the generated client and an optional re-auth callback that refreshes it when
+a request is rejected with 401/403.
+"""
+
+import functools
+import inspect
+from typing import Callable, List, Optional
+
+from spark_history_mcp.api_client.api.default_api import DefaultApi
+from spark_history_mcp.api_client.api_client import ApiClient
+from spark_history_mcp.api_client.configuration import Configuration
+from spark_history_mcp.api_client.exceptions import (
+    ForbiddenException,
+    NotFoundException,
+    UnauthorizedException,
 )
+from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.environment import Environment
+from spark_history_mcp.api_client.models.executor import Executor
+from spark_history_mcp.api_client.models.job import Job
+from spark_history_mcp.api_client.models.sql_execution import SQLExecution
+from spark_history_mcp.api_client.models.stage_data import StageData
+from spark_history_mcp.api_client.models.task_metrics_summary import TaskMetricsSummary
+from spark_history_mcp.config.config import ServerConfig
 
-T = TypeVar("T", bound=BaseModel)
+_DEFAULT_QUANTILES = "0.05, 0.25, 0.5, 0.75, 0.95"
+_PROXY_URL = "socks5h://localhost:8157"
+
+
+class AttemptRequiredError(Exception):
+    """Raised when an application has multiple attempts and none was specified.
+
+    Replaces the History Server's misleading ``404 no such app`` for a
+    multi-attempt YARN application with an actionable message listing the
+    available attempts. No data is returned; the caller must retry with
+    ``app_attempt_id``.
+    """
+
+
+def _resilient_call(method):
+    """Cross-cutting error handling for application-scoped methods.
+
+    * On 401/403, if a re-auth callback is configured, refresh the cookie and
+      retry once (covers EMR session-cookie rotation).
+    * On 404 with no ``app_attempt_id`` for an app that has named attempts,
+      re-raise as :class:`AttemptRequiredError`; otherwise propagate. The
+      attempt lookup only happens on the failure path.
+    """
+    signature = inspect.signature(method)
+
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        try:
+            return method(self, *args, **kwargs)
+        except (UnauthorizedException, ForbiddenException):
+            if not self._reauth:
+                raise
+            self._apply_cookie(self._reauth())
+            return method(self, *args, **kwargs)
+        except NotFoundException as exc:
+            bound = signature.bind(self, *args, **kwargs)
+            bound.apply_defaults()
+            if bound.arguments.get("app_attempt_id"):
+                raise
+            app_id = bound.arguments.get("app_id")
+            attempts = self._attempt_ids(app_id) if app_id else []
+            if attempts:
+                raise AttemptRequiredError(
+                    f"Application '{app_id}' has multiple attempts "
+                    f"({', '.join(attempts)}); retry with app_attempt_id "
+                    f"(e.g. app_attempt_id={attempts[0]!r})."
+                ) from exc
+            raise
+
+    return wrapper
 
 
 class SparkRestClient:
-    """
-    Python client for the Spark REST API.
+    """Facade over the generated Spark History Server API client.
+
+    Methods return the generated Pydantic models from
+    :mod:`spark_history_mcp.api_client.models`.
     """
 
     def __init__(self, server_config: ServerConfig):
-        """
-        Initialize the Spark REST client.
-
-        Args:
-            server_config: Configuration object
-        """
         self.config = server_config
         self.base_url = self.config.url.rstrip("/") + "/api/v1"
-        self.auth = None
-        self.session = None
         self.use_proxy = self.config.use_proxy
-        self.proxies = (
-            self.use_proxy
-            and {
-                "http": "socks5h://localhost:8157",
-                "https": "socks5h://localhost:8157",
-            }
-            or None
-        )
-        self.pattern = re.compile(r"(.*?/applications/[^/]+/)(.+)")
-
-        # Determine whether to verify SSL certificates and timeout
-        # Default to True for verify_ssl and 30 seconds for timeout if not specified
         self.verify_ssl = self.config.verify_ssl
         self.timeout = self.config.timeout
 
-        # Set up authentication if provided
-        if self.config.auth:
-            if self.config.auth.username and self.config.auth.password:
-                self.auth = (self.config.auth.username, self.config.auth.password)
+        # Optional callback returning a fresh Cookie header (EMR re-auth).
+        self._reauth: Optional[Callable[[], str]] = None
 
-    def _make_request(
-        self, request_url: str, params: Optional[Dict[str, Any]]
-    ) -> requests.Response:
-        """
-        Make a GET request to the Spark REST API.
+        self._api = self._build_api_client()
 
-        Args:
-            request_url: The request URL
-            params: Optional query parameters
+    def _build_api_client(self) -> DefaultApi:
+        configuration = Configuration(host=self.base_url, verify_ssl=self.verify_ssl)
 
-        Returns:
-            The response from the API
-        """
-        headers = {"Accept": "application/json"}
+        # Keep "/" unescaped in path parameters so a composite application id
+        # ("{base-app-id}/{attempt-id}") is sent as a real path, not "%2F".
+        configuration.safe_chars_for_path_param = "/"
 
-        # Add token to headers if provided
-        if self.config.auth and self.config.auth.token:
-            headers["Authorization"] = f"Bearer {self.config.auth.token}"
+        if self.use_proxy:
+            configuration.proxy = _PROXY_URL
 
-        # Use the verify_ssl setting for HTTPS requests
-        verify = self.verify_ssl
+        api_client = ApiClient(configuration)
 
-        # Use the session if available, otherwise use requests directly
-        if self.session:
-            # Add headers to the session
-            for key, value in headers.items():
-                self.session.headers[key] = value
+        # The generated client does not auto-apply auth, so set it explicitly.
+        auth = self.config.auth
+        if auth:
+            if auth.username and auth.password:
+                configuration.username = auth.username
+                configuration.password = auth.password
+                token = configuration.get_basic_auth_token()
+                if token:
+                    api_client.set_default_header("Authorization", token)
+            elif auth.token:
+                api_client.set_default_header("Authorization", f"Bearer {auth.token}")
 
-            response = self.session.get(
-                request_url,
-                params=params,
-                timeout=self.timeout,
-                verify=verify,
-                proxies=self.proxies,
-            )
-        else:
-            response = requests.get(
-                request_url,
-                params=params,
-                headers=headers,
-                auth=self.auth,
-                timeout=self.timeout,
-                verify=verify,
-                proxies=self.proxies,
-            )
-        return response
+        return DefaultApi(api_client)
 
-    def _modify_url(self, url):
-        match = self.pattern.search(url)
-        if match:
-            prefix = match.group(1)
-            suffix = match.group(2)
-            # Check if the suffix already starts with a number (attempt ID)
-            if not re.match(r"^\d+/", suffix):
-                # If no attempt ID present, add the first (and probably only) attempt of the app running on YARN
-                app_attempt_id = 1
-                return f"{prefix}{app_attempt_id}/{suffix}"
-        return url
-
-    def _get(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> Any:
-        """
-        Make a GET request to the Spark REST API.
+    # ------------------------------------------------------------------
+    # Auth / transport configuration
+    # ------------------------------------------------------------------
+    def configure_cookies(
+        self, cookie_header: str, reauth: Optional[Callable[[], str]] = None
+    ) -> None:
+        """Authenticate via a ``Cookie`` header (used for EMR persistent UI).
 
         Args:
-            endpoint: The API endpoint to call
-            params: Optional query parameters
-
-        Returns:
-            The JSON response from the API
+            cookie_header: Serialized ``name=value; ...`` cookie string.
+            reauth: Optional callable returning a fresh cookie header, invoked
+                once to recover from a 401/403 (e.g. cookie rotation).
         """
-        url = urljoin(self.base_url + "/", endpoint.lstrip("/"))
+        self._apply_cookie(cookie_header)
+        self._reauth = reauth
 
+    def _apply_cookie(self, cookie_header: str) -> None:
+        self._api.api_client.cookie = cookie_header
+
+    def _invoke(self, fn, *args, **kwargs):
+        """Call a generated API method applying the configured request timeout."""
+        return fn(*args, _request_timeout=self.timeout, **kwargs)
+
+    @staticmethod
+    def _app_path(app_id: str, app_attempt_id: Optional[str] = None) -> str:
+        """Compose the application path segment (``{app_id}/{attempt}`` or bare)."""
+        if app_attempt_id:
+            return f"{app_id}/{app_attempt_id}"
+        return app_id
+
+    def _attempt_ids(self, app_id: str) -> List[str]:
+        """Named attempt ids for an application; ``[]`` on any failure."""
         try:
-            # Try original URL first
-            first_response = self._make_request(url, params)
-            first_response.raise_for_status()
-            return first_response.json()
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 404 and "/applications/" in url:
-                modified_url = self._modify_url(url)
-                try:
-                    second_response = self._make_request(modified_url, params)
-                    second_response.raise_for_status()
-                    return second_response.json()
-                except requests.exceptions.HTTPError as e2:
-                    raise e2 from e  # Chain the exception with the original error
-            # Raise the original error
-            raise e from None
+            application = self.get_application(app_id)
+            attempts = getattr(application, "attempts", None) or []
+            return [a.attempt_id for a in attempts if getattr(a, "attempt_id", None)]
+        except Exception:
+            return []
 
-    def _parse_model(self, data: Dict[str, Any], model_class: Type[T]) -> T:
-        """
-        Parse JSON data into a Pydantic model.
+    @staticmethod
+    def _paginate(items: List, offset: int, length: Optional[int]) -> List:
+        if length is not None:
+            return items[offset : offset + length]
+        return items[offset:] if offset else items
 
-        Args:
-            data: The JSON data to parse
-            model_class: The Pydantic model class to use
-
-        Returns:
-            An instance of the model class
-        """
-        return model_class.model_validate(data)
-
-    def _parse_model_list(
-        self, data: List[Dict[str, Any]], model_class: Type[T]
-    ) -> List[T]:
-        """
-        Parse a list of JSON data into a list of Pydantic models.
-
-        Args:
-            data: The list of JSON data to parse
-            model_class: The Pydantic model class to use
-
-        Returns:
-            A list of instances of the model class
-        """
-        return [self._parse_model(item, model_class) for item in data]
-
-    def get_version(self) -> VersionInfo:
-        """Get the Spark version."""
-        data = self._get("version")
-        return self._parse_model(data, VersionInfo)
-
+    # ------------------------------------------------------------------
+    # Applications
+    # ------------------------------------------------------------------
     def list_applications(
         self,
         status: Optional[List[str]] = None,
@@ -195,511 +193,228 @@ class SparkRestClient:
         min_end_date: Optional[str] = None,
         max_end_date: Optional[str] = None,
         limit: Optional[int] = None,
-    ) -> List[ApplicationInfo]:
-        """
-        Get a list of all applications.
+    ) -> List[Application]:
+        """List applications, optionally filtered by status/date and limited."""
+        # The generated client accepts a single status string.
+        status_param = status[0] if status else None
+        return self._invoke(
+            self._api.list_applications,
+            status=status_param,
+            min_date=min_date,
+            max_date=max_date,
+            min_end_date=min_end_date,
+            max_end_date=max_end_date,
+            limit=limit,
+        )
 
-        Args:
-            status: Filter by application status (COMPLETED, RUNNING)
-            min_date: Minimum start date (yyyy-MM-dd'T'HH:mm:ss.SSSz or yyyy-MM-dd)
-            max_date: Maximum start date
-            min_end_date: Minimum end date
-            max_end_date: Maximum end date
-            limit: Maximum number of applications to return
+    def get_application(self, app_id: str) -> Application:
+        """Get a single application (with all its attempts)."""
+        return self._invoke(self._api.get_application, app_id)
 
-        Returns:
-            List of ApplicationInfo objects
-        """
-        params = {}
-        if status:
-            params["status"] = status
-        if min_date:
-            params["minDate"] = min_date
-        if max_date:
-            params["maxDate"] = max_date
-        if min_end_date:
-            params["minEndDate"] = min_end_date
-        if max_end_date:
-            params["maxEndDate"] = max_end_date
-        if limit:
-            params["limit"] = limit
-
-        data = self._get("applications", params)
-        return self._parse_model_list(data, ApplicationInfo)
-
-    def get_application(self, app_id: str) -> ApplicationInfo:
-        """
-        Get information about a specific application.
-
-        Args:
-            app_id: The application ID
-
-        Returns:
-            ApplicationInfo object
-        """
-        data = self._get(f"applications/{app_id}")
-        return self._parse_model(data, ApplicationInfo)
-
-    def get_application_attempt(
-        self, app_id: str, attempt_id: str
-    ) -> ApplicationAttemptInfo:
-        """
-        Get information about a specific application attempt.
-
-        Args:
-            app_id: The application ID
-            attempt_id: The attempt ID
-
-        Returns:
-            ApplicationAttemptInfo object
-        """
-        data = self._get(f"applications/{app_id}/{attempt_id}")
-        return self._parse_model(data, ApplicationAttemptInfo)
-
+    # ------------------------------------------------------------------
+    # Jobs
+    # ------------------------------------------------------------------
+    @_resilient_call
     def list_jobs(
         self,
         app_id: str,
-        status: Optional[List[JobExecutionStatus]] = None,
+        status: Optional[List[str]] = None,
+        app_attempt_id: Optional[str] = None,
         offset: int = 0,
         length: Optional[int] = None,
-    ) -> List[JobData]:
-        """
-        Get a list of all jobs for an application.
+    ) -> List[Job]:
+        """List jobs for an application, with optional status filter/pagination."""
+        app_path = self._app_path(app_id, app_attempt_id)
+        jobs = self._invoke(self._api.list_jobs, app_path)
 
-        Args:
-            app_id: The application ID
-            status: Filter by job status
-            offset: Number of items to skip from the start (client-side)
-            length: Maximum number of items to return (client-side, None = all)
-
-        Returns:
-            List of JobData objects
-        """
-        params = {}
         if status:
-            params["status"] = [s.value for s in status]
+            wanted = {s.upper() for s in status}
+            jobs = [j for j in jobs if j.status in wanted]
 
-        data = self._get(f"applications/{app_id}/jobs", params)
-        jobs = self._parse_model_list(data, JobData)
-        if length is not None:
-            return jobs[offset : offset + length]
-        return jobs[offset:] if offset else jobs
+        return self._paginate(jobs, offset, length)
 
-    def get_job(self, app_id: str, job_id: int) -> JobData:
-        """
-        Get information about a specific job.
-
-        Args:
-            app_id: The application ID
-            job_id: The job ID
-
-        Returns:
-            JobData object
-        """
-        data = self._get(f"applications/{app_id}/jobs/{job_id}")
-        return self._parse_model(data, JobData)
-
+    # ------------------------------------------------------------------
+    # Stages
+    # ------------------------------------------------------------------
+    @_resilient_call
     def list_stages(
         self,
         app_id: str,
-        status: Optional[List[StageStatus]] = None,
+        status: Optional[List[str]] = None,
         details: bool = False,
         with_summaries: bool = False,
-        quantiles: str = "0.05, 0.25, 0.5, 0.75, 0.95",
-        task_status: Optional[List[TaskStatus]] = None,
+        quantiles: str = _DEFAULT_QUANTILES,
+        task_status: Optional[List[str]] = None,
+        app_attempt_id: Optional[str] = None,
         offset: int = 0,
         length: Optional[int] = None,
     ) -> List[StageData]:
-        """
-        Get a list of all stages for an application.
-
-        Args:
-            app_id: The application ID
-            status: Filter by stage status
-            details: Whether to include task details (WARNING: Setting this to True can significantly slow down the API call due to the large amount of task data returned)
-            with_summaries: Whether to include summary metrics
-            quantiles: Comma-separated list of quantiles to use for summary metrics
-            task_status: Filter by task status (only takes effect when details=true)
-            offset: Number of items to skip from the start (client-side)
-            length: Maximum number of items to return (client-side, None = all)
-
-        Returns:
-            List of StageData objects
-        """
-        params = {
-            "details": str(details).lower(),
-            "withSummaries": str(with_summaries).lower(),
-            "quantiles": quantiles,
-        }
+        """List stages for an application, with optional status filter/pagination."""
+        app_path = self._app_path(app_id, app_attempt_id)
+        task_status_param = task_status[0] if (task_status and details) else None
+        stages = self._invoke(
+            self._api.list_stages,
+            app_path,
+            details=details,
+            task_status=task_status_param,
+            with_summaries=with_summaries,
+            quantiles=quantiles,
+        )
 
         if status:
-            params["status"] = [s.value for s in status]
-        if task_status and details:
-            params["taskStatus"] = [s.value for s in task_status]
+            wanted = {s.upper() for s in status}
+            stages = [s for s in stages if s.status in wanted]
 
-        data = self._get(f"applications/{app_id}/stages", params)
-        stages = self._parse_model_list(data, StageData)
-        if length is not None:
-            return stages[offset : offset + length]
-        return stages[offset:] if offset else stages
+        return self._paginate(stages, offset, length)
 
+    @_resilient_call
     def list_stage_attempts(
         self,
         app_id: str,
         stage_id: int,
-        details: bool = False,  # Setting this to true is NOT recommended due to the amount of data returned.
-        task_status: Optional[List[TaskStatus]] = None,
+        details: bool = False,
+        task_status: Optional[List[str]] = None,
         with_summaries: bool = True,
-        quantiles: str = "0.05, 0.25, 0.5, 0.75, 0.95",
+        quantiles: str = _DEFAULT_QUANTILES,
+        app_attempt_id: Optional[str] = None,
     ) -> List[StageData]:
-        """
-        Get information about a specific stage.
+        """Get all attempts for a specific stage."""
+        app_path = self._app_path(app_id, app_attempt_id)
+        task_status_param = task_status[0] if task_status else None
+        return self._invoke(
+            self._api.list_stage_attempts,
+            app_path,
+            stage_id,
+            details=details,
+            task_status=task_status_param,
+            with_summaries=with_summaries,
+            quantiles=quantiles,
+        )
 
-        Args:
-            app_id: The application ID
-            stage_id: The stage ID
-            details: Whether to include task details
-            task_status: Filter by task status
-            with_summaries: Whether to include summary metrics
-            quantiles: Comma-separated list of quantiles to use for summary metrics
-
-        Returns:
-            List of StageData objects (one per attempt)
-        """
-        params = {
-            "details": str(details).lower(),
-            "withSummaries": str(with_summaries).lower(),
-            "quantiles": quantiles,
-        }
-
-        if task_status:
-            params["taskStatus"] = [s.value for s in task_status]
-
-        data = self._get(f"applications/{app_id}/stages/{stage_id}", params)
-        return self._parse_model_list(data, StageData)
-
+    @_resilient_call
     def get_stage_attempt(
         self,
         app_id: str,
         stage_id: int,
         attempt_id: int,
         details: bool = True,
-        task_status: Optional[List[TaskStatus]] = None,
+        task_status: Optional[List[str]] = None,
         with_summaries: bool = False,
-        quantiles: str = "0.05, 0.25, 0.5, 0.75, 0.95",
+        quantiles: str = _DEFAULT_QUANTILES,
+        app_attempt_id: Optional[str] = None,
     ) -> StageData:
-        """
-        Get information about a specific stage attempt.
-
-        Args:
-            app_id: The application ID
-            stage_id: The stage ID
-            attempt_id: The attempt ID
-            details: Whether to include task details
-            task_status: Filter by task status
-            with_summaries: Whether to include summary metrics
-            quantiles: Comma-separated list of quantiles to use for summary metrics
-
-        Returns:
-            StageData object
-        """
-        params = {
-            "details": str(details).lower(),
-            "withSummaries": str(with_summaries).lower(),
-            "quantiles": quantiles,
-        }
-
-        if task_status:
-            params["taskStatus"] = [s.value for s in task_status]
-
-        data = self._get(
-            f"applications/{app_id}/stages/{stage_id}/{attempt_id}", params
+        """Get a specific stage attempt (``attempt_id`` is the *stage* attempt)."""
+        app_path = self._app_path(app_id, app_attempt_id)
+        task_status_param = task_status[0] if task_status else None
+        return self._invoke(
+            self._api.get_stage_attempt,
+            app_path,
+            stage_id,
+            attempt_id,
+            details=details,
+            task_status=task_status_param,
+            with_summaries=with_summaries,
+            quantiles=quantiles,
         )
-        return self._parse_model(data, StageData)
 
+    @_resilient_call
     def get_stage_task_summary(
         self,
         app_id: str,
         stage_id: int,
         attempt_id: int,
-        quantiles: str = "0.05, 0.25, 0.5, 0.75, 0.95",
-    ) -> TaskMetricDistributions:
-        """
-        Get task summary metrics for a specific stage attempt.
-
-        Args:
-            app_id: The application ID
-            stage_id: The stage ID
-            attempt_id: The attempt ID
-            quantiles: Comma-separated list of quantiles to use for summary metrics
-
-        Returns:
-            TaskMetricDistributions object
-        """
-        params = {"quantiles": quantiles}
-        data = self._get(
-            f"applications/{app_id}/stages/{stage_id}/{attempt_id}/taskSummary", params
+        quantiles: str = _DEFAULT_QUANTILES,
+        app_attempt_id: Optional[str] = None,
+    ) -> TaskMetricsSummary:
+        """Get task summary metrics for a specific stage attempt."""
+        app_path = self._app_path(app_id, app_attempt_id)
+        return self._invoke(
+            self._api.get_task_summary,
+            app_path,
+            stage_id,
+            attempt_id,
+            quantiles=quantiles,
         )
-        return self._parse_model(data, TaskMetricDistributions)
 
-    def list_stage_tasks(
-        self,
-        app_id: str,
-        stage_id: int,
-        attempt_id: int,
-        offset: int = 0,
-        length: int = 20,
-        sort_by: str = "ID",
-        status: Optional[List[TaskStatus]] = None,
-    ) -> List[TaskData]:
-        """
-        Get tasks for a specific stage attempt.
-
-        Args:
-            app_id: The application ID
-            stage_id: The stage ID
-            attempt_id: The attempt ID
-            offset: Pagination offset
-            length: Number of tasks to return
-            sort_by: Field to sort by
-            status: Filter by task status
-
-        Returns:
-            List of TaskData objects
-        """
-        params = {"offset": offset, "length": length, "sortBy": sort_by}
-
-        if status:
-            params["status"] = [s.value for s in status]
-
-        data = self._get(
-            f"applications/{app_id}/stages/{stage_id}/{attempt_id}/taskList", params
-        )
-        return self._parse_model_list(data, TaskData)
-
+    # ------------------------------------------------------------------
+    # Executors
+    # ------------------------------------------------------------------
+    @_resilient_call
     def list_executors(
         self,
         app_id: str,
+        app_attempt_id: Optional[str] = None,
         offset: int = 0,
         length: Optional[int] = None,
-    ) -> List[ExecutorSummary]:
-        """
-        Get a list of all executors for an application.
+    ) -> List[Executor]:
+        """List active executors for an application."""
+        app_path = self._app_path(app_id, app_attempt_id)
+        executors = self._invoke(self._api.list_active_executors, app_path)
+        return self._paginate(executors, offset, length)
 
-        Args:
-            app_id: The application ID
-            offset: Number of items to skip from the start (client-side)
-            length: Maximum number of items to return (client-side, None = all)
-
-        Returns:
-            List of ExecutorSummary objects
-        """
-        data = self._get(f"applications/{app_id}/executors")
-        executors = self._parse_model_list(data, ExecutorSummary)
-        if length is not None:
-            return executors[offset : offset + length]
-        return executors[offset:] if offset else executors
-
+    @_resilient_call
     def list_all_executors(
         self,
         app_id: str,
+        app_attempt_id: Optional[str] = None,
         offset: int = 0,
         length: Optional[int] = None,
-    ) -> List[ExecutorSummary]:
-        """
-        Get a list of all executors (active and inactive) for an application.
+    ) -> List[Executor]:
+        """List all executors (active and inactive) for an application."""
+        app_path = self._app_path(app_id, app_attempt_id)
+        executors = self._invoke(self._api.list_all_executors, app_path)
+        return self._paginate(executors, offset, length)
 
-        Args:
-            app_id: The application ID
-            offset: Number of items to skip from the start (client-side)
-            length: Maximum number of items to return (client-side, None = all)
+    # ------------------------------------------------------------------
+    # Environment
+    # ------------------------------------------------------------------
+    @_resilient_call
+    def get_environment(
+        self, app_id: str, app_attempt_id: Optional[str] = None
+    ) -> Environment:
+        """Get environment/configuration information for an application."""
+        app_path = self._app_path(app_id, app_attempt_id)
+        return self._invoke(self._api.get_environment, app_path)
 
-        Returns:
-            List of ExecutorSummary objects
-        """
-        data = self._get(f"applications/{app_id}/allexecutors")
-        executors = self._parse_model_list(data, ExecutorSummary)
-        if length is not None:
-            return executors[offset : offset + length]
-        return executors[offset:] if offset else executors
-
-    def list_executor_thread_dump(
-        self, app_id: str, executor_id: str
-    ) -> List[ThreadStackTrace]:
-        """
-        Get thread dump for a specific executor.
-
-        Args:
-            app_id: The application ID
-            executor_id: The executor ID
-
-        Returns:
-            List of ThreadStackTrace objects
-        """
-        data = self._get(f"applications/{app_id}/executors/{executor_id}/threads")
-        return self._parse_model_list(data, ThreadStackTrace)
-
-    def get_task_thread_dump(
-        self, app_id: str, task_id: int, executor_id: str
-    ) -> ThreadStackTrace:
-        """
-        Get thread dump for a specific task.
-
-        Args:
-            app_id: The application ID
-            task_id: The task ID
-            executor_id: The executor ID
-
-        Returns:
-            ThreadStackTrace object
-        """
-        params = {"taskId": task_id, "executorId": executor_id}
-        data = self._get(f"applications/{app_id}/threads", params)
-        return self._parse_model(data, ThreadStackTrace)
-
-    def list_all_processes(self, app_id: str) -> List[ProcessSummary]:
-        """
-        Get a list of all processes for an application.
-
-        Args:
-            app_id: The application ID
-
-        Returns:
-            List of ProcessSummary objects
-        """
-        data = self._get(f"applications/{app_id}/allmiscellaneousprocess")
-        return self._parse_model_list(data, ProcessSummary)
-
-    def list_rdds(self, app_id: str) -> List[RDDStorageInfo]:
-        """
-        Get a list of all RDDs for an application.
-
-        Args:
-            app_id: The application ID
-
-        Returns:
-            List of RDDStorageInfo objects
-        """
-        data = self._get(f"applications/{app_id}/storage/rdd")
-        return self._parse_model_list(data, RDDStorageInfo)
-
-    def get_rdd(self, app_id: str, rdd_id: int) -> RDDStorageInfo:
-        """
-        Get information about a specific RDD.
-
-        Args:
-            app_id: The application ID
-            rdd_id: The RDD ID
-
-        Returns:
-            RDDStorageInfo object
-        """
-        data = self._get(f"applications/{app_id}/storage/rdd/{rdd_id}")
-        return self._parse_model(data, RDDStorageInfo)
-
-    def get_environment(self, app_id: str) -> ApplicationEnvironmentInfo:
-        """
-        Get environment information for an application.
-
-        Args:
-            app_id: The application ID
-
-        Returns:
-            ApplicationEnvironmentInfo object
-        """
-        data = self._get(f"applications/{app_id}/environment")
-        return self._parse_model(data, ApplicationEnvironmentInfo)
-
-    def get_metrics_prometheus(self, app_id: str) -> str:
-        """
-        Get Prometheus metrics for an application.
-
-        Args:
-            app_id: The application ID
-
-        Returns:
-            Prometheus metrics as a string
-        """
-        url = urljoin(
-            self.base_url.replace("/api/v1", "/metrics/executors"), "prometheus"
-        )
-
-        if self.session:
-            response = self.session.get(url, timeout=self.timeout, proxies=self.proxies)
-        else:
-            response = requests.get(url, timeout=self.timeout, proxies=self.proxies)
-
-        response.raise_for_status()
-        return response.text
-
+    # ------------------------------------------------------------------
+    # SQL
+    # ------------------------------------------------------------------
+    @_resilient_call
     def get_sql_list(
         self,
         app_id: str,
-        attempt_id: Optional[str] = None,
+        app_attempt_id: Optional[str] = None,
         details: bool = True,
         plan_description: bool = False,
         offset: int = 0,
         length: int = 20,
-    ) -> List[ExecutionData]:
-        """
-        Get a list of all SQL executions for an application.
+    ) -> List[SQLExecution]:
+        """List SQL executions for an application (pagination is server-side)."""
+        app_path = self._app_path(app_id, app_attempt_id)
+        return self._invoke(
+            self._api.list_sql_executions,
+            app_path,
+            details=details,
+            plan_description=plan_description,
+            offset=offset,
+            length=length,
+        )
 
-        Args:
-            app_id: The application ID
-            attempt_id: Optional attempt ID
-            details: Whether to include execution details
-            plan_description: Whether to include plan description
-            offset: Pagination offset
-            length: Number of executions to return
-
-        Returns:
-            List of ExecutionData objects
-        """
-        params = {
-            "details": str(details).lower(),
-            "planDescription": str(plan_description).lower(),
-            "offset": offset,
-            "length": length,
-        }
-
-        if attempt_id:
-            endpoint = f"applications/{app_id}/{attempt_id}/sql"
-        else:
-            endpoint = f"applications/{app_id}/sql"
-
-        data = self._get(endpoint, params)
-        return [ExecutionData.from_dict(item) for item in data]
-
+    @_resilient_call
     def get_sql_execution(
         self,
         app_id: str,
         execution_id: int,
-        attempt_id: Optional[str] = None,
+        app_attempt_id: Optional[str] = None,
         details: bool = True,
         plan_description: bool = True,
-    ) -> ExecutionData:
-        """
-        Get information about a specific SQL execution.
-
-        Args:
-            app_id: The application ID
-            execution_id: The execution ID
-            attempt_id: Optional attempt ID
-            details: Whether to include execution details
-            plan_description: Whether to include plan description
-
-        Returns:
-            ExecutionData object
-        """
-        params = {
-            "details": str(details).lower(),
-            "planDescription": str(plan_description).lower(),
-        }
-
-        if attempt_id:
-            endpoint = f"applications/{app_id}/{attempt_id}/sql/{execution_id}"
-        else:
-            endpoint = f"applications/{app_id}/sql/{execution_id}"
-
-        data = self._get(endpoint, params)
-        return ExecutionData.from_dict(data)
+    ) -> SQLExecution:
+        """Get a specific SQL execution."""
+        app_path = self._app_path(app_id, app_attempt_id)
+        return self._invoke(
+            self._api.get_sql_execution,
+            app_path,
+            execution_id,
+            details=details,
+            plan_description=plan_description,
+        )
