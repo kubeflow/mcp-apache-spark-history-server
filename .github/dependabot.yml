@@ -1,0 +1,11 @@
+version: 2
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Keep in sync with `exclude-newer` in pyproject.toml ([tool.uv]).
+    # Dependabot won't propose releases younger than this window, so uv can
+    # always lock the version Dependabot picks.
+    cooldown:
+      default-days: 10
