@@ -48,6 +48,8 @@ source = "vcs"
 
 [tool.hatch.version.raw-options]
 version_scheme = "no-guess-dev"
+# Only match the Python package tags (v*), not the Go CLI tags (cli/v*)
+git_describe_command = ["git", "describe", "--dirty", "--tags", "--long", "--match", "v*"]
 
 [project.scripts]
 spark-mcp = "spark_history_mcp.core.main:main"
@@ -99,7 +101,6 @@ dev = [
     "pre-commit~=3.0",
     "pytest-asyncio~=1.0",
 ]
-
 
 [[tool.uv.index]]
 name = "pypi-test"

@@ -7,7 +7,8 @@ from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 from mcp.types import TextContent
 
-from spark_history_mcp.models.spark_types import ApplicationInfo, JobData
+from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.job import Job
 
 mcp_endpoint = "http://localhost:18888/mcp/"
 test_app_id = "spark-cc4d115f011443d787f03a71a476a745"
@@ -82,7 +83,7 @@ async def test_get_application():
         )
 
         app_data = json.loads(app_result.content[0].text)
-        app_info = ApplicationInfo.model_validate(app_data)
+        app_info = Application.model_validate(app_data)
 
         # Validate specific fields
         assert app_info.id == test_app_id
@@ -100,7 +101,7 @@ async def test_list_jobs_no_filter():
             assert isinstance(content, TextContent), (
                 "list_jobs should return a TextContent object"
             )
-            stage = JobData.model_validate_json(content.text)
+            stage = Job.model_validate_json(content.text)
             assert stage.status == "SUCCEEDED", "All jobs should have SUCCEEDED status"
 
 
@@ -117,7 +118,7 @@ async def test_list_jobs_with_status_filter():
             assert isinstance(content, TextContent), (
                 "list_jobs should return a TextContent object"
             )
-            stage = JobData.model_validate_json(content.text)
+            stage = Job.model_validate_json(content.text)
             assert stage.status == "SUCCEEDED", "All jobs should have SUCCEEDED status"
 
 
@@ -132,5 +133,5 @@ async def test_get_application_from_second_server():
         )
 
         app_data = json.loads(app_result.content[0].text)
-        app_info = ApplicationInfo.model_validate(app_data)
+        app_info = Application.model_validate(app_data)
         assert app_info.id == test_app_id2

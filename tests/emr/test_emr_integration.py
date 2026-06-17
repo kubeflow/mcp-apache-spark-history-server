@@ -3,8 +3,6 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
-import requests
-
 # Add root directory to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from spark_history_mcp.api.emr_persistent_ui_client import EMRPersistentUIClient
@@ -22,45 +20,31 @@ class TestEMRIntegration(unittest.TestCase):
             emr_cluster_arn=self.emr_cluster_arn, default=True, verify_ssl=True
         )
 
+    @patch.object(EMRPersistentUIClient, "cookie_header")
     @patch.object(EMRPersistentUIClient, "initialize")
-    def test_spark_client_with_emr_session(self, mock_initialize):
-        """Test SparkRestClient using EMR Persistent UI session."""
-        # Mock the EMR client initialization
-        mock_session = MagicMock(spec=requests.Session)
-        # Add headers attribute to the mock session
-        mock_session.headers = {}
-        mock_initialize.return_value = ("https://example.com", mock_session)
+    def test_spark_client_with_emr_cookies(self, mock_initialize, mock_cookie_header):
+        """EMR auth is applied to the generated client as a Cookie header."""
+        mock_initialize.return_value = ("https://example.com", MagicMock())
+        mock_cookie_header.return_value = "session=abc123"
 
-        # Create EMR client
         emr_client = EMRPersistentUIClient(self.server_config)
+        base_url, _ = emr_client.initialize()
 
-        # Initialize EMR client
-        base_url, session = emr_client.initialize()
-
-        # Create a modified server config with the base URL
         emr_server_config = self.server_config.model_copy()
         emr_server_config.url = base_url
 
-        # Create SparkRestClient with the session
         spark_client = SparkRestClient(emr_server_config)
-        spark_client.session = session
+        spark_client.configure_cookies(emr_client.cookie_header())
 
-        # Verify the SparkRestClient is configured correctly
+        # Cookie is installed on the generated client (no requests.Session).
         self.assertEqual(spark_client.base_url, "https://example.com/api/v1")
-        self.assertEqual(spark_client.session, mock_session)
+        self.assertEqual(spark_client._api.api_client.cookie, "session=abc123")
 
-        # Mock a response for list_applications
-        mock_response = MagicMock()
-        mock_response.json.return_value = []
-        mock_response.raise_for_status.return_value = None
-        mock_session.get.return_value = mock_response
-
-        # Call a method on the SparkRestClient
-        apps = spark_client.list_applications()
-
-        # Verify the session was used for the request
-        mock_session.get.assert_called_once()
-        self.assertEqual(apps, [])
+        # Calls route through the generated client.
+        spark_client._api = MagicMock()
+        spark_client._api.list_applications.return_value = []
+        self.assertEqual(spark_client.list_applications(), [])
+        spark_client._api.list_applications.assert_called_once()
 
     @patch("spark_history_mcp.core.app.EMRPersistentUIClient")
     @patch("spark_history_mcp.core.app.Config")

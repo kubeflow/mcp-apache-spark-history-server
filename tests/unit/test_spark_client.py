@@ -1,340 +1,244 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import requests
-
-from spark_history_mcp.api.spark_client import SparkRestClient
+from spark_history_mcp.api.spark_client import AttemptRequiredError, SparkRestClient
+from spark_history_mcp.api_client.exceptions import (
+    ForbiddenException,
+    NotFoundException,
+    UnauthorizedException,
+)
+from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.application_attempt import ApplicationAttempt
+from spark_history_mcp.api_client.models.executor import Executor
+from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.config.config import ServerConfig
 
 
-class TestSparkClient(unittest.TestCase):
+def _make_jobs(count):
+    return [Job(jobId=i, name=f"job-{i}", status="SUCCEEDED") for i in range(count)]
+
+
+def _make_executors(count):
+    return [Executor(id=str(i), isActive=True) for i in range(count)]
+
+
+class TestAppPath(unittest.TestCase):
+    def test_no_attempt(self):
+        self.assertEqual(SparkRestClient._app_path("app-1"), "app-1")
+        self.assertEqual(SparkRestClient._app_path("app-1", None), "app-1")
+
+    def test_with_attempt(self):
+        self.assertEqual(SparkRestClient._app_path("app-1", "2"), "app-1/2")
+
+
+class TestSparkRestClient(unittest.TestCase):
+    """All calls go through the generated DefaultApi (single transport)."""
+
     def setUp(self):
         self.server_config = ServerConfig(url="http://spark-history-server:18080")
         self.client = SparkRestClient(self.server_config)
+        self.mock_api = MagicMock()
+        self.client._api = self.mock_api
+        self.timeout = self.client.timeout
 
-    @patch("spark_history_mcp.api.spark_client.requests.get")
-    def test_list_applications(self, mock_get):
-        # Setup mock response
-        mock_response = MagicMock()
-        mock_response.json.return_value = [
-            {
-                "id": "app-20230101123456-0001",
-                "name": "Test Spark App",
-                "coresGranted": 8,
-                "maxCores": 16,
-                "coresPerExecutor": 2,
-                "memoryPerExecutorMB": 4096,
-                "attempts": [
-                    {
-                        "attemptId": "1",
-                        "startTime": "2023-01-01T12:34:56.789GMT",
-                        "endTime": "2023-01-01T13:34:56.789GMT",
-                        "lastUpdated": "2023-01-01T13:34:56.789GMT",
-                        "duration": 3600000,
-                        "sparkUser": "spark",
-                        "appSparkVersion": "3.3.0",
-                        "completed": True,
-                    }
-                ],
-            }
+    def test_base_url(self):
+        self.assertEqual(
+            self.client.base_url, "http://spark-history-server:18080/api/v1"
+        )
+
+    def test_path_params_keep_slash(self):
+        """The composite app id must not be percent-encoded by the client."""
+        api = self.client._build_api_client()
+        self.assertEqual(api.api_client.configuration.safe_chars_for_path_param, "/")
+
+    def test_requests_library_not_used(self):
+        """The facade no longer depends on requests (urllib3 everywhere)."""
+        import spark_history_mcp.api.spark_client as module
+
+        self.assertFalse(hasattr(module, "requests"))
+
+    def test_list_applications_passes_single_status_and_timeout(self):
+        apps = [Application(id="app-1", name="Test App")]
+        self.mock_api.list_applications.return_value = apps
+
+        result = self.client.list_applications(status=["COMPLETED"], limit=10)
+
+        self.assertEqual(result, apps)
+        self.mock_api.list_applications.assert_called_once_with(
+            status="COMPLETED",
+            min_date=None,
+            max_date=None,
+            min_end_date=None,
+            max_end_date=None,
+            limit=10,
+            _request_timeout=self.timeout,
+        )
+
+    def test_get_application(self):
+        app = Application(id="app-1", name="Test App")
+        self.mock_api.get_application.return_value = app
+
+        self.assertEqual(self.client.get_application("app-1"), app)
+        self.mock_api.get_application.assert_called_once_with(
+            "app-1", _request_timeout=self.timeout
+        )
+
+    def test_list_jobs_plain_app_path(self):
+        self.mock_api.list_jobs.return_value = _make_jobs(2)
+
+        self.client.list_jobs("app-123")
+
+        self.mock_api.list_jobs.assert_called_once_with(
+            "app-123", _request_timeout=self.timeout
+        )
+
+    def test_list_jobs_composite_app_path(self):
+        self.mock_api.list_jobs.return_value = _make_jobs(2)
+
+        self.client.list_jobs("app-123", app_attempt_id="2")
+
+        self.mock_api.list_jobs.assert_called_once_with(
+            "app-123/2", _request_timeout=self.timeout
+        )
+
+    def test_get_stage_attempt_composite_path_and_stage_attempt(self):
+        self.mock_api.get_stage_attempt.return_value = "stage"
+
+        self.client.get_stage_attempt(
+            "app-123", stage_id=3, attempt_id=0, app_attempt_id="1"
+        )
+
+        args, _ = self.mock_api.get_stage_attempt.call_args
+        self.assertEqual(args[:3], ("app-123/1", 3, 0))
+
+    def test_list_jobs_pagination(self):
+        self.mock_api.list_jobs.return_value = _make_jobs(5)
+
+        self.assertEqual(len(self.client.list_jobs("app-123")), 5)
+
+        jobs = self.client.list_jobs("app-123", offset=2)
+        self.assertEqual([j.job_id for j in jobs], [2, 3, 4])
+
+        jobs = self.client.list_jobs("app-123", offset=1, length=2)
+        self.assertEqual([j.job_id for j in jobs], [1, 2])
+
+        self.assertEqual(self.client.list_jobs("app-123", offset=10), [])
+
+    def test_list_jobs_status_filter(self):
+        self.mock_api.list_jobs.return_value = [
+            Job(jobId=0, name="a", status="RUNNING"),
+            Job(jobId=1, name="b", status="SUCCEEDED"),
+            Job(jobId=2, name="c", status="FAILED"),
         ]
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
 
-        # Call the method
-        apps = self.client.list_applications(status=["COMPLETED"], limit=10)
+        result = self.client.list_jobs("app-123", status=["SUCCEEDED"])
 
-        mock_get.assert_called_once_with(
-            "http://spark-history-server:18080/api/v1/applications",
-            params={"status": ["COMPLETED"], "limit": 10},
-            headers={"Accept": "application/json"},
-            auth=None,
-            timeout=30,
-            verify=True,
-            proxies=None,
+        self.assertEqual([j.status for j in result], ["SUCCEEDED"])
+
+    def test_list_executors_pagination(self):
+        self.mock_api.list_active_executors.return_value = _make_executors(10)
+
+        self.assertEqual(len(self.client.list_executors("app-123")), 10)
+        executors = self.client.list_executors("app-123", offset=8, length=5)
+        self.assertEqual([e.id for e in executors], ["8", "9"])
+
+    # ----- attempt-aware 404 enrichment -----
+    def test_missing_app_404_propagates(self):
+        """A genuinely missing app: the attempt lookup also 404s, original raised."""
+        self.mock_api.list_jobs.side_effect = NotFoundException(status=404)
+        self.mock_api.get_application.side_effect = NotFoundException(status=404)
+
+        with self.assertRaises(NotFoundException):
+            self.client.list_jobs("app-123")
+
+    def test_missing_attempt_raises_attempt_required(self):
+        self.mock_api.list_jobs.side_effect = NotFoundException(status=404)
+        self.mock_api.get_application.return_value = Application(
+            id="app-123",
+            name="multi",
+            attempts=[
+                ApplicationAttempt(attemptId="2"),
+                ApplicationAttempt(attemptId="1"),
+            ],
         )
 
-        self.assertEqual(len(apps), 1)
-        self.assertEqual(apps[0].id, "app-20230101123456-0001")
-        self.assertEqual(apps[0].name, "Test Spark App")
-        self.assertEqual(apps[0].cores_granted, 8)
-        self.assertEqual(len(apps[0].attempts), 1)
-        self.assertEqual(apps[0].attempts[0].attempt_id, "1")
-        self.assertEqual(apps[0].attempts[0].spark_user, "spark")
-        self.assertTrue(apps[0].attempts[0].completed)
+        with self.assertRaises(AttemptRequiredError) as ctx:
+            self.client.list_jobs("app-123")
 
-    @patch("spark_history_mcp.api.spark_client.requests.get")
-    def test_list_applications_with_filters(self, mock_get):
-        # Setup mock response
-        mock_response = MagicMock()
-        mock_response.json.return_value = [
-            {
-                "id": "app-20230101123456-0001",
-                "name": "Test Spark App",
-                "attempts": [
-                    {
-                        "attemptId": "1",
-                        "startTime": "2023-01-01T12:34:56.789GMT",
-                        "endTime": "2023-01-01T13:34:56.789GMT",
-                        "lastUpdated": "2023-01-01T13:34:56.789GMT",
-                        "duration": 3600000,
-                        "sparkUser": "spark",
-                        "completed": True,
-                    }
-                ],
-            }
-        ]
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
+        message = str(ctx.exception)
+        self.assertIn("multiple attempts (2, 1)", message)
+        self.assertIn("app_attempt_id='2'", message)
 
-        # Call the method with various filters
-        apps = self.client.list_applications(
-            status=["COMPLETED"], min_date="2023-01-01", max_date="2023-01-02", limit=5
+    def test_404_with_explicit_attempt_not_enriched(self):
+        self.mock_api.list_jobs.side_effect = NotFoundException(status=404)
+
+        with self.assertRaises(NotFoundException):
+            self.client.list_jobs("app-123", app_attempt_id="9")
+        self.mock_api.get_application.assert_not_called()
+
+    def test_404_single_attempt_app_propagates(self):
+        self.mock_api.list_jobs.side_effect = NotFoundException(status=404)
+        self.mock_api.get_application.return_value = Application(
+            id="app-123", name="single", attempts=[ApplicationAttempt()]
         )
 
-        # Assertions
-        mock_get.assert_called_once_with(
-            "http://spark-history-server:18080/api/v1/applications",
-            params={
-                "status": ["COMPLETED"],
-                "minDate": "2023-01-01",
-                "maxDate": "2023-01-02",
-                "limit": 5,
-            },
-            headers={"Accept": "application/json"},
-            auth=None,
-            timeout=30,
-            verify=True,
-            proxies=None,
-        )
+        with self.assertRaises(NotFoundException):
+            self.client.list_jobs("app-123")
 
-        self.assertEqual(len(apps), 1)
-
-    @patch("spark_history_mcp.api.spark_client.requests.get")
-    def test_list_applications_empty_response(self, mock_get):
-        # Setup mock response with empty list
-        mock_response = MagicMock()
-        mock_response.json.return_value = []
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
-
-        # Call the method
-        apps = self.client.list_applications()
-
-        # Assertions
-        mock_get.assert_called_once()
-        self.assertEqual(len(apps), 0)
-
-    @patch("spark_history_mcp.api.spark_client.requests.get")
-    def test_fallback_behavior(self, mock_get):
-        # First request fails with 404
-        error_response = MagicMock()
-        error_response.status_code = 404
-        error_response.text = "no such app"
-        http_error = requests.exceptions.HTTPError(response=error_response)
-        error_response.raise_for_status.side_effect = http_error
-
-        # Second request succeeds
-        success_response = MagicMock()
-        success_response.json.return_value = {"key": "value"}
-        success_response.raise_for_status.return_value = None
-
-        # Configure mock to return different responses
-        mock_get.side_effect = [error_response, success_response]
-
-        # Call method that should trigger EMR fallback
-        result = self.client._get("applications/app-123/jobs")
-
-        # Verify both URLs were tried
-        mock_get.assert_any_call(
-            "http://spark-history-server:18080/api/v1/applications/app-123/jobs",
-            params=None,
-            headers={"Accept": "application/json"},
-            auth=None,
-            timeout=30,
-            verify=True,
-            proxies=self.client.proxies,  # Use actual proxies value
-        )
-        mock_get.assert_any_call(
-            "http://spark-history-server:18080/api/v1/applications/app-123/1/jobs",
-            params=None,
-            headers={"Accept": "application/json"},
-            auth=None,
-            timeout=30,
-            verify=True,
-            proxies=self.client.proxies,  # Use actual proxies value
-        )
-
-        # Verify we got the success response
-        self.assertEqual(result, {"key": "value"})
-
-    @patch("spark_history_mcp.api.spark_client.requests.get")
-    def test_fallback_fail(self, mock_get):
-        # Create 404 response
-        error_response = MagicMock()
-        error_response.status_code = 404
-        error_response.text = "no such app"
-        http_error = requests.exceptions.HTTPError(response=error_response)
-        error_response.raise_for_status.side_effect = http_error
-
-        # Both requests fail
-        mock_get.side_effect = [error_response, error_response]
-
-        # Call method and expect exception
-        with self.assertRaises(requests.exceptions.HTTPError):
-            self.client._get("applications/app-123/jobs")
-
-        # Verify both URLs were tried
-        self.assertEqual(mock_get.call_count, 2)
-
-    @patch("spark_history_mcp.api.spark_client.requests.get")
-    def test_proxy_configuration(self, mock_get):
-        # Test with proxy enabled
+    def test_proxy_configuration(self):
         client = SparkRestClient(
             ServerConfig(url="http://spark-history-server:18080", use_proxy=True)
         )
         self.assertEqual(
-            client.proxies,
-            {"http": "socks5h://localhost:8157", "https": "socks5h://localhost:8157"},
+            client._api.api_client.configuration.proxy, "socks5h://localhost:8157"
         )
 
-        # Test with proxy disabled
-        client = SparkRestClient(
-            ServerConfig(url="http://spark-history-server:18080", use_proxy=False)
-        )
-        self.assertIsNone(client.proxies)
 
-    def test_url_modification(self):
-        """Test the URL modification logic for different URL patterns"""
-        test_cases = [
-            # Test case 1: Standard URL that can be modified
-            {
-                "input": "http://ip-10-0-119-23.ec2.internal:18080/api/v1/applications/application_1753825693853_1003/allexecutors",
-                "expected": "http://ip-10-0-119-23.ec2.internal:18080/api/v1/applications/application_1753825693853_1003/1/allexecutors",
-            },
-            # Test case 2: URL that already has an attempt number (should not be modified)
-            {
-                "input": "http://ip-10-0-119-23.ec2.internal:18080/api/v1/applications/application_1753825693853_1003/2/allexecutors",
-                "expected": "http://ip-10-0-119-23.ec2.internal:18080/api/v1/applications/application_1753825693853_1003/2/allexecutors",
-            },
-            # Test case 3: URL without applications path (should not be modified)
-            {
-                "input": "http://ip-10-0-119-23.ec2.internal:18080/api/v1/metrics",
-                "expected": "http://ip-10-0-119-23.ec2.internal:18080/api/v1/metrics",
-            },
-            # Test case 4: URL with another endpoint after application ID
-            {
-                "input": "http://ip-10-0-119-23.ec2.internal:18080/api/v1/applications/application_1753825693853_1003/stages",
-                "expected": "http://ip-10-0-119-23.ec2.internal:18080/api/v1/applications/application_1753825693853_1003/1/stages",
-            },
+class TestCookieAuth(unittest.TestCase):
+    """EMR-style cookie auth and re-auth-on-401/403 behaviour."""
+
+    def setUp(self):
+        self.client = SparkRestClient(ServerConfig(url="https://example.com/shs"))
+
+    def test_configure_cookies_sets_header(self):
+        self.client.configure_cookies("session=abc")
+        self.assertEqual(self.client._api.api_client.cookie, "session=abc")
+
+    def test_reauth_retries_once_on_unauthorized(self):
+        self.client._api = MagicMock()
+        self.client._api.list_jobs.side_effect = [
+            UnauthorizedException(status=401),
+            _make_jobs(1),
         ]
+        reauth = MagicMock(return_value="session=fresh")
+        self.client.configure_cookies("session=stale", reauth=reauth)
 
-        for test_case in test_cases:
-            input_url = test_case["input"]
-            expected_url = test_case["expected"]
-            modified_url = self.client._modify_url(input_url)
-            self.assertEqual(
-                modified_url,
-                expected_url,
-                f"Failed to correctly modify URL.\nInput: {input_url}\nExpected: {expected_url}\nGot: {modified_url}",
-            )
+        result = self.client.list_jobs("app-1")
 
-    @patch("spark_history_mcp.api.spark_client.requests.get")
-    def test_list_jobs_pagination(self, mock_get):
-        """Test client-side pagination for list_jobs"""
-        mock_response = MagicMock()
-        mock_response.json.return_value = [
-            {
-                "jobId": i,
-                "name": f"job-{i}",
-                "status": "SUCCEEDED",
-                "stageIds": [],
-                "numTasks": 10,
-                "numActiveTasks": 0,
-                "numCompletedTasks": 10,
-                "numSkippedTasks": 0,
-                "numFailedTasks": 0,
-                "numKilledTasks": 0,
-                "numCompletedIndices": 10,
-                "numActiveStages": 0,
-                "numCompletedStages": 1,
-                "numSkippedStages": 0,
-                "numFailedStages": 0,
-                "killedTasksSummary": {},
-            }
-            for i in range(5)
+        self.assertEqual(len(result), 1)
+        reauth.assert_called_once()
+        self.assertEqual(self.client._api.api_client.cookie, "session=fresh")
+        self.assertEqual(self.client._api.list_jobs.call_count, 2)
+
+    def test_reauth_on_forbidden(self):
+        self.client._api = MagicMock()
+        self.client._api.get_environment.side_effect = [
+            ForbiddenException(status=403),
+            "env",
         ]
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
+        reauth = MagicMock(return_value="session=fresh")
+        self.client.configure_cookies("session=stale", reauth=reauth)
 
-        # No pagination — returns all
-        all_jobs = self.client.list_jobs("app-123")
-        self.assertEqual(len(all_jobs), 5)
+        self.assertEqual(self.client.get_environment("app-1"), "env")
+        reauth.assert_called_once()
 
-        # With offset
-        jobs = self.client.list_jobs("app-123", offset=2)
-        self.assertEqual(len(jobs), 3)
-        self.assertEqual(jobs[0].job_id, 2)
+    def test_unauthorized_without_reauth_propagates(self):
+        self.client._api = MagicMock()
+        self.client._api.list_jobs.side_effect = UnauthorizedException(status=401)
 
-        # With offset + length
-        jobs = self.client.list_jobs("app-123", offset=1, length=2)
-        self.assertEqual(len(jobs), 2)
-        self.assertEqual(jobs[0].job_id, 1)
-        self.assertEqual(jobs[1].job_id, 2)
+        with self.assertRaises(UnauthorizedException):
+            self.client.list_jobs("app-1")
 
-        # Offset beyond range
-        jobs = self.client.list_jobs("app-123", offset=10)
-        self.assertEqual(len(jobs), 0)
 
-    @patch("spark_history_mcp.api.spark_client.requests.get")
-    def test_list_executors_pagination(self, mock_get):
-        """Test client-side pagination for list_executors"""
-        mock_response = MagicMock()
-        mock_response.json.return_value = [
-            {
-                "id": str(i),
-                "hostPort": f"host-{i}:1234",
-                "isActive": True,
-                "rddBlocks": 0,
-                "memoryUsed": 0,
-                "diskUsed": 0,
-                "totalCores": 4,
-                "maxTasks": 4,
-                "activeTasks": 0,
-                "failedTasks": 0,
-                "completedTasks": 100,
-                "totalTasks": 100,
-                "totalDuration": 5000,
-                "totalGCTime": 100,
-                "totalInputBytes": 0,
-                "totalShuffleRead": 0,
-                "totalShuffleWrite": 0,
-                "isBlacklisted": False,
-                "maxMemory": 1000,
-                "addTime": "2023-01-01T00:00:00.000GMT",
-                "executorLogs": {},
-                "blacklistedInStages": [],
-                "attributes": {},
-                "resources": {},
-                "resourceProfileId": 0,
-                "isExcluded": False,
-                "excludedInStages": [],
-            }
-            for i in range(10)
-        ]
-        mock_response.raise_for_status.return_value = None
-        mock_get.return_value = mock_response
-
-        # No pagination
-        all_executors = self.client.list_executors("app-123")
-        self.assertEqual(len(all_executors), 10)
-
-        # With length only
-        executors = self.client.list_executors("app-123", length=3)
-        self.assertEqual(len(executors), 3)
-        self.assertEqual(executors[0].id, "0")
-
-        # With offset + length
-        executors = self.client.list_executors("app-123", offset=8, length=5)
-        self.assertEqual(len(executors), 2)
-        self.assertEqual(executors[0].id, "8")
+if __name__ == "__main__":
+    unittest.main()
