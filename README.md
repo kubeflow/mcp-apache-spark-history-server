@@ -193,7 +193,7 @@ Agents can target a specific server per query:
 | **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
 | **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |
 
-### Available Tools (21)
+### Available Tools (22)
 
 <details>
 <summary>Available Tools</summary>
@@ -234,9 +234,10 @@ Agents can target a specific server per query:
 #### SQL & Query Analysis
 | Tool | Description |
 |------|-------------|
-| `list_slowest_sql_queries` | Top N slowest SQL executions with metrics |
-| `get_sql_execution` | SQL execution detail with optional plan and node metrics |
-| `compare_sql_execution_plans` | Compare SQL plans and metrics between two jobs |
+| `list_sql_executions` | List SQL executions as curated summaries, with status/description filters, sorting, and a default limit |
+| `get_sql_execution` | SQL execution header by default; opt-in plan, node metrics, job summaries, aggregated stage metrics, and stage list |
+| `compare_sql_executions` | Compare aggregated performance metrics (stages, tasks, shuffle, spill, GC) between two SQL executions |
+| `compare_sql_execution_plans` | Compare SQL plan structure (node types, node/edge counts) between two executions |
 
 #### Performance & Bottleneck Analysis
 | Tool | Description |
@@ -263,7 +264,7 @@ Agents can target a specific server per query:
 - *"Why is my ETL job running slower than yesterday?"* → `get_job_bottlenecks` + `list_slowest_stages` + `compare_job_performance`
 - *"What caused job 42 to fail?"* → `list_jobs` + `get_stage` + `get_stage_task_summary`
 - *"Compare today's batch with yesterday's run"* → `compare_job_performance` + `compare_job_environments`
-- *"Find my slowest SQL queries and explain why"* → `list_slowest_sql_queries` + `get_sql_execution` + `compare_sql_execution_plans`
+- *"Find my slowest SQL queries and explain why"* → `list_sql_executions` + `get_sql_execution` + `compare_sql_executions`
 
 ---
 

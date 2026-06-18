@@ -1,10 +1,11 @@
-# E2E Test Configuration - Multiple Spark History Servers
+# E2E Test Configuration - shared CLI e2e Spark History Server corpus
+# Both server entries point at the same SHS instance (served by `task cli:start-shs`) for comparison across servers
 servers:
   local:
     default: true
     url: "http://localhost:18080"
-  local2:
-    url: "http://localhost:18081"
+  secondary:
+    url: "http://localhost:18080"
 
 mcp:
   transports:

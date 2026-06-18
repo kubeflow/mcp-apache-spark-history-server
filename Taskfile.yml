@@ -80,35 +80,25 @@ tasks:
       - echo "✅ Helm chart unit tests completed!"
 
   test-e2e:
-    desc: Run end-to-end tests with multiple Spark servers and MCP server
+    desc: Run end-to-end tests against the Spark History Server e2e corpus
     cmds:
-      - echo "🧪 Starting end-to-end tests with multiple Spark servers..."
+      - echo "🧪 Starting end-to-end tests..."
       - echo "Backing up original config..."
       - cp config.yaml config.yaml.backup
       - defer: cp config.yaml.backup config.yaml && rm config.yaml.backup
       - defer:
           task: stop-all
+      - defer:
+          task: cli:stop-shs
       - echo "Setting up e2e configuration..."
       - cp tests/config-e2e.yaml config.yaml
+      - echo "Starting Spark History Server..."
+      - task: cli:start-shs
+      - echo "Starting MCP server..."
       - task: start-mcp-bg
-      - echo "Starting first Spark server..."
-      - task: start-spark-bg
-        vars:
-          CONTAINER_NAME: "spark-server-1"
-          PORT: "18080"
-          EVENT_DIR: "examples/basic"
-      - echo "Starting second Spark server..."
-      - task: start-spark-bg
-        vars:
-          CONTAINER_NAME: "spark-server-2"
-          PORT: "18081"
-          EVENT_DIR: "examples/basic2"
-        silent: false
-      - echo "Both servers started, running tests..."
       - |
         echo "Running e2e tests..."
         uv run pytest tests/e2e.py -v
-      - task: stop-all
 
   test-verbose:
     desc: Run tests with verbose output

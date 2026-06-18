@@ -8,9 +8,10 @@ from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.api_client.models.task_metrics_summary import TaskMetricsSummary
-from spark_history_mcp.config.config import ServerConfig
 from spark_history_mcp.tools.tools import (
     _calculate_executor_metrics,
+    compare_sql_execution_plans,
+    compare_sql_executions,
     get_application,
     get_client_or_default,
     get_sql_execution,
@@ -20,8 +21,8 @@ from spark_history_mcp.tools.tools import (
     list_executors,
     list_jobs,
     list_slowest_jobs,
-    list_slowest_sql_queries,
     list_slowest_stages,
+    list_sql_executions,
     list_stages,
 )
 
@@ -897,300 +898,391 @@ class TestTools(unittest.TestCase):
         self.assertEqual(result[1].stage_id, 3)  # 4 minutes
         self.assertEqual(result[2].stage_id, 2)  # 3 minutes
 
-    # Tests for list_slowest_sql_queries tool
-    @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_slowest_sql_queries_success(self, mock_get_client):
-        """Test successful SQL query retrieval and sorting"""
-        mock_client = MagicMock()
-
-        # Create mock SQL executions with different durations
-        sql1 = MagicMock(spec=SQLExecution)
-        sql1.id = 1
-        sql1.duration = 5000  # 5 seconds
-        sql1.status = "COMPLETED"
-        sql1.success_job_ids = [1, 2]
-        sql1.failed_job_ids = []
-        sql1.running_job_ids = []
-        sql1.description = "Query 1"
-        sql1.submission_time = "2025-08-05T00:23:38.607GMT"
-        sql1.plan_description = "Sample plan description"
-
-        sql2 = MagicMock(spec=SQLExecution)
-        sql2.id = 2
-        sql2.duration = 10000  # 10 seconds
-        sql2.status = "COMPLETED"
-        sql2.success_job_ids = [3, 4]
-        sql2.failed_job_ids = []
-        sql2.running_job_ids = []
-        sql2.description = "Query 2"
-        sql2.submission_time = "2025-08-05T00:23:38.607GMT"
-        sql2.plan_description = "Sample plan description"
-
-        sql3 = MagicMock(spec=SQLExecution)
-        sql3.id = 3
-        sql3.duration = 2000  # 2 seconds
-        sql3.status = "COMPLETED"
-        sql3.success_job_ids = [5]
-        sql3.failed_job_ids = []
-        sql3.running_job_ids = []
-        sql3.description = "Query 3"
-        sql3.submission_time = "2025-08-05T00:23:38.607GMT"
-        sql3.plan_description = "Sample plan description"
-
-        mock_client.get_sql_list.return_value = [sql1, sql2, sql3]
-        mock_get_client.return_value = mock_client
-
-        result = list_slowest_sql_queries("spark-app-123", top_n=2)
-
-        # Verify results are sorted by duration (descending)
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result[0].duration, 10000)  # Slowest first
-        self.assertEqual(result[1].duration, 5000)  # Second slowest
+    # Tests for list_sql_executions tool
+    def _mk_sql(
+        self,
+        sql_id,
+        duration,
+        status="COMPLETED",
+        description="Query",
+        success=None,
+        failed=None,
+        running=None,
+    ):
+        sql = MagicMock(spec=SQLExecution)
+        sql.id = sql_id
+        sql.duration = duration
+        sql.status = status
+        sql.description = description
+        sql.submission_time = "2025-08-05T00:23:38.607GMT"
+        sql.success_job_ids = success if success is not None else []
+        sql.failed_job_ids = failed if failed is not None else []
+        sql.running_job_ids = running if running is not None else []
+        return sql
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_slowest_sql_queries_exclude_running(self, mock_get_client):
-        """Test SQL query retrieval excluding running queries"""
+    def test_list_sql_executions_sort_by_duration(self, mock_get_client):
+        """list_sql_executions sorts by duration descending and returns summaries"""
         mock_client = MagicMock()
-
-        # Create mock SQL executions with different statuses
-        sql1 = MagicMock(spec=SQLExecution)
-        sql1.id = 1
-        sql1.duration = 5000
-        sql1.status = "RUNNING"
-        sql1.success_job_ids = []
-        sql1.failed_job_ids = []
-        sql1.running_job_ids = [1]
-        sql1.description = "Running Query"
-        sql1.submission_time = "2025-08-05T00:23:38.607GMT"
-        sql1.plan_description = "Running plan description"
-
-        sql2 = MagicMock(spec=SQLExecution)
-        sql2.id = 2
-        sql2.duration = 10000
-        sql2.status = "COMPLETED"
-        sql2.success_job_ids = [2, 3]
-        sql2.failed_job_ids = []
-        sql2.running_job_ids = []
-        sql2.description = "Completed Query"
-        sql2.submission_time = "2025-08-05T00:23:38.607GMT"
-        sql2.plan_description = "Completed plan description"
-
-        mock_client.get_sql_list.return_value = [sql1, sql2]
+        mock_client.get_sql_list.return_value = [
+            self._mk_sql(1, 5000, success=[1, 2]),
+            self._mk_sql(2, 10000, success=[3]),
+            self._mk_sql(3, 2000, success=[4]),
+        ]
         mock_get_client.return_value = mock_client
 
-        # Call the function (include_running=False by default)
-        result = list_slowest_sql_queries("spark-app-123")
+        result = list_sql_executions("spark-app-123", sort_by="duration")
 
-        # Should exclude running query
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].status, "COMPLETED")
-
-    @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_slowest_sql_queries_include_running(self, mock_get_client):
-        """Test SQL query retrieval including running queries"""
-        mock_client = MagicMock()
-
-        sql1 = MagicMock(spec=SQLExecution)
-        sql1.id = 1
-        sql1.duration = 5000
-        sql1.status = "RUNNING"
-        sql1.success_job_ids = []
-        sql1.failed_job_ids = []
-        sql1.running_job_ids = [1]
-        sql1.description = "Running Query"
-        sql1.submission_time = "2025-08-05T00:23:38.607GMT"
-        sql1.plan_description = "Running plan description"
-
-        sql2 = MagicMock(spec=SQLExecution)
-        sql2.id = 2
-        sql2.duration = 10000
-        sql2.status = "COMPLETED"
-        sql2.success_job_ids = [2, 3]
-        sql2.failed_job_ids = []
-        sql2.running_job_ids = []
-        sql2.description = "Completed Query"
-        sql2.submission_time = "2025-08-05T00:23:38.607GMT"
-        sql2.plan_description = "Completed plan description"
-
-        mock_client.get_sql_list.return_value = [sql1, sql2]
-        mock_get_client.return_value = mock_client
-
-        result = list_slowest_sql_queries(
-            "spark-app-123", include_running=True, top_n=2
+        self.assertEqual([r.id for r in result], [2, 1, 3])
+        self.assertEqual(result[0].duration, 10000)
+        self.assertEqual(result[0].success_job_ids, [3])
+        # List view must be lightweight: no plan text or node details fetched.
+        mock_client.get_sql_list.assert_called_with(
+            app_id="spark-app-123",
+            app_attempt_id=None,
+            details=False,
+            plan_description=False,
+            offset=0,
+            length=100,
         )
 
-        # Should include both queries
-        self.assertEqual(len(result), 2)
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_sql_executions_default_sort_failed_first(self, mock_get_client):
+        """Default ordering puts FAILED first, then RUNNING, then COMPLETED"""
+        mock_client = MagicMock()
+        mock_client.get_sql_list.return_value = [
+            self._mk_sql(1, 10000, status="COMPLETED"),
+            self._mk_sql(2, 1000, status="FAILED"),
+            self._mk_sql(3, 5000, status="RUNNING"),
+        ]
+        mock_get_client.return_value = mock_client
+
+        result = list_sql_executions("spark-app-123")
+
+        self.assertEqual([r.status for r in result], ["FAILED", "RUNNING", "COMPLETED"])
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_slowest_sql_queries_empty_result(self, mock_get_client):
-        """Test SQL query retrieval with empty result"""
+    def test_list_sql_executions_status_filter(self, mock_get_client):
+        """status filter keeps only matching executions (case-insensitive)"""
+        mock_client = MagicMock()
+        mock_client.get_sql_list.return_value = [
+            self._mk_sql(1, 5000, status="COMPLETED"),
+            self._mk_sql(2, 1000, status="FAILED"),
+        ]
+        mock_get_client.return_value = mock_client
+
+        result = list_sql_executions("spark-app-123", status="failed")
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].status, "FAILED")
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_sql_executions_description_filter(self, mock_get_client):
+        """description filter does a case-insensitive substring match"""
+        mock_client = MagicMock()
+        mock_client.get_sql_list.return_value = [
+            self._mk_sql(1, 5000, description="benchmark q5"),
+            self._mk_sql(2, 1000, description="warmup"),
+        ]
+        mock_get_client.return_value = mock_client
+
+        result = list_sql_executions("spark-app-123", description="BENCHMARK")
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].id, 1)
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_sql_executions_limit(self, mock_get_client):
+        """limit caps the number of returned executions"""
+        mock_client = MagicMock()
+        mock_client.get_sql_list.return_value = [
+            self._mk_sql(i, (10 - i) * 1000) for i in range(10)
+        ]
+        mock_get_client.return_value = mock_client
+
+        result = list_sql_executions("spark-app-123", sort_by="duration", limit=3)
+
+        self.assertEqual(len(result), 3)
+        self.assertEqual([r.duration for r in result], [10000, 9000, 8000])
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_sql_executions_empty(self, mock_get_client):
+        """Empty result returns an empty list"""
         mock_client = MagicMock()
         mock_client.get_sql_list.return_value = []
         mock_get_client.return_value = mock_client
 
-        result = list_slowest_sql_queries("spark-app-123")
+        result = list_sql_executions("spark-app-123")
 
         self.assertEqual(result, [])
 
+    # Tests for get_sql_execution tool
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_slowest_sql_queries_limit(self, mock_get_client):
-        """Test SQL query retrieval with limit"""
+    def test_get_sql_execution_header_only_default(self, mock_get_client):
+        """By default returns only the header and fetches no plan/details"""
         mock_client = MagicMock()
-
-        sql_execs = []
-        for i in range(10):
-            sql = MagicMock(spec=SQLExecution)
-            sql.id = i
-            sql.duration = (10 - i) * 1000  # Decreasing durations
-            sql.status = "COMPLETED"
-            sql.success_job_ids = [i]
-            sql.failed_job_ids = []
-            sql.running_job_ids = []
-            sql.description = f"Query {i}"
-            sql.submission_time = "2025-08-05T00:23:38.607GMT"
-            sql.plan_description = f"Plan description for query {i}"
-            sql_execs.append(sql)
-
-        mock_client.get_sql_list.return_value = sql_execs
-        mock_get_client.return_value = mock_client
-
-        result = list_slowest_sql_queries("spark-app-123", top_n=3)
-
-        # Verify results - should return only 3 queries
-        self.assertEqual(len(result), 3)
-        # Should be sorted by duration (descending)
-        self.assertEqual(result[0].duration, 10000)
-        self.assertEqual(result[1].duration, 9000)
-        self.assertEqual(result[2].duration, 8000)
-
-    @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_list_slowest_sql_queries_uses_server_config_for_plan_description(
-        self, mock_get_client
-    ):
-        """Test that include_plan_description falls back to server config when not provided"""
-        # Setup mock client with server config
-        mock_client = MagicMock()
-        server_config = ServerConfig(
-            url="http://test:18080", include_plan_description=False
+        mock_client.config.include_plan_description = None
+        mock_client.get_sql_execution.return_value = self._mk_sql(
+            42, 12345, description="SELECT * FROM t", success=[1, 2]
         )
-        mock_client.config = server_config
-
-        sql = MagicMock(spec=SQLExecution)
-        sql.id = 1
-        sql.duration = 5000
-        sql.status = "COMPLETED"
-        sql.success_job_ids = [1]
-        sql.failed_job_ids = []
-        sql.running_job_ids = []
-        sql.description = "Test Query"
-        sql.submission_time = "2025-08-05T00:23:38.607GMT"
-        sql.plan_description = "Sample plan description"
-
-        mock_client.get_sql_list.return_value = [sql]
-        mock_get_client.return_value = mock_client
-
-        # Call function without include_plan_description parameter (should use server config)
-        result = list_slowest_sql_queries("spark-app-123")
-
-        # Verify plan description is empty due to server config setting False
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].plan_description, "")
-
-    @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_list_slowest_sql_queries_explicit_override_server_config(
-        self, mock_get_client
-    ):
-        """Test that server config overrides parameter when config is set"""
-        # Setup mock client with server config set to False
-        mock_client = MagicMock()
-        server_config = ServerConfig(
-            url="http://test:18080", include_plan_description=False
-        )
-        mock_client.config = server_config
-
-        sql = MagicMock(spec=SQLExecution)
-        sql.id = 1
-        sql.duration = 5000
-        sql.status = "COMPLETED"
-        sql.success_job_ids = [1]
-        sql.failed_job_ids = []
-        sql.running_job_ids = []
-        sql.description = "Test Query"
-        sql.submission_time = "2025-08-05T00:23:38.607GMT"
-        sql.plan_description = "Sample plan description"
-
-        mock_client.get_sql_list.return_value = [sql]
-        mock_get_client.return_value = mock_client
-
-        # Call function with explicit include_plan_description=True (config should override to False)
-        result = list_slowest_sql_queries(
-            "spark-app-123", include_plan_description=True
-        )
-
-        # Verify plan description is NOT included because server config is False
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result[0].plan_description, "")
-
-    @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_sql_execution_success(self, mock_get_client):
-        """Test get_sql_execution returns execution details"""
-        mock_client = MagicMock()
-        expected = MagicMock(spec=SQLExecution)
-        expected.id = 42
-        expected.status = "COMPLETED"
-        expected.duration = 12345
-        expected.description = "SELECT * FROM table"
-        mock_client.get_sql_execution.return_value = expected
         mock_get_client.return_value = mock_client
 
         result = get_sql_execution("spark-app-123", execution_id=42)
 
-        self.assertEqual(result.id, 42)
-        self.assertEqual(result.status, "COMPLETED")
+        self.assertEqual(result.execution.id, 42)
+        self.assertEqual(result.execution.success_job_ids, [1, 2])
+        self.assertIsNone(result.plan_description)
+        self.assertIsNone(result.node_metrics)
+        self.assertIsNone(result.jobs)
+        self.assertIsNone(result.stage_metrics)
+        self.assertIsNone(result.stages)
         mock_client.get_sql_execution.assert_called_once_with(
             app_id="spark-app-123",
             execution_id=42,
+            app_attempt_id=None,
+            details=False,
+            plan_description=False,
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_sql_execution_include_plan_strips_initial(self, mock_get_client):
+        """include_plan strips AQE initial plans and returns node metrics"""
+        mock_client = MagicMock()
+        execution = self._mk_sql(7, 5000)
+        execution.plan_description = (
+            "== Physical Plan ==\n"
+            "*(1) Project\n"
+            "+- == Initial Plan ==\n"
+            "   Sort\n"
+            "   +- Exchange\n"
+        )
+        node = MagicMock()
+        node.node_id = 1
+        node.node_name = "Project"
+        metric = MagicMock()
+        metric.name = "rows"
+        metric.value = "  100  "
+        node.metrics = [metric]
+        execution.nodes = [node]
+        mock_client.get_sql_execution.return_value = execution
+        mock_get_client.return_value = mock_client
+
+        result = get_sql_execution("spark-app-123", execution_id=7, include_plan=True)
+
+        self.assertIn("Physical Plan", result.plan_description)
+        self.assertNotIn("Initial Plan", result.plan_description)
+        self.assertEqual(len(result.node_metrics), 1)
+        self.assertEqual(result.node_metrics[0].node_name, "Project")
+        self.assertEqual(result.node_metrics[0].metrics["rows"], "100")
+        mock_client.get_sql_execution.assert_called_once_with(
+            app_id="spark-app-123",
+            execution_id=7,
             app_attempt_id=None,
             details=True,
             plan_description=True,
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_sql_execution_with_attempt_id(self, mock_get_client):
-        """Test get_sql_execution with attempt_id"""
+    def test_get_sql_execution_include_initial_plan_keeps(self, mock_get_client):
+        """include_initial_plan retains initial plans and implies include_plan"""
         mock_client = MagicMock()
-        expected = MagicMock(spec=SQLExecution)
-        expected.id = 10
-        mock_client.get_sql_execution.return_value = expected
+        execution = self._mk_sql(7, 5000)
+        execution.plan_description = (
+            "== Physical Plan ==\n+- == Initial Plan ==\n   Sort\n"
+        )
+        execution.nodes = []
+        mock_client.get_sql_execution.return_value = execution
         mock_get_client.return_value = mock_client
 
         result = get_sql_execution(
-            "spark-app-123", execution_id=10, app_attempt_id="1", details=False
+            "spark-app-123", execution_id=7, include_initial_plan=True
         )
 
-        self.assertEqual(result.id, 10)
+        self.assertIn("Initial Plan", result.plan_description)
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_sql_execution_config_fallback_includes_plan(self, mock_get_client):
+        """When include_plan is unset, the server config default is used"""
+        mock_client = MagicMock()
+        mock_client.config.include_plan_description = True
+        execution = self._mk_sql(7, 5000)
+        execution.plan_description = "== Physical Plan ==\nProject\n"
+        execution.nodes = []
+        mock_client.get_sql_execution.return_value = execution
+        mock_get_client.return_value = mock_client
+
+        result = get_sql_execution("spark-app-123", execution_id=7)
+
+        self.assertIsNotNone(result.plan_description)
         mock_client.get_sql_execution.assert_called_once_with(
             app_id="spark-app-123",
-            execution_id=10,
-            app_attempt_id="1",
-            details=False,
+            execution_id=7,
+            app_attempt_id=None,
+            details=True,
             plan_description=True,
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_sql_execution_not_found(self, mock_get_client):
-        """Test get_sql_execution raises when execution not found"""
+    def test_get_sql_execution_plan_max_length(self, mock_get_client):
+        """plan_max_length truncates the plan text"""
         mock_client = MagicMock()
-        mock_client.get_sql_execution.side_effect = Exception(
-            "SQL execution 999 not found"
-        )
+        execution = self._mk_sql(7, 5000)
+        execution.plan_description = "X" * 500
+        execution.nodes = []
+        mock_client.get_sql_execution.return_value = execution
         mock_get_client.return_value = mock_client
 
-        with self.assertRaises(Exception) as ctx:
-            get_sql_execution("spark-app-123", execution_id=999)
+        result = get_sql_execution(
+            "spark-app-123", execution_id=7, include_plan=True, plan_max_length=50
+        )
 
-        self.assertIn("999", str(ctx.exception))
+        self.assertIn("[truncated]", result.plan_description)
+
+    def _mk_job(self, job_id, status, stage_ids, num_tasks=10, num_failed=0):
+        job = MagicMock(spec=Job)
+        job.job_id = job_id
+        job.status = status
+        job.description = f"job {job_id}"
+        job.name = f"job {job_id}"
+        job.submission_time = "2025-08-05T00:00:00.000GMT"
+        job.completion_time = "2025-08-05T00:00:10.000GMT"
+        job.stage_ids = stage_ids
+        job.num_tasks = num_tasks
+        job.num_failed_tasks = num_failed
+        return job
+
+    def _mk_stage(self, stage_id, status="COMPLETE", tasks=10):
+        stage = MagicMock(spec=StageData)
+        stage.stage_id = stage_id
+        stage.attempt_id = 0
+        stage.status = status
+        stage.description = f"stage {stage_id}"
+        stage.name = f"stage {stage_id}"
+        stage.num_tasks = tasks
+        stage.num_failed_tasks = 0
+        stage.submission_time = "2025-08-05T00:00:00.000GMT"
+        stage.completion_time = "2025-08-05T00:00:05.000GMT"
+        stage.input_bytes = 1000
+        stage.shuffle_read_bytes = 200
+        stage.shuffle_write_bytes = 300
+        stage.disk_bytes_spilled = 50
+        stage.jvm_gc_time = 25
+        return stage
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_sql_execution_include_aggregated_metrics(self, mock_get_client):
+        """include_aggregated_metrics returns associated jobs and aggregated stage metrics"""
+        mock_client = MagicMock()
+        mock_client.config.include_plan_description = None
+        execution = self._mk_sql(7, 5000, success=[1, 2])
+        mock_client.get_sql_execution.return_value = execution
+        mock_client.list_jobs.return_value = [
+            self._mk_job(1, "SUCCEEDED", [10]),
+            self._mk_job(2, "SUCCEEDED", [11]),
+            self._mk_job(3, "SUCCEEDED", [12]),  # not part of this SQL execution
+        ]
+        mock_client.list_stages.return_value = [
+            self._mk_stage(10),
+            self._mk_stage(11),
+            self._mk_stage(12),  # excluded (job 3 not in SQL execution)
+        ]
+        mock_get_client.return_value = mock_client
+
+        result = get_sql_execution(
+            "spark-app-123", execution_id=7, include_aggregated_metrics=True
+        )
+
+        self.assertEqual({j.job_id for j in result.jobs}, {1, 2})
+        self.assertIsNotNone(result.stage_metrics)
+        self.assertEqual(result.stage_metrics.stage_count, 2)
+        self.assertEqual(result.stage_metrics.tasks, 20)
+        self.assertEqual(result.stage_metrics.input_bytes, 2000)
+        self.assertEqual(result.stage_metrics.shuffle_read_bytes, 400)
+        self.assertIsNone(result.stages)
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_sql_execution_include_stages(self, mock_get_client):
+        """include_stages returns the individual stage rows for the execution"""
+        mock_client = MagicMock()
+        mock_client.config.include_plan_description = None
+        execution = self._mk_sql(7, 5000, success=[1])
+        mock_client.get_sql_execution.return_value = execution
+        mock_client.list_jobs.return_value = [self._mk_job(1, "SUCCEEDED", [10, 11])]
+        mock_client.list_stages.return_value = [
+            self._mk_stage(10),
+            self._mk_stage(11),
+        ]
+        mock_get_client.return_value = mock_client
+
+        result = get_sql_execution("spark-app-123", execution_id=7, include_stages=True)
+
+        self.assertIsNotNone(result.stages)
+        self.assertEqual({s.stage_id for s in result.stages}, {10, 11})
+
+    # Tests for compare_sql_executions tool
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_compare_sql_executions(self, mock_get_client):
+        """compare_sql_executions aggregates per-execution stage metrics for each side"""
+        client_a = MagicMock()
+        client_a.get_sql_execution.return_value = self._mk_sql(
+            1, 5000, description="q", success=[1]
+        )
+        client_a.list_jobs.return_value = [self._mk_job(1, "SUCCEEDED", [10])]
+        client_a.list_stages.return_value = [self._mk_stage(10, tasks=10)]
+
+        client_b = MagicMock()
+        client_b.get_sql_execution.return_value = self._mk_sql(
+            2, 8000, description="q", success=[5]
+        )
+        client_b.list_jobs.return_value = [self._mk_job(5, "SUCCEEDED", [20])]
+        client_b.list_stages.return_value = [self._mk_stage(20, tasks=30)]
+
+        mock_get_client.side_effect = [client_a, client_b]
+
+        result = compare_sql_executions("app-a", "app-b", 1, 2)
+
+        self.assertEqual(result.a.app, "app-a")
+        self.assertEqual(result.a.sql_id, 1)
+        self.assertEqual(result.a.duration, 5000)
+        self.assertEqual(result.a.tasks, 10)
+        self.assertEqual(result.b.app, "app-b")
+        self.assertEqual(result.b.sql_id, 2)
+        self.assertEqual(result.b.tasks, 30)
+
+    # Tests for compare_sql_execution_plans tool
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_compare_sql_execution_plans(self, mock_get_client):
+        """compare_sql_execution_plans returns node/edge counts and differing types"""
+
+        def node(name):
+            n = MagicMock()
+            n.node_name = name
+            return n
+
+        exec_a = MagicMock(spec=SQLExecution)
+        exec_a.nodes = [node("Filter"), node("Scan"), node("Scan")]
+        exec_a.edges = [MagicMock(), MagicMock()]
+
+        exec_b = MagicMock(spec=SQLExecution)
+        exec_b.nodes = [node("Filter"), node("Scan")]
+        exec_b.edges = [MagicMock()]
+
+        client_a = MagicMock()
+        client_a.get_sql_execution.return_value = exec_a
+        client_b = MagicMock()
+        client_b.get_sql_execution.return_value = exec_b
+        mock_get_client.side_effect = [client_a, client_b]
+
+        result = compare_sql_execution_plans("app-a", "app-b", 1, 2)
+
+        self.assertEqual(result.app_a, "app-a")
+        self.assertEqual(result.exec_id_a, 1)
+        self.assertEqual(result.node_count_a, 3)
+        self.assertEqual(result.node_count_b, 2)
+        self.assertEqual(result.edge_count_a, 2)
+        self.assertEqual(result.edge_count_b, 1)
+        diffs = {d.node_type: (d.a, d.b) for d in result.node_type_diffs}
+        self.assertEqual(diffs, {"Scan": (2, 1)})
 
     # Tests for pagination support
 

@@ -10,8 +10,16 @@ from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.api_client.models.task_metrics_summary import TaskMetricsSummary
 from spark_history_mcp.core.app import mcp
 from spark_history_mcp.models.mcp_types import (
-    JobSummary,
-    SqlQuerySummary,
+    SqlCompareSide,
+    SqlExecutionComparison,
+    SqlExecutionDetail,
+    SqlExecutionSummary,
+    SqlJobSummary,
+    SqlNodeMetrics,
+    SqlNodeTypeDiff,
+    SqlPlanComparison,
+    SqlStageSummary,
+    StageMetricsAggregation,
 )
 
 from ..utils.utils import parallel_execute
@@ -68,6 +76,143 @@ def _duration_seconds(start: Any, end: Any) -> float:
     if start_dt and end_dt:
         return (end_dt - start_dt).total_seconds()
     return 0
+
+
+def _duration_ms(start: Any, end: Any) -> int:
+    """Return the duration in whole milliseconds between two Spark timestamps."""
+    return int(_duration_seconds(start, end) * 1000)
+
+
+# Lower number = shown first. Anything not listed sorts last, then by duration descending.
+_SQL_STATUS_PRIORITY = {"FAILED": 0, "RUNNING": 1, "COMPLETED": 2}
+_JOB_STATUS_PRIORITY = {"FAILED": 0, "RUNNING": 1, "UNKNOWN": 2, "SUCCEEDED": 3}
+_STAGE_STATUS_PRIORITY = {
+    "FAILED": 0,
+    "COMPLETE": 1,
+    "ACTIVE": 2,
+    "PENDING": 3,
+    "SKIPPED": 4,
+}
+
+
+def _strip_initial_plans(plan: str) -> str:
+    """Remove ``== Initial Plan ==`` sections from an AQE plan description.
+
+    Keeps only the final/current plan.
+    Blocks are detected by the ``+- == Initial Plan ==`` marker and
+    removed along with all lines indented deeper than the marker.
+    """
+    lines = plan.split("\n")
+    out: List[str] = []
+    i = 0
+    while i < len(lines):
+        if lines[i].strip().startswith("+- == Initial Plan =="):
+            marker_indent = len(lines[i]) - len(lines[i].lstrip(" "))
+            i += 1
+            while i < len(lines):
+                line_indent = len(lines[i]) - len(lines[i].lstrip(" "))
+                if lines[i] == "" or line_indent > marker_indent:
+                    i += 1
+                else:
+                    break
+            continue
+        out.append(lines[i])
+        i += 1
+    return "\n".join(out).rstrip("\n")
+
+
+def _collect_sql_job_ids(execution: SQLExecution) -> List[int]:
+    """Return all job IDs (success + failed + running) for a SQL execution."""
+    ids: List[int] = []
+    for group in (
+        execution.success_job_ids,
+        execution.failed_job_ids,
+        execution.running_job_ids,
+    ):
+        if group:
+            ids.extend(group)
+    return ids
+
+
+def _stage_ids_from_jobs(jobs: List[Job]) -> set:
+    """Return the set of stage IDs referenced by the given jobs."""
+    stage_ids: set = set()
+    for job in jobs:
+        if job.stage_ids:
+            stage_ids.update(job.stage_ids)
+    return stage_ids
+
+
+def _aggregate_stages(
+    stages: List[StageData], stage_ids: Optional[set]
+) -> StageMetricsAggregation:
+    """Aggregate stage metrics, optionally scoped to a set of stage IDs.
+
+    De-duplicates by stage ID (keeping the first attempt seen)
+    """
+    agg = StageMetricsAggregation()
+    seen: set = set()
+    for stage in stages:
+        sid = stage.stage_id
+        if (stage_ids is not None and sid not in stage_ids) or sid in seen:
+            continue
+        seen.add(sid)
+        agg.stage_count += 1
+        agg.tasks += stage.num_tasks or 0
+        agg.duration += _duration_ms(stage.submission_time, stage.completion_time)
+        agg.input_bytes += stage.input_bytes or 0
+        agg.shuffle_read_bytes += stage.shuffle_read_bytes or 0
+        agg.shuffle_write_bytes += stage.shuffle_write_bytes or 0
+        agg.disk_bytes_spilled += stage.disk_bytes_spilled or 0
+        agg.jvm_gc_time += stage.jvm_gc_time or 0
+    return agg
+
+
+def _sort_sql_executions(
+    executions: List[SQLExecution], sort_by: Optional[str]
+) -> List[SQLExecution]:
+    def duration(e: SQLExecution) -> int:
+        return e.duration or 0
+
+    if sort_by == "duration":
+        return sorted(executions, key=duration, reverse=True)
+    if sort_by == "id":
+        return sorted(executions, key=lambda e: e.id or 0, reverse=True)
+    # default: failed first, then by duration descending
+    return sorted(
+        executions,
+        key=lambda e: (_SQL_STATUS_PRIORITY.get(e.status, 99), -duration(e)),
+    )
+
+
+def _sort_sql_jobs(jobs: List[Job]) -> List[Job]:
+    """Sort jobs failed-first, then by duration descending."""
+    return sorted(
+        jobs,
+        key=lambda j: (
+            _JOB_STATUS_PRIORITY.get(j.status, 99),
+            -_duration_ms(j.submission_time, j.completion_time),
+        ),
+    )
+
+
+def _sort_sql_stages(stages: List[StageData]) -> List[StageData]:
+    """Sort stages by status priority, then by duration descending."""
+    return sorted(
+        stages,
+        key=lambda s: (
+            _STAGE_STATUS_PRIORITY.get(s.status, 99),
+            -_duration_ms(s.submission_time, s.completion_time),
+        ),
+    )
+
+
+def _count_node_types(nodes) -> Dict[str, int]:
+    """Count plan nodes by node name."""
+    counts: Dict[str, int] = {}
+    for node in nodes or []:
+        counts[node.node_name] = counts.get(node.node_name, 0) + 1
+    return counts
 
 
 def get_client_or_default(
@@ -836,118 +981,71 @@ def compare_sql_execution_plans(
     execution_id1: Optional[int] = None,
     execution_id2: Optional[int] = None,
     server: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> SqlPlanComparison:
     """
-    Compare SQL execution plans between two Spark jobs.
+    Compare the plan structure of two SQL executions.
 
-    Analyzes the logical and physical plans, identifies differences in operations,
-    and compares execution metrics between SQL queries.
+    Compares the SQL plan DAGs of two executions by node type and counts,
+    returning only the node types whose counts differ, plus total node and edge
+    counts for each side.
 
     Args:
         app_id1: First Spark application ID
         app_id2: Second Spark application ID
-        execution_id1: Optional specific execution ID for first app (uses longest if not specified)
-        execution_id2: Optional specific execution ID for second app (uses longest if not specified)
+        execution_id1: Execution ID for the first app (uses longest-running if omitted)
+        execution_id2: Execution ID for the second app (uses longest-running if omitted)
         server: Optional server name to use (uses default if not specified)
 
     Returns:
-        Dictionary containing SQL execution plan comparison
+        SqlPlanComparison with per-side node/edge counts and differing node types
     """
     ctx = mcp.get_context()
     client1 = get_client_or_default(ctx, server, app_id1)
     client2 = get_client_or_default(ctx, server, app_id2)
 
-    # Get SQL executions for both applications
-    sql_execs1 = client1.get_sql_list(
-        app_id=app_id1, details=True, plan_description=True
-    )
-    sql_execs2 = client2.get_sql_list(
-        app_id=app_id2, details=True, plan_description=True
-    )
-
-    # If specific execution IDs not provided, use the longest running ones
-    if execution_id1 is None and sql_execs1:
-        execution_id1 = max(sql_execs1, key=lambda x: x.duration or 0).id
-    if execution_id2 is None and sql_execs2:
-        execution_id2 = max(sql_execs2, key=lambda x: x.duration or 0).id
+    if execution_id1 is None:
+        sql_list1 = client1.get_sql_list(app_id=app_id1, details=False)
+        if sql_list1:
+            execution_id1 = max(sql_list1, key=lambda x: x.duration or 0).id
+    if execution_id2 is None:
+        sql_list2 = client2.get_sql_list(app_id=app_id2, details=False)
+        if sql_list2:
+            execution_id2 = max(sql_list2, key=lambda x: x.duration or 0).id
 
     if execution_id1 is None or execution_id2 is None:
-        return {
-            "error": "No SQL executions found in one or both applications",
-            "app1_sql_count": len(sql_execs1),
-            "app2_sql_count": len(sql_execs2),
-        }
+        raise ValueError("No SQL executions found in one or both applications")
 
-    # Get specific execution details
     exec1 = client1.get_sql_execution(
-        app_id1, execution_id1, details=True, plan_description=True
+        app_id1, execution_id1, details=True, plan_description=False
     )
     exec2 = client2.get_sql_execution(
-        app_id2, execution_id2, details=True, plan_description=True
+        app_id2, execution_id2, details=True, plan_description=False
     )
 
-    # Analyze nodes and operations
-    def analyze_nodes(execution):
-        node_types = {}
-        for node in execution.nodes:
-            node_type = node.node_name
-            if node_type not in node_types:
-                node_types[node_type] = 0
-            node_types[node_type] += 1
-        return node_types
+    nodes1 = _count_node_types(exec1.nodes)
+    nodes2 = _count_node_types(exec2.nodes)
 
-    nodes1 = analyze_nodes(exec1)
-    nodes2 = analyze_nodes(exec2)
+    diffs = [
+        SqlNodeTypeDiff(
+            node_type=node_type,
+            a=nodes1.get(node_type, 0),
+            b=nodes2.get(node_type, 0),
+        )
+        for node_type in sorted(set(nodes1) | set(nodes2))
+        if nodes1.get(node_type, 0) != nodes2.get(node_type, 0)
+    ]
 
-    all_node_types = set(nodes1.keys()) | set(nodes2.keys())
-
-    comparison = {
-        "applications": {"app1": app_id1, "app2": app_id2},
-        "executions": {
-            "app1": {
-                "execution_id": execution_id1,
-                "duration": exec1.duration,
-                "status": exec1.status,
-                "node_count": len(exec1.nodes),
-                "edge_count": len(exec1.edges),
-            },
-            "app2": {
-                "execution_id": execution_id2,
-                "duration": exec2.duration,
-                "status": exec2.status,
-                "node_count": len(exec2.nodes),
-                "edge_count": len(exec2.edges),
-            },
-        },
-        "plan_structure": {
-            "node_type_comparison": {
-                node_type: {
-                    "app1_count": nodes1.get(node_type, 0),
-                    "app2_count": nodes2.get(node_type, 0),
-                }
-                for node_type in sorted(all_node_types)
-            },
-            "complexity_metrics": {
-                "node_count_ratio": len(exec2.nodes) / max(len(exec1.nodes), 1),
-                "edge_count_ratio": len(exec2.edges) / max(len(exec1.edges), 1),
-                "duration_ratio": (exec2.duration or 0) / max(exec1.duration or 1, 1),
-            },
-        },
-        "job_associations": {
-            "app1": {
-                "running_jobs": exec1.running_job_ids,
-                "success_jobs": exec1.success_job_ids,
-                "failed_jobs": exec1.failed_job_ids,
-            },
-            "app2": {
-                "running_jobs": exec2.running_job_ids,
-                "success_jobs": exec2.success_job_ids,
-                "failed_jobs": exec2.failed_job_ids,
-            },
-        },
-    }
-
-    return comparison
+    return SqlPlanComparison(
+        app_a=app_id1,
+        app_b=app_id2,
+        exec_id_a=execution_id1,
+        exec_id_b=execution_id2,
+        node_count_a=len(exec1.nodes or []),
+        node_count_b=len(exec2.nodes or []),
+        edge_count_a=len(exec1.edges or []),
+        edge_count_b=len(exec2.edges or []),
+        node_type_diffs=diffs,
+    )
 
 
 @mcp.tool()
@@ -1007,104 +1105,140 @@ def truncate_plan_description(plan_desc: str, max_length: int) -> str:
     return truncated + "\n... [truncated]"
 
 
+def _sql_execution_summary(e: SQLExecution) -> SqlExecutionSummary:
+    """Build the curated header summary for a SQL execution."""
+    return SqlExecutionSummary(
+        id=e.id,
+        status=e.status,
+        description=e.description,
+        submission_time=e.submission_time,
+        duration=e.duration,
+        success_job_ids=e.success_job_ids or [],
+        failed_job_ids=e.failed_job_ids or [],
+        running_job_ids=e.running_job_ids or [],
+    )
+
+
+def _sql_job_summary(j: Job) -> SqlJobSummary:
+    """Build a curated job row associated with a SQL execution."""
+    return SqlJobSummary(
+        job_id=j.job_id,
+        status=j.status,
+        description=j.description or j.name,
+        duration=_duration_ms(j.submission_time, j.completion_time),
+        num_tasks=j.num_tasks,
+        num_failed_tasks=j.num_failed_tasks,
+        stage_ids=j.stage_ids or [],
+    )
+
+
+def _sql_stage_summary(s: StageData) -> SqlStageSummary:
+    """Build a curated stage row associated with a SQL execution."""
+    return SqlStageSummary(
+        stage_id=s.stage_id,
+        attempt_id=s.attempt_id,
+        status=s.status,
+        description=s.description or s.name,
+        num_tasks=s.num_tasks,
+        num_failed_tasks=s.num_failed_tasks,
+        duration=_duration_ms(s.submission_time, s.completion_time),
+        input_bytes=s.input_bytes,
+        shuffle_read_bytes=s.shuffle_read_bytes,
+        shuffle_write_bytes=s.shuffle_write_bytes,
+    )
+
+
+def _build_node_metrics(nodes) -> List[SqlNodeMetrics]:
+    """Build curated per-node plan metrics, skipping nodes without metrics."""
+    result: List[SqlNodeMetrics] = []
+    for n in nodes or []:
+        if not n.metrics:
+            continue
+        metrics: Dict[str, str] = {}
+        for m in n.metrics:
+            # Collapse internal whitespace in values.
+            metrics[m.name] = " ".join((m.value or "").split())
+        if metrics:
+            result.append(
+                SqlNodeMetrics(
+                    node_id=n.node_id, node_name=n.node_name, metrics=metrics
+                )
+            )
+    return result
+
+
 @mcp.tool()
-def list_slowest_sql_queries(
+def list_sql_executions(
     app_id: str,
     server: Optional[str] = None,
     app_attempt_id: Optional[str] = None,
-    top_n: int = 1,
+    status: Optional[str] = None,
+    description: Optional[str] = None,
+    sort_by: Optional[str] = None,
+    limit: int = 20,
     page_size: int = 100,
-    include_running: bool = False,
-    include_plan_description: Optional[bool] = None,
-    plan_description_max_length: int = 2000,
-) -> List[SqlQuerySummary]:
+) -> List[SqlExecutionSummary]:
     """
-    Get the N slowest SQL queries for a Spark application.
+    List SQL executions for a Spark application as curated summaries.
+
+    Returns a lightweight, summarized row per SQL execution (id, status,
+    description, duration, and associated job IDs) without plan text or
+    node-level details. Use ``get_sql_execution`` for a deep dive into a single
+    execution.
 
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         app_attempt_id: Optional YARN application attempt ID
-        top_n: Number of slowest queries to return (default: 1)
-        page_size: Number of executions to fetch per page (default: 100)
-        include_running: Whether to include running queries (default: False)
-        include_plan_description: Whether to include execution plans (uses server config if not specified)
-        plan_description_max_length: Max characters for plan description (default: 1500)
+        status: Optional status filter (COMPLETED|RUNNING|FAILED)
+        description: Optional case-insensitive substring filter on the description
+        sort_by: Optional sort field (duration|id). Defaults to failed-first then
+            longest duration.
+        limit: Maximum number of executions to return (default: 20; 0 returns all)
+        page_size: Number of executions to fetch per page from the server (default: 100)
 
     Returns:
-        List of SqlQuerySummary objects for the slowest queries
+        List of SqlExecutionSummary objects
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
-    # Config takes priority: if config is set (True/False), use it; otherwise default to True
-    if client.config.include_plan_description is not None:
-        include_plan_description = client.config.include_plan_description
-    else:
-        include_plan_description = True
+    if limit < 0:
+        raise ValueError("limit must be non-negative")
 
+    # Fetch all executions (lightweight: no plan text, no node details).
     all_executions: List[SQLExecution] = []
     offset = 0
-
-    # Fetch all pages of SQL executions
     while True:
-        executions: List[SQLExecution] = client.get_sql_list(
+        page: List[SQLExecution] = client.get_sql_list(
             app_id=app_id,
             app_attempt_id=app_attempt_id,
-            details=True,
-            plan_description=True,
+            details=False,
+            plan_description=False,
             offset=offset,
             length=page_size,
         )
-
-        if not executions:
+        if not page:
             break
-
-        all_executions.extend(executions)
+        all_executions.extend(page)
         offset += page_size
-
-        # If we got fewer executions than the page size, we've reached the end
-        if len(executions) < page_size:
+        if len(page) < page_size:
             break
 
-    # Filter out running queries if not included
-    if not include_running:
-        all_executions = [e for e in all_executions if e.status != "RUNNING"]
+    if description:
+        needle = description.lower()
+        all_executions = [
+            e for e in all_executions if needle in (e.description or "").lower()
+        ]
+    if status:
+        wanted = status.upper()
+        all_executions = [e for e in all_executions if (e.status or "") == wanted]
 
-    # Get the top N slowest executions
-    slowest_executions = heapq.nlargest(
-        top_n, all_executions, key=lambda e: e.duration or 0
-    )
+    all_executions = _sort_sql_executions(all_executions, sort_by)
+    if limit:
+        all_executions = all_executions[:limit]
 
-    # Create simplified results without additional API calls. Raw object is too verbose.
-    simplified_results = []
-    for execution in slowest_executions:
-        job_summary = JobSummary(
-            success_job_ids=execution.success_job_ids or [],
-            failed_job_ids=execution.failed_job_ids or [],
-            running_job_ids=execution.running_job_ids or [],
-        )
-
-        # Handle plan description based on include_plan_description flag
-        plan_description = ""
-        if include_plan_description and execution.plan_description:
-            plan_description = truncate_plan_description(
-                execution.plan_description, plan_description_max_length
-            )
-
-        query_summary = SqlQuerySummary(
-            id=execution.id,
-            duration=execution.duration,
-            description=execution.description,
-            status=execution.status,
-            submission_time=execution.submission_time,
-            plan_description=plan_description,
-            job_summary=job_summary,
-        )
-
-        simplified_results.append(query_summary)
-
-    return simplified_results
+    return [_sql_execution_summary(e) for e in all_executions]
 
 
 @mcp.tool()
@@ -1113,38 +1247,169 @@ def get_sql_execution(
     execution_id: int,
     server: Optional[str] = None,
     app_attempt_id: Optional[str] = None,
-    details: bool = True,
-    plan_description: bool = True,
-) -> SQLExecution:
+    include_plan: Optional[bool] = None,
+    include_initial_plan: bool = False,
+    include_aggregated_metrics: bool = False,
+    include_stages: bool = False,
+    plan_max_length: Optional[int] = None,
+) -> SqlExecutionDetail:
     """
-    Get detailed information about a specific SQL execution.
+    Get details about a specific SQL execution.
 
-    Retrieves comprehensive details of a single SQL execution including its
-    execution plan, associated jobs, metrics, and node-level statistics.
-    This is useful for deep-diving into a specific query's performance after
-    identifying it via list_slowest_sql_queries.
+    By default returns only the curated header (status, duration, associated
+    job IDs) to keep the response small. Additional sections are opt-in:
+
+    * ``include_plan``: physical plan text plus per-node metrics. AQE "Initial
+      Plan" sections are stripped unless ``include_initial_plan`` is set.
+    * ``include_initial_plan``: keep AQE initial plans (implies ``include_plan``).
+    * ``include_aggregated_metrics``: associated jobs plus aggregated stage metrics
+      (tasks, input, shuffle, spill, GC) scoped to this execution.
+    * ``include_stages``: the individual stages for this execution.
 
     Args:
         app_id: The Spark application ID
         execution_id: The SQL execution ID
         server: Optional server name to use (uses default if not specified)
         app_attempt_id: Optional YARN application attempt ID
-        details: Whether to include execution details (default: True)
-        plan_description: Whether to include plan description (default: True)
+        include_plan: Include the plan text and node metrics. If unset, falls back
+            to the server's ``include_plan_description`` config (default False).
+        include_initial_plan: Include AQE initial plans (implies include_plan)
+        include_aggregated_metrics: Include associated jobs and aggregated stage metrics
+        include_stages: Include the individual stages for this execution
+        plan_max_length: Optional max character length for the plan text
 
     Returns:
-        SQLExecution object containing SQL execution details including
-        status, duration, associated job IDs, and execution plan nodes/edges
+        SqlExecutionDetail with the header and any requested sections
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
-    return client.get_sql_execution(
+    # Resolve whether to include the plan. Explicit arg wins; otherwise fall
+    # back to the server's include_plan_description config (default False).
+    if include_initial_plan:
+        include_plan = True
+    elif include_plan is None:
+        config_value = getattr(client.config, "include_plan_description", None)
+        include_plan = bool(config_value) if config_value is not None else False
+
+    # Node-level metrics require details=True; only fetch them when needed.
+    execution = client.get_sql_execution(
         app_id=app_id,
         execution_id=execution_id,
         app_attempt_id=app_attempt_id,
-        details=details,
-        plan_description=plan_description,
+        details=include_plan,
+        plan_description=include_plan,
+    )
+
+    detail = SqlExecutionDetail(execution=_sql_execution_summary(execution))
+
+    if include_plan:
+        plan = execution.plan_description or ""
+        if not include_initial_plan:
+            plan = _strip_initial_plans(plan)
+        if plan_max_length is not None:
+            plan = truncate_plan_description(plan, plan_max_length)
+        detail.plan_description = plan
+        detail.node_metrics = _build_node_metrics(execution.nodes)
+
+    if include_aggregated_metrics or include_stages:
+        job_ids = set(_collect_sql_job_ids(execution))
+        jobs: List[Job] = []
+        stage_list: List[StageData] = []
+        if job_ids:
+            all_jobs = client.list_jobs(app_id=app_id, app_attempt_id=app_attempt_id)
+            jobs = _sort_sql_jobs([j for j in all_jobs if j.job_id in job_ids])
+            stage_ids = _stage_ids_from_jobs(jobs)
+            if stage_ids:
+                all_stages = client.list_stages(
+                    app_id=app_id, app_attempt_id=app_attempt_id
+                )
+                seen: set = set()
+                scoped: List[StageData] = []
+                for s in all_stages:
+                    if s.stage_id in stage_ids and s.stage_id not in seen:
+                        seen.add(s.stage_id)
+                        scoped.append(s)
+                stage_list = _sort_sql_stages(scoped)
+
+        detail.jobs = [_sql_job_summary(j) for j in jobs]
+        if include_aggregated_metrics:
+            detail.stage_metrics = _aggregate_stages(stage_list, None)
+        if include_stages:
+            detail.stages = [_sql_stage_summary(s) for s in stage_list]
+
+    return detail
+
+
+@mcp.tool()
+def compare_sql_executions(
+    app_id1: str,
+    app_id2: str,
+    execution_id1: Optional[int] = None,
+    execution_id2: Optional[int] = None,
+    server: Optional[str] = None,
+) -> SqlExecutionComparison:
+    """
+    Compare performance metrics between two SQL executions.
+
+    For each execution, aggregates the metrics of the stages belonging to that
+    query (jobs, stages, tasks, stage time, input, shuffle read/write, disk
+    spill, GC time) so the two runs can be compared side by side.
+
+    Args:
+        app_id1: First Spark application ID
+        app_id2: Second Spark application ID
+        execution_id1: Execution ID for the first app (uses longest-running if omitted)
+        execution_id2: Execution ID for the second app (uses longest-running if omitted)
+        server: Optional server name to use (uses default if not specified)
+
+    Returns:
+        SqlExecutionComparison with an ``a`` and ``b`` side
+    """
+    ctx = mcp.get_context()
+    client1 = get_client_or_default(ctx, server, app_id1)
+    client2 = get_client_or_default(ctx, server, app_id2)
+
+    def collect_side(
+        client, app_id: str, execution_id: Optional[int]
+    ) -> SqlCompareSide:
+        if execution_id is None:
+            sql_list = client.get_sql_list(app_id=app_id, details=False)
+            if sql_list:
+                execution_id = max(sql_list, key=lambda x: x.duration or 0).id
+        if execution_id is None:
+            raise ValueError(f"No SQL executions found in application {app_id}")
+
+        execution = client.get_sql_execution(
+            app_id, execution_id, details=False, plan_description=False
+        )
+        job_ids = set(_collect_sql_job_ids(execution))
+        all_jobs = client.list_jobs(app_id=app_id)
+        jobs = [j for j in all_jobs if j.job_id in job_ids]
+        stage_ids = _stage_ids_from_jobs(jobs)
+        all_stages = client.list_stages(app_id=app_id)
+        agg = _aggregate_stages(all_stages, stage_ids)
+
+        return SqlCompareSide(
+            app=app_id,
+            sql_id=execution.id,
+            description=execution.description,
+            status=execution.status,
+            duration=execution.duration,
+            jobs=len(jobs),
+            stages=agg.stage_count,
+            tasks=agg.tasks,
+            stage_time=agg.duration,
+            input_bytes=agg.input_bytes,
+            shuffle_read_bytes=agg.shuffle_read_bytes,
+            shuffle_write_bytes=agg.shuffle_write_bytes,
+            disk_bytes_spilled=agg.disk_bytes_spilled,
+            jvm_gc_time=agg.jvm_gc_time,
+        )
+
+    return SqlExecutionComparison(
+        a=collect_side(client1, app_id1, execution_id1),
+        b=collect_side(client2, app_id2, execution_id2),
     )
 
 
