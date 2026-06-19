@@ -193,7 +193,7 @@ Agents can target a specific server per query:
 | **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
 | **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |
 
-### Available Tools (17)
+### Available Tools (16)
 
 <details>
 <summary>Available Tools</summary>
@@ -201,8 +201,7 @@ Agents can target a specific server per query:
 #### Application Information
 | Tool | Description |
 |------|-------------|
-| `list_applications` | List applications with optional status, date, and limit filters |
-| `get_application` | Get application detail: status, resources, duration, attempts |
+| `list_applications` | List applications with optional status, date, and limit filters; pass `app_id` for a single application's detail (status, resources, duration, attempts). Returned applications always include their attempts. |
 
 #### Job Analysis
 | Tool | Description |

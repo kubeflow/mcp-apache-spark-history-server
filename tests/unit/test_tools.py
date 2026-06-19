@@ -12,7 +12,6 @@ from spark_history_mcp.api_client.models.task_metrics_summary import TaskMetrics
 from spark_history_mcp.tools.tools import (
     _calculate_executor_metrics,
     compare_sql_executions,
-    get_application,
     get_client_or_default,
     get_sql_execution,
     get_stage,
@@ -350,10 +349,10 @@ class TestTools(unittest.TestCase):
 
         self.assertIn("No stage found with ID 1", str(context.exception))
 
-    # Tests for get_application tool
+    # Tests for the list_applications app_id filter (single-application lookup)
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_application_success(self, mock_get_client):
-        """Test successful application retrieval"""
+    def test_list_applications_by_id(self, mock_get_client):
+        """app_id returns the single application as a one-element list"""
         mock_client = MagicMock()
         mock_app = MagicMock(spec=Application)
         mock_app.id = "spark-app-123"
@@ -361,40 +360,37 @@ class TestTools(unittest.TestCase):
         mock_client.get_application.return_value = mock_app
         mock_get_client.return_value = mock_client
 
-        result = get_application("spark-app-123")
+        result = list_applications(app_id="spark-app-123")
 
-        self.assertEqual(result, mock_app)
+        self.assertEqual(result, [mock_app])
         mock_client.get_application.assert_called_once_with("spark-app-123")
         mock_get_client.assert_called_once_with(
             unittest.mock.ANY, None, "spark-app-123"
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_application_with_server(self, mock_get_client):
-        """Test application retrieval with specific server"""
+    def test_list_applications_by_id_with_server(self, mock_get_client):
+        """app_id honors an explicit server"""
         mock_client = MagicMock()
         mock_app = MagicMock(spec=Application)
         mock_client.get_application.return_value = mock_app
         mock_get_client.return_value = mock_client
 
-        # Call the function with server
-        get_application("spark-app-123", server="production")
+        list_applications(app_id="spark-app-123", server="production")
 
-        # Verify server parameter is passed
         mock_get_client.assert_called_once_with(
             unittest.mock.ANY, "production", "spark-app-123"
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_application_not_found(self, mock_get_client):
-        """Test application retrieval when app doesn't exist"""
+    def test_list_applications_by_id_not_found(self, mock_get_client):
+        """app_id propagates a not-found error"""
         mock_client = MagicMock()
         mock_client.get_application.side_effect = Exception("Application not found")
         mock_get_client.return_value = mock_client
 
-        # Verify exception is propagated
         with self.assertRaises(Exception) as context:
-            get_application("non-existent-app")
+            list_applications(app_id="non-existent-app")
 
         self.assertIn("Application not found", str(context.exception))
 

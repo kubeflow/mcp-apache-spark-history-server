@@ -317,6 +317,7 @@ def get_client_or_default(
 @mcp.tool()
 def list_applications(
     server: Optional[str] = None,
+    app_id: Optional[str] = None,
     status: Optional[list[str]] = None,
     min_date: Optional[str] = None,
     max_date: Optional[str] = None,
@@ -325,10 +326,14 @@ def list_applications(
     limit: Optional[int] = None,
 ) -> list[Application]:
     """
-    Get a list of applications from the Spark History Server.
+    Get applications from the Spark History Server.
+
+    Pass ``app_id`` to retrieve a single application by its ID, returned as a
+    one-element list (the other filters are ignored in that case).
 
     Args:
         server: Optional server name to use (uses default if not specified)
+        app_id: Optional application ID to fetch a single application
         status: Optional list only applications in the chosen state: [completed|running]
         min_date: Optional earliest start date/time to list
         max_date: Optional latest start date/time to list
@@ -344,6 +349,10 @@ def list_applications(
         List of Application objects for all applications
     """
     ctx = mcp.get_context()
+
+    if app_id:
+        client = get_client_or_default(ctx, server, app_id)
+        return [client.get_application(app_id)]
 
     if server:
         # Return from specific server
@@ -379,27 +388,6 @@ def list_applications(
                 continue  # Skip unreachable servers
 
         return all_apps
-
-
-@mcp.tool()
-def get_application(app_id: str, server: Optional[str] = None) -> Application:
-    """
-    Get detailed information about a specific Spark application.
-
-    Retrieves comprehensive information about a Spark application including its
-    status, resource usage, duration, and attempt details.
-
-    Args:
-        app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
-
-    Returns:
-        Application object containing application details
-    """
-    ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server, app_id)
-
-    return client.get_application(app_id)
 
 
 @mcp.tool()

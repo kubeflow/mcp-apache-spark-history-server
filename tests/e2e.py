@@ -1,10 +1,9 @@
-import json
 from contextlib import AsyncExitStack, asynccontextmanager
 from types import TracebackType
 
 import pytest
 from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 from mcp.types import TextContent
 
 from spark_history_mcp.api_client.models.application import Application
@@ -22,6 +21,8 @@ mcp_endpoint = "http://localhost:18888/mcp/"
 # Apps from the shared e2e corpus (see skills/cli/e2e/fixtures.yaml).
 app1_id = "local-1776286786993"  # shs-e2e-app1
 app2_id = "local-1776286804625"  # shs-e2e-app2
+# A YARN app with two attempts (attempt 2 completed, attempt 1 incomplete).
+yarn_app_id = "application_1713000000000_0001"  # shs-e2e-yarn
 
 # A SQL execution present in both apps: the join + window + aggregation query.
 sql_exec_id = 6
@@ -37,7 +38,7 @@ class McpClient:
         self._exit_stack = AsyncExitStack()
         async with AsyncExitStack() as stack:
             read, write, _ = await stack.enter_async_context(
-                streamablehttp_client(mcp_endpoint)
+                streamable_http_client(mcp_endpoint)
             )
             mcp_client = await stack.enter_async_context(ClientSession(read, write))
             await mcp_client.initialize()
@@ -68,7 +69,7 @@ class McpClient:
     async def __aenter__(self):
         self._exit_stack = AsyncExitStack()
         read, write, _ = await self._exit_stack.enter_async_context(
-            streamablehttp_client(mcp_endpoint)
+            streamable_http_client(mcp_endpoint)
         )
         self._client_session = await self._exit_stack.enter_async_context(
             ClientSession(read, write)
@@ -104,26 +105,85 @@ async def test_tools_not_empty():
 
 
 @pytest.mark.asyncio
-async def test_get_application():
+async def test_list_applications():
     async with McpClient() as client:
-        app_result = await client.call_tool("get_application", {"app_id": app1_id})
-        assert not app_result.isError
-        app_info = Application.model_validate(json.loads(app_result.content[0].text))
-        assert app_info.id == app1_id
-        assert app_info.name == "shs-e2e-app1"
+        result = await client.call_tool("list_applications", {})
+        assert not result.isError
+        apps = [Application.model_validate_json(c.text) for c in result.content]
+        by_id = {a.id: a.name for a in apps}
+        assert by_id.get(app1_id) == "shs-e2e-app1"
+        assert by_id.get(app2_id) == "shs-e2e-app2"
 
 
 @pytest.mark.asyncio
-async def test_get_application_via_secondary_server():
+async def test_list_applications_by_id():
+    async with McpClient() as client:
+        result = await client.call_tool("list_applications", {"app_id": app1_id})
+        assert not result.isError
+        apps = [Application.model_validate_json(c.text) for c in result.content]
+        assert len(apps) == 1
+        assert apps[0].id == app1_id
+        assert apps[0].name == "shs-e2e-app1"
+
+
+@pytest.mark.asyncio
+async def test_list_applications_by_id_via_secondary_server():
     async with McpClient() as client:
         # Exercise explicit multi-server routing.
-        app_result = await client.call_tool(
-            "get_application", {"app_id": app2_id, "server": "secondary"}
+        result = await client.call_tool(
+            "list_applications", {"app_id": app2_id, "server": "secondary"}
         )
-        assert not app_result.isError
-        app_info = Application.model_validate(json.loads(app_result.content[0].text))
-        assert app_info.id == app2_id
-        assert app_info.name == "shs-e2e-app2"
+        assert not result.isError
+        apps = [Application.model_validate_json(c.text) for c in result.content]
+        assert len(apps) == 1
+        assert apps[0].id == app2_id
+        assert apps[0].name == "shs-e2e-app2"
+
+
+@pytest.mark.asyncio
+async def test_list_applications_includes_attempts():
+    """The unfiltered listing embeds each application's attempts."""
+    async with McpClient() as client:
+        result = await client.call_tool("list_applications", {})
+        assert not result.isError
+        apps = [Application.model_validate_json(c.text) for c in result.content]
+        by_id = {a.id: a for a in apps}
+
+        # Single-attempt local apps still carry an attempts list.
+        app1 = by_id[app1_id]
+        assert app1.attempts is not None
+        assert len(app1.attempts) == 1
+        assert app1.attempts[0].completed is True
+
+        # The YARN app has two attempts: attempt 2 completed, attempt 1 not.
+        yarn = by_id[yarn_app_id]
+        assert yarn.attempts is not None
+        assert len(yarn.attempts) == 2
+        attempts_by_id = {a.attempt_id: a for a in yarn.attempts}
+        assert set(attempts_by_id) == {"1", "2"}
+        assert attempts_by_id["2"].completed is True
+        assert attempts_by_id["2"].duration is not None
+        assert attempts_by_id["1"].completed is False
+
+
+@pytest.mark.asyncio
+async def test_list_applications_by_id_includes_attempts():
+    """Fetching a single app by id returns the same embedded attempts."""
+    async with McpClient() as client:
+        result = await client.call_tool("list_applications", {"app_id": yarn_app_id})
+        assert not result.isError
+        apps = [Application.model_validate_json(c.text) for c in result.content]
+        assert len(apps) == 1
+        attempts = apps[0].attempts
+        assert attempts is not None
+        assert len(attempts) == 2
+        # Newest attempt is listed first and is the completed one.
+        assert attempts[0].attempt_id == "2"
+        assert attempts[0].completed is True
+        assert attempts[0].start_time is not None
+        assert attempts[0].end_time is not None
+        assert attempts[1].attempt_id == "1"
+        assert attempts[1].completed is False
 
 
 @pytest.mark.asyncio
