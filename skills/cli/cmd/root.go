@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -23,15 +22,10 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	defaultConfig := "config.yaml"
-	if v := os.Getenv("SHS_CLI__CONFIG"); v != "" {
-		defaultConfig = v
-	}
-
 	rootCmd.PersistentFlags().StringVarP(&appID, "app-id", "a", "", "Spark application ID (or SHS_APP_ID env var)")
 	rootCmd.PersistentFlags().StringVar(&attemptID, "attempt", "", "Application attempt ID (for YARN apps)")
 	rootCmd.PersistentFlags().StringVarP(&serverName, "server", "s", "", "Server name from config")
-	rootCmd.PersistentFlags().StringVarP(&configPath, "config", "c", defaultConfig, "Path to config file")
+	rootCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "Path to config file (default: ./config.yaml, then ~/.config/spark-mcp/config.yaml; env: SHS_CLI__CONFIG)")
 	rootCmd.PersistentFlags().StringVarP(&outputFmt, "output", "o", "txt", "Output format (txt|json|yaml)")
 	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", 10*time.Second, "HTTP request timeout")
 
