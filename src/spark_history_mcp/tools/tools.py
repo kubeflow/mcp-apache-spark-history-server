@@ -986,52 +986,30 @@ def compare_job_performance(
     return comparison
 
 
-@mcp.tool()
-def compare_sql_execution_plans(
+def _resolve_longest_sql_id(client, app_id: str, execution_id: Optional[int]) -> int:
+    """Resolve a SQL execution id, defaulting to the longest-running execution."""
+    if execution_id is not None:
+        return execution_id
+    sql_list = client.get_sql_list(app_id=app_id, details=False)
+    if sql_list:
+        return max(sql_list, key=lambda x: x.duration or 0).id
+    raise ValueError(f"No SQL executions found in application {app_id}")
+
+
+def _compare_sql_plans(
+    client1,
     app_id1: str,
+    exec_id1: int,
+    client2,
     app_id2: str,
-    execution_id1: Optional[int] = None,
-    execution_id2: Optional[int] = None,
-    server: Optional[str] = None,
+    exec_id2: int,
 ) -> SqlPlanComparison:
-    """
-    Compare the plan structure of two SQL executions.
-
-    Compares the SQL plan DAGs of two executions by node type and counts,
-    returning only the node types whose counts differ, plus total node and edge
-    counts for each side.
-
-    Args:
-        app_id1: First Spark application ID
-        app_id2: Second Spark application ID
-        execution_id1: Execution ID for the first app (uses longest-running if omitted)
-        execution_id2: Execution ID for the second app (uses longest-running if omitted)
-        server: Optional server name to use (uses default if not specified)
-
-    Returns:
-        SqlPlanComparison with per-side node/edge counts and differing node types
-    """
-    ctx = mcp.get_context()
-    client1 = get_client_or_default(ctx, server, app_id1)
-    client2 = get_client_or_default(ctx, server, app_id2)
-
-    if execution_id1 is None:
-        sql_list1 = client1.get_sql_list(app_id=app_id1, details=False)
-        if sql_list1:
-            execution_id1 = max(sql_list1, key=lambda x: x.duration or 0).id
-    if execution_id2 is None:
-        sql_list2 = client2.get_sql_list(app_id=app_id2, details=False)
-        if sql_list2:
-            execution_id2 = max(sql_list2, key=lambda x: x.duration or 0).id
-
-    if execution_id1 is None or execution_id2 is None:
-        raise ValueError("No SQL executions found in one or both applications")
-
+    """Build a plan-structure diff between two (already resolved) SQL executions."""
     exec1 = client1.get_sql_execution(
-        app_id1, execution_id1, details=True, plan_description=False
+        app_id1, exec_id1, details=True, plan_description=False
     )
     exec2 = client2.get_sql_execution(
-        app_id2, execution_id2, details=True, plan_description=False
+        app_id2, exec_id2, details=True, plan_description=False
     )
 
     nodes1 = _count_node_types(exec1.nodes)
@@ -1050,8 +1028,8 @@ def compare_sql_execution_plans(
     return SqlPlanComparison(
         app_a=app_id1,
         app_b=app_id2,
-        exec_id_a=execution_id1,
-        exec_id_b=execution_id2,
+        exec_id_a=exec_id1,
+        exec_id_b=exec_id2,
         node_count_a=len(exec1.nodes or []),
         node_count_b=len(exec2.nodes or []),
         edge_count_a=len(exec1.edges or []),
@@ -1328,6 +1306,7 @@ def compare_sql_executions(
     execution_id1: Optional[int] = None,
     execution_id2: Optional[int] = None,
     server: Optional[str] = None,
+    include_plan_diff: bool = False,
 ) -> SqlExecutionComparison:
     """
     Compare performance metrics between two SQL executions.
@@ -1336,30 +1315,30 @@ def compare_sql_executions(
     query (jobs, stages, tasks, stage time, input, shuffle read/write, disk
     spill, GC time) so the two runs can be compared side by side.
 
+    Set ``include_plan_diff`` to also attach a ``plan_comparison`` section with
+    the plan-structure diff (per-side node/edge counts and the node types whose
+    counts differ).
+
     Args:
         app_id1: First Spark application ID
         app_id2: Second Spark application ID
         execution_id1: Execution ID for the first app (uses longest-running if omitted)
         execution_id2: Execution ID for the second app (uses longest-running if omitted)
         server: Optional server name to use (uses default if not specified)
+        include_plan_diff: Also compare the SQL plan structure (default False)
 
     Returns:
-        SqlExecutionComparison with an ``a`` and ``b`` side
+        SqlExecutionComparison with an ``a`` and ``b`` side, plus an optional
+        ``plan_comparison`` when ``include_plan_diff`` is set
     """
     ctx = mcp.get_context()
     client1 = get_client_or_default(ctx, server, app_id1)
     client2 = get_client_or_default(ctx, server, app_id2)
 
-    def collect_side(
-        client, app_id: str, execution_id: Optional[int]
-    ) -> SqlCompareSide:
-        if execution_id is None:
-            sql_list = client.get_sql_list(app_id=app_id, details=False)
-            if sql_list:
-                execution_id = max(sql_list, key=lambda x: x.duration or 0).id
-        if execution_id is None:
-            raise ValueError(f"No SQL executions found in application {app_id}")
+    execution_id1 = _resolve_longest_sql_id(client1, app_id1, execution_id1)
+    execution_id2 = _resolve_longest_sql_id(client2, app_id2, execution_id2)
 
+    def collect_side(client, app_id: str, execution_id: int) -> SqlCompareSide:
         execution = client.get_sql_execution(
             app_id, execution_id, details=False, plan_description=False
         )
@@ -1387,10 +1366,17 @@ def compare_sql_executions(
             jvm_gc_time=agg.jvm_gc_time,
         )
 
-    return SqlExecutionComparison(
+    comparison = SqlExecutionComparison(
         a=collect_side(client1, app_id1, execution_id1),
         b=collect_side(client2, app_id2, execution_id2),
     )
+
+    if include_plan_diff:
+        comparison.plan_comparison = _compare_sql_plans(
+            client1, app_id1, execution_id1, client2, app_id2, execution_id2
+        )
+
+    return comparison
 
 
 @mcp.tool()

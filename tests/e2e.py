@@ -15,7 +15,6 @@ from spark_history_mcp.models.mcp_types import (
     SqlExecutionComparison,
     SqlExecutionDetail,
     SqlExecutionSummary,
-    SqlPlanComparison,
 )
 
 mcp_endpoint = "http://localhost:18888/mcp/"
@@ -101,7 +100,6 @@ async def test_tools_not_empty():
             "list_sql_executions",
             "get_sql_execution",
             "compare_sql_executions",
-            "compare_sql_execution_plans",
         }.issubset(names)
 
 
@@ -442,30 +440,38 @@ async def test_compare_sql_executions():
 
 
 @pytest.mark.asyncio
-async def test_compare_sql_execution_plans():
+async def test_compare_sql_executions_with_plan_diff():
     async with McpClient() as client:
         result = await client.call_tool(
-            "compare_sql_execution_plans",
+            "compare_sql_executions",
             {
                 "app_id1": app1_id,
                 "app_id2": app2_id,
                 "execution_id1": sql_exec_id,
                 "execution_id2": sql_exec_id,
+                "include_plan_diff": True,
             },
         )
         assert not result.isError
-        cmp = _parse_one(result, SqlPlanComparison)
+        cmp = _parse_one(result, SqlExecutionComparison)
 
-        assert cmp.app_a == app1_id
-        assert cmp.app_b == app2_id
-        assert cmp.exec_id_a == sql_exec_id
-        assert cmp.exec_id_b == sql_exec_id
-        assert cmp.node_count_a == 37
-        assert cmp.node_count_b == 29
-        assert cmp.edge_count_a == 26
-        assert cmp.edge_count_b == 21
+        # Metrics are still present.
+        assert cmp.a.tasks == 47
+        assert cmp.b.tasks == 20
 
-        diffs = {d.node_type: (d.a, d.b) for d in cmp.node_type_diffs}
+        # Plan diff is attached.
+        pc = cmp.plan_comparison
+        assert pc is not None
+        assert pc.app_a == app1_id
+        assert pc.app_b == app2_id
+        assert pc.exec_id_a == sql_exec_id
+        assert pc.exec_id_b == sql_exec_id
+        assert pc.node_count_a == 37
+        assert pc.node_count_b == 29
+        assert pc.edge_count_a == 26
+        assert pc.edge_count_b == 21
+
+        diffs = {d.node_type: (d.a, d.b) for d in pc.node_type_diffs}
         assert diffs == {
             "AQEShuffleRead": (5, 3),
             "BroadcastExchange": (0, 1),

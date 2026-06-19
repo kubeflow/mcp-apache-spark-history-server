@@ -193,7 +193,7 @@ Agents can target a specific server per query:
 | **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
 | **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |
 
-### Available Tools (18)
+### Available Tools (17)
 
 <details>
 <summary>Available Tools</summary>
@@ -232,8 +232,7 @@ Agents can target a specific server per query:
 |------|-------------|
 | `list_sql_executions` | List SQL executions as curated summaries, with status/description filters, sorting, and a default limit |
 | `get_sql_execution` | SQL execution header by default; opt-in plan, node metrics, job summaries, aggregated stage metrics, and stage list |
-| `compare_sql_executions` | Compare aggregated performance metrics (stages, tasks, shuffle, spill, GC) between two SQL executions |
-| `compare_sql_execution_plans` | Compare SQL plan structure (node types, node/edge counts) between two executions |
+| `compare_sql_executions` | Compare aggregated performance metrics (stages, tasks, shuffle, spill, GC) between two SQL executions; opt-in plan-structure diff |
 
 #### Performance & Bottleneck Analysis
 | Tool | Description |

@@ -11,7 +11,6 @@ from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.api_client.models.task_metrics_summary import TaskMetricsSummary
 from spark_history_mcp.tools.tools import (
     _calculate_executor_metrics,
-    compare_sql_execution_plans,
     compare_sql_executions,
     get_application,
     get_client_or_default,
@@ -1121,40 +1120,58 @@ class TestTools(unittest.TestCase):
         self.assertEqual(result.b.app, "app-b")
         self.assertEqual(result.b.sql_id, 2)
         self.assertEqual(result.b.tasks, 30)
+        # No plan diff unless requested.
+        self.assertIsNone(result.plan_comparison)
 
-    # Tests for compare_sql_execution_plans tool
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_compare_sql_execution_plans(self, mock_get_client):
-        """compare_sql_execution_plans returns node/edge counts and differing types"""
+    def test_compare_sql_executions_with_plan_diff(self, mock_get_client):
+        """include_plan_diff attaches a plan_comparison with node/edge counts and diffs"""
 
         def node(name):
             n = MagicMock()
             n.node_name = name
             return n
 
-        exec_a = MagicMock(spec=SQLExecution)
-        exec_a.nodes = [node("Filter"), node("Scan"), node("Scan")]
-        exec_a.edges = [MagicMock(), MagicMock()]
+        plan_a = MagicMock(spec=SQLExecution)
+        plan_a.nodes = [node("Filter"), node("Scan"), node("Scan")]
+        plan_a.edges = [MagicMock(), MagicMock()]
 
-        exec_b = MagicMock(spec=SQLExecution)
-        exec_b.nodes = [node("Filter"), node("Scan")]
-        exec_b.edges = [MagicMock()]
+        plan_b = MagicMock(spec=SQLExecution)
+        plan_b.nodes = [node("Filter"), node("Scan")]
+        plan_b.edges = [MagicMock()]
 
         client_a = MagicMock()
-        client_a.get_sql_execution.return_value = exec_a
+        # First call (details=False) feeds metrics; second (details=True) feeds the plan diff.
+        client_a.get_sql_execution.side_effect = [
+            self._mk_sql(1, 5000, description="q", success=[1]),
+            plan_a,
+        ]
+        client_a.list_jobs.return_value = [self._mk_job(1, "SUCCEEDED", [10])]
+        client_a.list_stages.return_value = [self._mk_stage(10, tasks=10)]
+
         client_b = MagicMock()
-        client_b.get_sql_execution.return_value = exec_b
+        client_b.get_sql_execution.side_effect = [
+            self._mk_sql(2, 8000, description="q", success=[5]),
+            plan_b,
+        ]
+        client_b.list_jobs.return_value = [self._mk_job(5, "SUCCEEDED", [20])]
+        client_b.list_stages.return_value = [self._mk_stage(20, tasks=30)]
+
         mock_get_client.side_effect = [client_a, client_b]
 
-        result = compare_sql_execution_plans("app-a", "app-b", 1, 2)
+        result = compare_sql_executions("app-a", "app-b", 1, 2, include_plan_diff=True)
 
-        self.assertEqual(result.app_a, "app-a")
-        self.assertEqual(result.exec_id_a, 1)
-        self.assertEqual(result.node_count_a, 3)
-        self.assertEqual(result.node_count_b, 2)
-        self.assertEqual(result.edge_count_a, 2)
-        self.assertEqual(result.edge_count_b, 1)
-        diffs = {d.node_type: (d.a, d.b) for d in result.node_type_diffs}
+        self.assertEqual(result.a.tasks, 10)
+        self.assertEqual(result.b.tasks, 30)
+        pc = result.plan_comparison
+        self.assertIsNotNone(pc)
+        self.assertEqual(pc.app_a, "app-a")
+        self.assertEqual(pc.exec_id_a, 1)
+        self.assertEqual(pc.node_count_a, 3)
+        self.assertEqual(pc.node_count_b, 2)
+        self.assertEqual(pc.edge_count_a, 2)
+        self.assertEqual(pc.edge_count_b, 1)
+        diffs = {d.node_type: (d.a, d.b) for d in pc.node_type_diffs}
         self.assertEqual(diffs, {"Scan": (2, 1)})
 
     # Tests for pagination support
