@@ -305,10 +305,17 @@ def get_client_or_default(
 
     clients = ctx.request_context.lifespan_context.clients
 
+    # An explicitly requested server must exist; do not silently fall back to
+    # the default, or callers can't tell which server actually answered.
     if server_name:
         client = clients.get(server_name)
-        if client:
-            return client
+        if client is None:
+            available = ", ".join(sorted(clients)) or "none"
+            raise ValueError(
+                f"No Spark server named '{server_name}' is configured "
+                f"(available servers: {available})."
+            )
+        return client
 
     if default_client:
         return default_client
@@ -754,6 +761,70 @@ def get_executor_summary(app_id: str, server: Optional[str] = None):
 
     executors = client.list_all_executors(app_id=app_id)
     return _calculate_executor_metrics(executors)
+
+
+def _filter_threads(threads, state, name, blocked_only):
+    """Filter thread-dump entries by state, name substring, and blocked status."""
+    if not state and not name and not blocked_only:
+        return list(threads)
+
+    name_low = name.lower() if name else None
+    result = []
+    for t in threads:
+        if state and (t.thread_state or "").upper() != state.upper():
+            continue
+        if name_low and name_low not in (t.thread_name or "").lower():
+            continue
+        if blocked_only and t.blocked_by_thread_id is None and t.lock_name is None:
+            continue
+        result.append(t)
+    return result
+
+
+@mcp.tool()
+def get_executor_thread_dump(
+    app_id: str,
+    executor_id: str,
+    server: Optional[str] = None,
+    state: Optional[str] = None,
+    name: Optional[str] = None,
+    blocked_only: bool = False,
+    app_attempt_id: Optional[str] = None,
+) -> list:
+    """
+    Get the JVM thread dump for a driver or executor.
+
+    Returns one entry per thread, each with its ID, name, state, daemon flag,
+    lock/blocking information, and full stack trace. Use ``executor_id="driver"``
+    for the driver.
+
+    The application must be **running**: completed applications return an error
+    because the Spark History Server does not persist thread dumps.
+
+    Args:
+        app_id: The Spark application ID
+        executor_id: Executor ID, or "driver" for the driver
+        server: Optional server name to use (uses default if not specified)
+        state: Optional thread-state filter (e.g. "RUNNABLE", "BLOCKED",
+            "WAITING", "TIMED_WAITING"); case-insensitive exact match
+        name: Optional case-insensitive substring match on the thread name
+        blocked_only: When True, return only threads blocked on a lock or
+            another thread
+        app_attempt_id: Optional YARN application attempt ID (latest if omitted)
+
+    Returns:
+        List of ThreadStackTrace objects, sorted by thread ID
+    """
+    ctx = mcp.get_context()
+    client = get_client_or_default(ctx, server, app_id)
+
+    threads = client.get_executor_thread_dump(
+        app_id=app_id, executor_id=executor_id, app_attempt_id=app_attempt_id
+    )
+
+    threads = _filter_threads(threads, state, name, blocked_only)
+    threads.sort(key=lambda t: t.thread_id if t.thread_id is not None else 0)
+    return threads
 
 
 @mcp.tool()

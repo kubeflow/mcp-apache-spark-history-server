@@ -10,14 +10,17 @@ from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.api_client.models.task_metrics_summary import TaskMetricsSummary
+from spark_history_mcp.api_client.models.thread_stack_trace import ThreadStackTrace
 from spark_history_mcp.tools.tools import (
     _build_stage_task_quantiles,
     _calculate_executor_metrics,
     _filter_environment_section,
+    _filter_threads,
     compare_sql_executions,
     compare_stages,
     get_client_or_default,
     get_environment,
+    get_executor_thread_dump,
     get_sql_execution,
     get_stage,
     list_applications,
@@ -65,25 +68,24 @@ class TestTools(unittest.TestCase):
         # Should return the default client
         self.assertEqual(client, self.mock_client1)
 
-    def test_get_client_not_found_with_default(self):
-        """Test behavior when requested client is not found but default exists"""
+    def test_get_client_not_found_errors(self):
+        """A requested server that does not exist raises, even with a default."""
         self.mock_lifespan_context.default_client = self.mock_client1
 
-        # Get non-existent client
-        client = get_client_or_default(self.mock_ctx, "non_existent_server")
+        with self.assertRaises(ValueError) as context:
+            get_client_or_default(self.mock_ctx, "non_existent_server")
 
-        # Should fall back to default client
-        self.assertEqual(client, self.mock_client1)
+        self.assertIn("non_existent_server", str(context.exception))
 
     def test_no_client_found(self):
-        """Test error when no client is found and no default exists"""
+        """An unknown server with no default still raises (now naming the server)."""
         self.mock_lifespan_context.default_client = None
 
         # Try to get non-existent client with no default
         with self.assertRaises(ValueError) as context:
             get_client_or_default(self.mock_ctx, "non_existent_server")
 
-        self.assertIn("No Spark client found", str(context.exception))
+        self.assertIn("non_existent_server", str(context.exception))
 
     def test_no_default_client(self):
         """Test error when no name is provided and no default exists"""
@@ -1445,3 +1447,58 @@ class TestTools(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             compare_stages("app-1", 999, "app-2", 1)
+
+    # Tests for get_executor_thread_dump / _filter_threads
+    @staticmethod
+    def _sample_threads():
+        return [
+            ThreadStackTrace(threadId=1, threadName="main", threadState="RUNNABLE"),
+            ThreadStackTrace(
+                threadId=2,
+                threadName="dispatcher-event-loop-0",
+                threadState="WAITING",
+                blockedByThreadId=1,
+            ),
+            ThreadStackTrace(
+                threadId=3,
+                threadName="Executor task launch worker for task 42",
+                threadState="BLOCKED",
+                lockName="java.util.concurrent.locks.ReentrantLock",
+            ),
+            ThreadStackTrace(
+                threadId=4,
+                threadName="DispatcherWatcher",
+                threadState="TIMED_WAITING",
+            ),
+        ]
+
+    def test_filter_threads(self):
+        cases = [
+            ("no filter", None, None, False, [1, 2, 3, 4]),
+            ("state RUNNABLE", "RUNNABLE", None, False, [1]),
+            ("state lowercase matches", "blocked", None, False, [3]),
+            ("name substring case-insensitive", None, "DISPATCHER", False, [2, 4]),
+            ("blocked-only catches blocked_by", None, None, True, [2, 3]),
+            ("combine state + name", "WAITING", "dispatcher", False, [2]),
+            ("no match returns empty", None, "nonexistent", False, []),
+        ]
+        for label, state, name, blocked_only, want_ids in cases:
+            with self.subTest(label):
+                got = _filter_threads(self._sample_threads(), state, name, blocked_only)
+                self.assertEqual([t.thread_id for t in got], want_ids)
+
+    @patch("spark_history_mcp.tools.tools.mcp")
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_executor_thread_dump_sorts_by_id(self, mock_get_client, mock_mcp):
+        mock_client = MagicMock()
+        # Returned out of order; the tool sorts by thread ID.
+        mock_client.get_executor_thread_dump.return_value = list(
+            reversed(self._sample_threads())
+        )
+        mock_get_client.return_value = mock_client
+
+        threads = get_executor_thread_dump("app-1", "driver")
+        self.assertEqual([t.thread_id for t in threads], [1, 2, 3, 4])
+        mock_client.get_executor_thread_dump.assert_called_once_with(
+            app_id="app-1", executor_id="driver", app_attempt_id=None
+        )

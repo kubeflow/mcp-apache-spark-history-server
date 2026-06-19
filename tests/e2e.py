@@ -143,6 +143,17 @@ async def test_list_applications_by_id_via_secondary_server():
 
 
 @pytest.mark.asyncio
+async def test_unknown_server_errors():
+    async with McpClient() as client:
+        # An explicitly named server that does not exist must error, not
+        # silently fall back to the default server.
+        result = await client.call_tool(
+            "list_applications", {"app_id": app2_id, "server": "does-not-exist"}
+        )
+        assert result.isError
+
+
+@pytest.mark.asyncio
 async def test_list_applications_includes_attempts():
     """The unfiltered listing embeds each application's attempts."""
     async with McpClient() as client:
@@ -731,5 +742,23 @@ async def test_compare_stages_not_found():
                 "app_id2": app2_id,
                 "stage_id2": app2_stage_id,
             },
+        )
+        assert result.isError
+
+
+# ---------------------------------------------------------------------------
+# get_executor_thread_dump tool
+# ---------------------------------------------------------------------------
+# The e2e corpus is replayed from event logs, so every application is completed.
+# The History Server does not persist thread dumps, so the endpoint returns 404
+# and the tool surfaces an error. This confirms the tool is wired up end to end.
+
+
+@pytest.mark.asyncio
+async def test_get_executor_thread_dump_completed_app_errors():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "get_executor_thread_dump",
+            {"app_id": app1_id, "executor_id": "driver"},
         )
         assert result.isError

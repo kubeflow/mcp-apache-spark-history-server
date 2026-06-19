@@ -252,7 +252,7 @@ Agents can target a specific server per query:
 | **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
 | **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |
 
-### Available Tools (17)
+### Available Tools (18)
 
 <details>
 <summary>Available Tools</summary>
@@ -279,6 +279,7 @@ Agents can target a specific server per query:
 | `list_executors` | List executors with executor-id filtering and sorting (failed-tasks/duration/gc/id) |
 | `get_executor_summary` | Aggregate metrics across all executors |
 | `get_resource_usage_timeline` | Chronological executor add/remove with resource totals |
+| `get_executor_thread_dump` | JVM thread dump for a driver/executor, with state/name/blocked filters (running apps only) |
 
 #### Configuration & Environment
 | Tool | Description |
