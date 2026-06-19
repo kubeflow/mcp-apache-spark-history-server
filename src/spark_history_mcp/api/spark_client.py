@@ -37,7 +37,9 @@ from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
+from spark_history_mcp.api_client.models.task import Task
 from spark_history_mcp.api_client.models.task_metrics_summary import TaskMetricsSummary
+from spark_history_mcp.api_client.models.thread_stack_trace import ThreadStackTrace
 from spark_history_mcp.config.config import ServerConfig
 
 _DEFAULT_QUANTILES = "0.05, 0.25, 0.5, 0.75, 0.95"
@@ -336,6 +338,31 @@ class SparkRestClient:
             quantiles=quantiles,
         )
 
+    @_resilient_call
+    def list_stage_tasks(
+        self,
+        app_id: str,
+        stage_id: int,
+        attempt_id: int,
+        status: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        offset: Optional[int] = None,
+        length: Optional[int] = None,
+        app_attempt_id: Optional[str] = None,
+    ) -> List[Task]:
+        """List tasks for a specific stage attempt, optionally filtered by status."""
+        app_path = self._app_path(app_id, app_attempt_id)
+        return self._invoke(
+            self._api.list_tasks,
+            app_path,
+            stage_id,
+            attempt_id,
+            status=status,
+            sort_by=sort_by,
+            offset=offset,
+            length=length,
+        )
+
     # ------------------------------------------------------------------
     # Executors
     # ------------------------------------------------------------------
@@ -364,6 +391,22 @@ class SparkRestClient:
         app_path = self._app_path(app_id, app_attempt_id)
         executors = self._invoke(self._api.list_all_executors, app_path)
         return self._paginate(executors, offset, length)
+
+    @_resilient_call
+    def get_executor_thread_dump(
+        self,
+        app_id: str,
+        executor_id: str,
+        app_attempt_id: Optional[str] = None,
+    ) -> List[ThreadStackTrace]:
+        """Get the JVM thread dump for a driver or executor.
+
+        Use ``"driver"`` for the driver. The application must be running;
+        completed applications return 404 because the History Server does not
+        persist thread dumps.
+        """
+        app_path = self._app_path(app_id, app_attempt_id)
+        return self._invoke(self._api.get_executor_threads, app_path, executor_id)
 
     # ------------------------------------------------------------------
     # Environment

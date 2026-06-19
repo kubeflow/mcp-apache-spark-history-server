@@ -4,12 +4,14 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.environment import Environment
 from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.core.app import mcp
 from spark_history_mcp.models.mcp_types import (
+    FailedTask,
     SqlCompareSide,
     SqlExecutionComparison,
     SqlExecutionDetail,
@@ -19,7 +21,10 @@ from spark_history_mcp.models.mcp_types import (
     SqlNodeTypeDiff,
     SqlPlanComparison,
     SqlStageSummary,
+    StageCompareSide,
+    StageComparison,
     StageMetricsAggregation,
+    StageTaskQuantiles,
 )
 
 from ..utils.utils import parallel_execute
@@ -301,10 +306,17 @@ def get_client_or_default(
 
     clients = ctx.request_context.lifespan_context.clients
 
+    # An explicitly requested server must exist; do not silently fall back to
+    # the default, or callers can't tell which server actually answered.
     if server_name:
         client = clients.get(server_name)
-        if client:
-            return client
+        if client is None:
+            available = ", ".join(sorted(clients)) or "none"
+            raise ValueError(
+                f"No Spark server named '{server_name}' is configured "
+                f"(available servers: {available})."
+            )
+        return client
 
     if default_client:
         return default_client
@@ -584,9 +596,132 @@ def get_stage(
     return stage_data
 
 
+def _resolve_latest_stage_attempt_id(client, app_id: str, stage_id: int) -> int:
+    """Return the highest attempt id for a stage, or raise if the stage is absent."""
+    attempts = client.list_stage_attempts(
+        app_id=app_id,
+        stage_id=stage_id,
+        details=False,
+        with_summaries=False,
+    )
+    if not attempts:
+        raise ValueError(
+            f"No stage found with ID {stage_id} in application {app_id} "
+            "(it may have been skipped by AQE)"
+        )
+    return max(attempts, key=lambda s: s.attempt_id or 0).attempt_id or 0
+
+
+@mcp.tool()
+def list_stage_task_failures(
+    app_id: str,
+    stage_id: int,
+    server: Optional[str] = None,
+    stage_attempt_id: Optional[int] = None,
+    app_attempt_id: Optional[str] = None,
+) -> list:
+    """
+    Get the per-task error messages for a stage's failed tasks.
+
+    Use this to diagnose *why* a stage failed: it returns the actual exception
+    and stack trace recorded for each failed task, which the stage- and
+    job-level tools do not expose. A typical workflow is to find a failed or
+    slow stage with ``list_stages`` (or a failed job with ``list_jobs``), then
+    call this tool with that stage ID to read the underlying errors.
+
+    Only tasks with status ``FAILED`` are returned. By default the latest stage
+    attempt is inspected; pass ``stage_attempt_id`` to target a specific one.
+    The full, untruncated ``error_message`` is preserved so the complete stack
+    trace is available.
+
+    Args:
+        app_id: The Spark application ID.
+        stage_id: The stage ID to inspect.
+        server: Server name to query; uses the default server if omitted.
+        stage_attempt_id: Specific stage attempt to inspect; defaults to the
+            latest attempt.
+        app_attempt_id: YARN application attempt ID; uses the latest if omitted.
+
+    Returns:
+        A list of ``FailedTask`` objects, one per failed task, each with
+        ``task_id``, ``attempt``, ``executor_id``, ``host``, ``status``, and the
+        full ``error_message``. Empty if the stage attempt has no failed tasks.
+
+    Raises:
+        ValueError: If the stage does not exist (e.g. it was skipped by AQE).
+    """
+    ctx = mcp.get_context()
+    client = get_client_or_default(ctx, server, app_id)
+
+    if stage_attempt_id is None:
+        stage_attempt_id = _resolve_latest_stage_attempt_id(client, app_id, stage_id)
+
+    tasks = client.list_stage_tasks(
+        app_id=app_id,
+        stage_id=stage_id,
+        attempt_id=stage_attempt_id,
+        status="failed",
+        app_attempt_id=app_attempt_id,
+    )
+
+    return [
+        FailedTask(
+            task_id=t.task_id,
+            attempt=t.attempt,
+            executor_id=t.executor_id,
+            host=t.host,
+            status=t.status,
+            error_message=t.error_message,
+        )
+        for t in tasks
+    ]
+
+
+# Environment sections that can be requested individually via ``section``.
+_ENVIRONMENT_SECTION_FIELDS = (
+    "runtime",
+    "spark_properties",
+    "system_properties",
+    "hadoop_properties",
+    "metrics_properties",
+    "classpath_entries",
+)
+
+
+def _resolve_environment_section(section: str) -> str:
+    """Resolve a requested ``section`` to a canonical environment field name.
+
+    Accepts the field names in ``_ENVIRONMENT_SECTION_FIELDS``, compared
+    case-insensitively. Raises ``ValueError`` for anything else.
+    """
+    keep_field = section.strip().lower()
+    if keep_field not in _ENVIRONMENT_SECTION_FIELDS:
+        valid = ", ".join(repr(s) for s in _ENVIRONMENT_SECTION_FIELDS)
+        raise ValueError(f"invalid section {section!r}; expected one of {valid}")
+    return keep_field
+
+
+def _filter_environment_section(env: Environment, section: str) -> Environment:
+    """Return a copy of ``env`` with only the requested section populated.
+
+    Fields for the other sections — and ``resource_profiles`` — are cleared so
+    the response carries only the requested data.
+    """
+    keep_field = _resolve_environment_section(section)
+    filtered = env.model_copy(deep=True)
+    for env_field in _ENVIRONMENT_SECTION_FIELDS:
+        if env_field != keep_field:
+            setattr(filtered, env_field, None)
+    filtered.resource_profiles = None
+    return filtered
+
+
 @mcp.tool()
 def get_environment(
-    app_id: str, server: Optional[str] = None, app_attempt_id: Optional[str] = None
+    app_id: str,
+    server: Optional[str] = None,
+    app_attempt_id: Optional[str] = None,
+    section: Optional[str] = None,
 ):
     """
     Get the comprehensive Spark runtime configuration for a Spark application.
@@ -598,14 +733,24 @@ def get_environment(
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         app_attempt_id: Optional YARN application attempt ID (latest if omitted)
+        section: Optional section filter to return only one part of the
+            environment. One of "runtime", "spark_properties",
+            "system_properties", "hadoop_properties", "metrics_properties", or
+            "classpath_entries". When omitted, all sections are returned.
 
     Returns:
-        ApplicationEnvironmentInfo object containing environment details
+        ApplicationEnvironmentInfo object containing environment details. When
+        ``section`` is given, only that section is populated.
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
-    return client.get_environment(app_id=app_id, app_attempt_id=app_attempt_id)
+    env = client.get_environment(app_id=app_id, app_attempt_id=app_attempt_id)
+
+    if section is not None:
+        env = _filter_environment_section(env, section)
+
+    return env
 
 
 @mcp.tool()
@@ -698,6 +843,70 @@ def get_executor_summary(app_id: str, server: Optional[str] = None):
 
     executors = client.list_all_executors(app_id=app_id)
     return _calculate_executor_metrics(executors)
+
+
+def _filter_threads(threads, state, name, blocked_only):
+    """Filter thread-dump entries by state, name substring, and blocked status."""
+    if not state and not name and not blocked_only:
+        return list(threads)
+
+    name_low = name.lower() if name else None
+    result = []
+    for t in threads:
+        if state and (t.thread_state or "").upper() != state.upper():
+            continue
+        if name_low and name_low not in (t.thread_name or "").lower():
+            continue
+        if blocked_only and t.blocked_by_thread_id is None and t.lock_name is None:
+            continue
+        result.append(t)
+    return result
+
+
+@mcp.tool()
+def get_executor_thread_dump(
+    app_id: str,
+    executor_id: str,
+    server: Optional[str] = None,
+    state: Optional[str] = None,
+    name: Optional[str] = None,
+    blocked_only: bool = False,
+    app_attempt_id: Optional[str] = None,
+) -> list:
+    """
+    Get the JVM thread dump for a driver or executor.
+
+    Returns one entry per thread, each with its ID, name, state, daemon flag,
+    lock/blocking information, and full stack trace. Use ``executor_id="driver"``
+    for the driver.
+
+    The application must be **running**: completed applications return an error
+    because the Spark History Server does not persist thread dumps.
+
+    Args:
+        app_id: The Spark application ID
+        executor_id: Executor ID, or "driver" for the driver
+        server: Optional server name to use (uses default if not specified)
+        state: Optional thread-state filter (e.g. "RUNNABLE", "BLOCKED",
+            "WAITING", "TIMED_WAITING"); case-insensitive exact match
+        name: Optional case-insensitive substring match on the thread name
+        blocked_only: When True, return only threads blocked on a lock or
+            another thread
+        app_attempt_id: Optional YARN application attempt ID (latest if omitted)
+
+    Returns:
+        List of ThreadStackTrace objects, sorted by thread ID
+    """
+    ctx = mcp.get_context()
+    client = get_client_or_default(ctx, server, app_id)
+
+    threads = client.get_executor_thread_dump(
+        app_id=app_id, executor_id=executor_id, app_attempt_id=app_attempt_id
+    )
+
+    threads = _filter_threads(threads, state, name, blocked_only)
+    threads.sort(key=lambda t: t.thread_id if t.thread_id is not None else 0)
+    return threads
 
 
 @mcp.tool()
@@ -1365,6 +1574,121 @@ def compare_sql_executions(
         )
 
     return comparison
+
+
+# Quantile points fetched for stage task-metric distributions: p25/p50/p75/max.
+_STAGE_COMPARE_QUANTILES = "0.25,0.5,0.75,1.0"
+
+
+def _build_stage_task_quantiles(summary) -> Optional[StageTaskQuantiles]:
+    """Map a ``TaskMetricsSummary`` into the curated stage quantiles model."""
+    if summary is None:
+        return None
+
+    def nested(obj, attr):
+        return getattr(obj, attr) if obj is not None else None
+
+    return StageTaskQuantiles(
+        quantiles=summary.quantiles or [],
+        duration=summary.duration,
+        gc_time=summary.jvm_gc_time,
+        scheduler_delay=summary.scheduler_delay,
+        peak_execution_memory=summary.peak_execution_memory,
+        input_bytes=nested(summary.input_metrics, "bytes_read"),
+        output_bytes=nested(summary.output_metrics, "bytes_written"),
+        shuffle_read_bytes=nested(summary.shuffle_read_metrics, "read_bytes"),
+        shuffle_write_bytes=nested(summary.shuffle_write_metrics, "write_bytes"),
+        disk_bytes_spilled=summary.disk_bytes_spilled,
+        memory_bytes_spilled=summary.memory_bytes_spilled,
+    )
+
+
+def _collect_stage_side(client, app_id: str, stage_id: int) -> StageCompareSide:
+    """Build one side of a stage comparison from the latest stage attempt."""
+    attempts = client.list_stage_attempts(
+        app_id=app_id,
+        stage_id=stage_id,
+        details=False,
+        with_summaries=False,
+    )
+    if not attempts:
+        raise ValueError(
+            f"No stage found with ID {stage_id} in application {app_id} "
+            "(it may have been skipped by AQE)"
+        )
+
+    stage = max(attempts, key=lambda s: s.attempt_id or 0)
+    attempt_id = stage.attempt_id or 0
+
+    # Task-metric quantiles are best-effort; a missing summary just omits them.
+    try:
+        summary = client.get_stage_task_summary(
+            app_id=app_id,
+            stage_id=stage_id,
+            attempt_id=attempt_id,
+            quantiles=_STAGE_COMPARE_QUANTILES,
+        )
+    except Exception:
+        summary = None
+
+    return StageCompareSide(
+        app=app_id,
+        stage_id=stage.stage_id,
+        attempt_id=attempt_id,
+        status=stage.status,
+        description=stage.description or stage.name,
+        duration=_duration_ms(stage.submission_time, stage.completion_time),
+        tasks=stage.num_tasks or 0,
+        failed_tasks=stage.num_failed_tasks or 0,
+        input_bytes=stage.input_bytes or 0,
+        output_bytes=stage.output_bytes or 0,
+        shuffle_read_bytes=stage.shuffle_read_bytes or 0,
+        shuffle_write_bytes=stage.shuffle_write_bytes or 0,
+        disk_bytes_spilled=stage.disk_bytes_spilled or 0,
+        memory_bytes_spilled=stage.memory_bytes_spilled or 0,
+        jvm_gc_time=stage.jvm_gc_time or 0,
+        task_quantiles=_build_stage_task_quantiles(summary),
+    )
+
+
+@mcp.tool()
+def compare_stages(
+    app_id1: str,
+    stage_id1: int,
+    app_id2: str,
+    stage_id2: int,
+    server: Optional[str] = None,
+) -> StageComparison:
+    """
+    Compare two stages side by side, optionally across applications.
+
+    For each stage the latest attempt is used. Returns stage-level metrics
+    (duration, task counts, input/output, shuffle read/write, disk/memory spill,
+    GC time) plus per-task metric distributions at the p25/p50/p75/max quantiles
+    (duration, GC time, scheduler delay, peak execution memory, input, output,
+    shuffle read/write, disk spill, memory spill).
+
+    The two stages may belong to different applications. Deltas are not
+    precomputed; compare the ``a`` and ``b`` sides directly.
+
+    Args:
+        app_id1: Application ID for the first stage
+        stage_id1: Stage ID within the first application
+        app_id2: Application ID for the second stage
+        stage_id2: Stage ID within the second application
+        server: Optional server name to use (uses default if not specified)
+
+    Returns:
+        StageComparison with an ``a`` and ``b`` side
+    """
+    ctx = mcp.get_context()
+    client1 = get_client_or_default(ctx, server, app_id1)
+    client2 = get_client_or_default(ctx, server, app_id2)
+
+    return StageComparison(
+        a=_collect_stage_side(client1, app_id1, stage_id1),
+        b=_collect_stage_side(client2, app_id2, stage_id2),
+    )
 
 
 @mcp.tool()

@@ -83,19 +83,16 @@ tasks:
     desc: Run end-to-end tests against the Spark History Server e2e corpus
     cmds:
       - echo "🧪 Starting end-to-end tests..."
-      - echo "Backing up original config..."
-      - cp config.yaml config.yaml.backup
-      - defer: cp config.yaml.backup config.yaml && rm config.yaml.backup
       - defer:
           task: stop-all
       - defer:
           task: cli:stop-shs
-      - echo "Setting up e2e configuration..."
-      - cp tests/config-e2e.yaml config.yaml
       - echo "Starting Spark History Server..."
       - task: cli:start-shs
-      - echo "Starting MCP server..."
+      - echo "Starting MCP server (config tests/config-e2e.yaml)..."
       - task: start-mcp-bg
+        vars:
+          CONFIG: tests/config-e2e.yaml
       - |
         echo "Running e2e tests..."
         uv run pytest tests/e2e.py -v
@@ -181,7 +178,7 @@ tasks:
     cmds:
       - |
         echo "Starting MCP server in background..."
-        bash -c 'nohup uv run -m spark_history_mcp.core.main > mcp-server.log 2>&1 &'
+        {{if .CONFIG}}export SHS_MCP_CONFIG="{{.CONFIG}}"; {{end}}bash -c 'nohup uv run -m spark_history_mcp.core.main > mcp-server.log 2>&1 &'
 
       - task: wait-for-mcp
     status:

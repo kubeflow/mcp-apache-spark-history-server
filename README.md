@@ -252,7 +252,7 @@ Agents can target a specific server per query:
 | **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
 | **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |
 
-### Available Tools (16)
+### Available Tools (19)
 
 <details>
 <summary>Available Tools</summary>
@@ -272,6 +272,7 @@ Agents can target a specific server per query:
 |------|-------------|
 | `list_stages` | List stages with status filtering and sorting (e.g. slowest by duration) |
 | `get_stage` | Stage detail with attempt and task metric distributions |
+| `list_stage_task_failures` | Failed tasks of a stage with their error messages (exception/stack trace) |
 
 #### Executor & Resource Analysis
 | Tool | Description |
@@ -279,11 +280,12 @@ Agents can target a specific server per query:
 | `list_executors` | List executors with executor-id filtering and sorting (failed-tasks/duration/gc/id) |
 | `get_executor_summary` | Aggregate metrics across all executors |
 | `get_resource_usage_timeline` | Chronological executor add/remove with resource totals |
+| `get_executor_thread_dump` | JVM thread dump for a driver/executor, with state/name/blocked filters (running apps only) |
 
 #### Configuration & Environment
 | Tool | Description |
 |------|-------------|
-| `get_environment` | Spark config, JVM info, system properties, classpath |
+| `get_environment` | Spark config, JVM info, system properties, classpath; optional `section` filter to return a single part |
 
 #### SQL & Query Analysis
 | Tool | Description |
@@ -302,6 +304,7 @@ Agents can target a specific server per query:
 |------|-------------|
 | `compare_job_environments` | Diff Spark configs between two applications |
 | `compare_job_performance` | Diff performance metrics between two applications |
+| `compare_stages` | Compare two stages (optionally across applications): stage metrics and per-task p25/p50/p75/max quantiles |
 
 #### AWS Spark Troubleshooting (opt-in)
 | Tool | Description |

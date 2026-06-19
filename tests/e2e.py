@@ -7,13 +7,16 @@ from mcp.client.streamable_http import streamable_http_client
 from mcp.types import TextContent
 
 from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.environment import Environment
 from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.models.mcp_types import (
+    FailedTask,
     SqlExecutionComparison,
     SqlExecutionDetail,
     SqlExecutionSummary,
+    StageComparison,
 )
 
 mcp_endpoint = "http://localhost:18888/mcp/"
@@ -138,6 +141,17 @@ async def test_list_applications_by_id_via_secondary_server():
         assert len(apps) == 1
         assert apps[0].id == app2_id
         assert apps[0].name == "shs-e2e-app2"
+
+
+@pytest.mark.asyncio
+async def test_unknown_server_errors():
+    async with McpClient() as client:
+        # An explicitly named server that does not exist must error, not
+        # silently fall back to the default server.
+        result = await client.call_tool(
+            "list_applications", {"app_id": app2_id, "server": "does-not-exist"}
+        )
+        assert result.isError
 
 
 @pytest.mark.asyncio
@@ -543,3 +557,261 @@ async def test_compare_sql_executions_with_plan_diff():
             "WholeStageCodegen (8)": (1, 0),
             "WholeStageCodegen (9)": (1, 0),
         }
+
+
+# ---------------------------------------------------------------------------
+# Environment tool
+# ---------------------------------------------------------------------------
+# Every individually selectable section of the Environment model.
+ENV_SECTION_FIELDS = [
+    "runtime",
+    "spark_properties",
+    "system_properties",
+    "hadoop_properties",
+    "metrics_properties",
+    "classpath_entries",
+]
+
+
+@pytest.mark.asyncio
+async def test_get_environment_full():
+    async with McpClient() as client:
+        result = await client.call_tool("get_environment", {"app_id": app1_id})
+        assert not result.isError
+        env = _parse_one(result, Environment)
+        # The full environment exposes every section the corpus provides.
+        for field in ENV_SECTION_FIELDS:
+            assert getattr(env, field) is not None, field
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("section", ENV_SECTION_FIELDS)
+async def test_get_environment_section(section):
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "get_environment", {"app_id": app1_id, "section": section}
+        )
+        assert not result.isError
+        env = _parse_one(result, Environment)
+        # The requested section is populated and every other section is cleared.
+        assert getattr(env, section) is not None, section
+        for other in ENV_SECTION_FIELDS:
+            if other != section:
+                assert getattr(env, other) is None, other
+        assert env.resource_profiles is None
+
+
+@pytest.mark.asyncio
+async def test_get_environment_invalid_section():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "get_environment", {"app_id": app1_id, "section": "invalid"}
+        )
+        assert result.isError
+
+
+# ---------------------------------------------------------------------------
+# compare_stages tool
+# ---------------------------------------------------------------------------
+# Stage 43 of app1 and stage 33 of app2 are the same query stage in each run
+# (see skills/cli/e2e/compare_stages.json for the golden values).
+app1_stage_id = 43
+app2_stage_id = 33
+
+
+@pytest.mark.asyncio
+async def test_compare_stages_across_apps():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "compare_stages",
+            {
+                "app_id1": app1_id,
+                "stage_id1": app1_stage_id,
+                "app_id2": app2_id,
+                "stage_id2": app2_stage_id,
+            },
+        )
+        assert not result.isError
+        cmp = _parse_one(result, StageComparison)
+
+        # Side A: app1 / stage 43.
+        a = cmp.a
+        assert a.app == app1_id
+        assert a.stage_id == app1_stage_id
+        assert a.attempt_id == 0
+        assert a.status == "COMPLETE"
+        assert a.duration == 2083
+        assert a.tasks == 3
+        assert a.failed_tasks == 0
+        assert a.input_bytes == 0
+        assert a.output_bytes == 57978751
+        assert a.shuffle_read_bytes == 60573008
+        assert a.shuffle_write_bytes == 0
+        assert a.disk_bytes_spilled == 70308061
+        assert a.memory_bytes_spilled == 83884800
+        assert a.jvm_gc_time == 96
+
+        # Side B: app2 / stage 33.
+        b = cmp.b
+        assert b.app == app2_id
+        assert b.stage_id == app2_stage_id
+        assert b.duration == 1407
+        assert b.tasks == 3
+        assert b.output_bytes == 57979805
+        assert b.shuffle_read_bytes == 60597318
+        assert b.disk_bytes_spilled == 0
+        assert b.memory_bytes_spilled == 0
+        assert b.jvm_gc_time == 84
+
+
+@pytest.mark.asyncio
+async def test_compare_stages_task_quantiles():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "compare_stages",
+            {
+                "app_id1": app1_id,
+                "stage_id1": app1_stage_id,
+                "app_id2": app2_id,
+                "stage_id2": app2_stage_id,
+            },
+        )
+        assert not result.isError
+        cmp = _parse_one(result, StageComparison)
+
+        qa = cmp.a.task_quantiles
+        assert qa is not None
+        assert qa.quantiles == [0.25, 0.5, 0.75, 1.0]
+        # Small integer-valued metrics are exact.
+        assert qa.duration == [1008, 1055, 1063, 1063]
+        assert qa.gc_time == [18, 36, 42, 42]
+        assert qa.scheduler_delay == [4, 6, 9, 9]
+        assert qa.peak_execution_memory == [6291392, 6291392, 12582784, 12582784]
+        assert qa.input_bytes == [0, 0, 0, 0]
+        assert qa.shuffle_write_bytes == [0, 0, 0, 0]
+        # Large byte-valued metrics are 32-bit floats in the API; the Python
+        # client widens them to 64-bit, so they differ by a few bytes from the
+        # Go CLI golden values. Tolerate that representation gap.
+        assert qa.output_bytes == pytest.approx(
+            [14679969, 14719199, 28579584, 28579584], abs=2
+        )
+        assert qa.shuffle_read_bytes == pytest.approx(
+            [15329098, 15377783, 29866128, 29866128], abs=2
+        )
+        assert qa.disk_bytes_spilled == pytest.approx(
+            [17384420, 17588552, 35335090, 35335090], abs=2
+        )
+        assert qa.memory_bytes_spilled == pytest.approx(
+            [20971200, 20971200, 41942400, 41942400], abs=2
+        )
+
+        # Side B has no spill, so its spill quantiles are all zero.
+        qb = cmp.b.task_quantiles
+        assert qb is not None
+        assert qb.disk_bytes_spilled == [0, 0, 0, 0]
+        assert qb.duration == [273, 1118, 1264, 1264]
+
+
+@pytest.mark.asyncio
+async def test_compare_stages_same_stage():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "compare_stages",
+            {
+                "app_id1": app1_id,
+                "stage_id1": app1_stage_id,
+                "app_id2": app1_id,
+                "stage_id2": app1_stage_id,
+            },
+        )
+        assert not result.isError
+        cmp = _parse_one(result, StageComparison)
+        # Comparing a stage with itself yields identical sides.
+        assert cmp.a.duration == cmp.b.duration
+        assert cmp.a.output_bytes == cmp.b.output_bytes
+        assert cmp.a.task_quantiles.duration == cmp.b.task_quantiles.duration
+
+
+@pytest.mark.asyncio
+async def test_compare_stages_not_found():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "compare_stages",
+            {
+                "app_id1": app1_id,
+                "stage_id1": 999999,
+                "app_id2": app2_id,
+                "stage_id2": app2_stage_id,
+            },
+        )
+        assert result.isError
+
+
+# ---------------------------------------------------------------------------
+# get_executor_thread_dump tool
+# ---------------------------------------------------------------------------
+# The e2e corpus is replayed from event logs, so every application is completed.
+# The History Server does not persist thread dumps, so the endpoint returns 404
+# and the tool surfaces an error. This confirms the tool is wired up end to end.
+
+
+@pytest.mark.asyncio
+async def test_get_executor_thread_dump_completed_app_errors():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "get_executor_thread_dump",
+            {"app_id": app1_id, "executor_id": "driver"},
+        )
+        assert result.isError
+
+
+# ---------------------------------------------------------------------------
+# list_stage_task_failures tool
+# ---------------------------------------------------------------------------
+# Stage 5 of app1 is a FAILED stage with 7 failed tasks, each raising a Python
+# UDF exception (see skills/cli/e2e/fixtures.yaml: stage5_errors_app1).
+failed_stage_id = 5
+
+
+@pytest.mark.asyncio
+async def test_list_stage_task_failures():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_stage_task_failures",
+            {"app_id": app1_id, "stage_id": failed_stage_id},
+        )
+        assert not result.isError
+        tasks = _parse_list(result, FailedTask)
+        assert len(tasks) == 7
+        for t in tasks:
+            assert t.status == "FAILED"
+            assert t.executor_id == "driver"
+            assert t.error_message is not None
+            assert t.error_message.startswith(
+                "org.apache.spark.api.python.PythonException"
+            )
+        # Task IDs match the failed tasks recorded in the corpus.
+        assert sorted(t.task_id for t in tasks) == [13, 14, 15, 16, 17, 18, 19]
+
+
+@pytest.mark.asyncio
+async def test_list_stage_task_failures_none_for_successful_stage():
+    async with McpClient() as client:
+        # Stage 43 completed successfully, so it has no failed tasks.
+        result = await client.call_tool(
+            "list_stage_task_failures",
+            {"app_id": app1_id, "stage_id": app1_stage_id},
+        )
+        assert not result.isError
+        tasks = _parse_list(result, FailedTask)
+        assert tasks == []
+
+
+@pytest.mark.asyncio
+async def test_list_stage_task_failures_not_found():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_stage_task_failures",
+            {"app_id": app1_id, "stage_id": 999999},
+        )
+        assert result.isError
