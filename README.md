@@ -193,7 +193,7 @@ Agents can target a specific server per query:
 | **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
 | **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |
 
-### Available Tools (22)
+### Available Tools (21)
 
 <details>
 <summary>Available Tools</summary>
@@ -207,8 +207,7 @@ Agents can target a specific server per query:
 #### Job Analysis
 | Tool | Description |
 |------|-------------|
-| `list_jobs` | List jobs with status filtering |
-| `list_slowest_jobs` | Top N slowest jobs |
+| `list_jobs` | List jobs with status/job-id filtering and sorting (e.g. slowest by duration) |
 
 #### Stage Analysis
 | Tool | Description |

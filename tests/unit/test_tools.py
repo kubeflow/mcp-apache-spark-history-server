@@ -20,7 +20,6 @@ from spark_history_mcp.tools.tools import (
     list_applications,
     list_executors,
     list_jobs,
-    list_slowest_jobs,
     list_slowest_stages,
     list_sql_executions,
     list_stages,
@@ -94,112 +93,128 @@ class TestTools(unittest.TestCase):
 
         self.assertIn("No Spark client found", str(context.exception))
 
+    @staticmethod
+    def _job(
+        job_id=0,
+        status="SUCCEEDED",
+        failed=0,
+        sub="2025-08-05T00:00:00.000GMT",
+        comp="2025-08-05T00:00:10.000GMT",
+    ):
+        """Build a Job mock with the attributes list_jobs sorting reads."""
+        j = MagicMock(spec=Job)
+        j.job_id = job_id
+        j.status = status
+        j.num_failed_tasks = failed
+        j.submission_time = sub
+        j.completion_time = comp
+        return j
+
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_slowest_jobs_empty(self, mock_get_client):
-        """Test list_slowest_jobs when no jobs are found"""
-        mock_client = MagicMock()
-        mock_client.list_jobs.return_value = []
-        mock_get_client.return_value = mock_client
-
-        result = list_slowest_jobs("app-123", n=3)
-
-        self.assertEqual(result, [])
-        mock_client.list_jobs.assert_called_once_with(app_id="app-123")
-
-    @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_slowest_jobs_exclude_running(self, mock_get_client):
-        """Test list_slowest_jobs excluding running jobs"""
+    def test_list_jobs_sort_by_duration(self, mock_get_client):
+        """sort_by='duration' with length returns the N slowest (running jobs last)"""
         mock_client = MagicMock()
 
         job1 = MagicMock(spec=Job)
+        job1.job_id = 1
         job1.status = "RUNNING"
         job1.submission_time = datetime.now() - timedelta(minutes=10)
-        job1.completion_time = None
+        job1.completion_time = None  # no duration -> sorts last
 
         job2 = MagicMock(spec=Job)
+        job2.job_id = 2
         job2.status = "SUCCEEDED"
         job2.submission_time = datetime.now() - timedelta(minutes=5)
-        job2.completion_time = datetime.now() - timedelta(minutes=3)  # 2 min duration
+        job2.completion_time = datetime.now() - timedelta(minutes=3)  # 2 min
 
         job3 = MagicMock(spec=Job)
+        job3.job_id = 3
         job3.status = "SUCCEEDED"
         job3.submission_time = datetime.now() - timedelta(minutes=10)
-        job3.completion_time = datetime.now() - timedelta(minutes=5)  # 5 min duration
-
-        job4 = MagicMock(spec=Job)
-        job4.status = "FAILED"
-        job4.submission_time = datetime.now() - timedelta(minutes=8)
-        job4.completion_time = datetime.now() - timedelta(minutes=7)  # 1 min duration
-
-        mock_client.list_jobs.return_value = [job1, job2, job3, job4]
-        mock_get_client.return_value = mock_client
-
-        result = list_slowest_jobs("app-123", n=2)
-
-        # Verify results - should return job3 and job2 (in that order)
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result[0], job3)  # Longest duration (5 min)
-        self.assertEqual(result[1], job2)  # Second longest (2 min)
-
-        # Running job (job1) should be excluded
-        self.assertNotIn(job1, result)
-
-    @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_slowest_jobs_include_running(self, mock_get_client):
-        """Test list_slowest_jobs including running jobs"""
-        mock_client = MagicMock()
-
-        job1 = MagicMock(spec=Job)
-        job1.status = "RUNNING"
-        job1.submission_time = datetime.now() - timedelta(
-            minutes=20
-        )  # Running for 20 min
-        job1.completion_time = None
-
-        job2 = MagicMock(spec=Job)
-        job2.status = "SUCCEEDED"
-        job2.submission_time = datetime.now() - timedelta(minutes=5)
-        job2.completion_time = datetime.now() - timedelta(minutes=3)  # 2 min duration
-
-        job3 = MagicMock(spec=Job)
-        job3.status = "SUCCEEDED"
-        job3.submission_time = datetime.now() - timedelta(minutes=10)
-        job3.completion_time = datetime.now() - timedelta(minutes=5)  # 5 min duration
+        job3.completion_time = datetime.now() - timedelta(minutes=5)  # 5 min
 
         mock_client.list_jobs.return_value = [job1, job2, job3]
         mock_get_client.return_value = mock_client
 
-        result = list_slowest_jobs("app-123", include_running=True, n=2)
+        result = list_jobs("app-123", sort_by="duration", length=2)
 
-        # Verify results - should include the running job
-        self.assertEqual(len(result), 2)
-        # Running job should be included but will have duration 0 since completion_time is None
-        # So job3 and job2 should be returned
-        self.assertEqual(result[0], job3)
-        self.assertEqual(result[1], job2)
+        self.assertEqual([j.job_id for j in result], [3, 2])
+        # When sorting, the full set is fetched (no server-side pagination).
+        mock_client.list_jobs.assert_called_once_with(
+            app_id="app-123", status=None, app_attempt_id=None
+        )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_slowest_jobs_limit_results(self, mock_get_client):
-        """Test list_slowest_jobs limits results to n"""
+    def test_list_jobs_sort_by_id(self, mock_get_client):
+        """sort_by='id' orders jobs by descending job_id"""
         mock_client = MagicMock()
-
-        # Create 5 mock jobs with different durations
-        jobs = []
-        for i in range(5):
-            job = MagicMock(spec=Job)
-            job.status = "SUCCEEDED"
-            job.submission_time = datetime.now() - timedelta(minutes=10)
-            # Different completion times to create different durations
-            job.completion_time = datetime.now() - timedelta(minutes=10 - i)
-            jobs.append(job)
-
-        mock_client.list_jobs.return_value = jobs
+        job_a = MagicMock(spec=Job)
+        job_a.job_id = 3
+        job_b = MagicMock(spec=Job)
+        job_b.job_id = 1
+        job_c = MagicMock(spec=Job)
+        job_c.job_id = 2
+        mock_client.list_jobs.return_value = [job_a, job_b, job_c]
         mock_get_client.return_value = mock_client
 
-        result = list_slowest_jobs("app-123", n=3)
+        result = list_jobs("app-123", sort_by="id")
 
-        # Verify results - should return only 3 jobs
-        self.assertEqual(len(result), 3)
+        self.assertEqual([j.job_id for j in result], [3, 2, 1])
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_jobs_sort_by_failed_tasks(self, mock_get_client):
+        """sort_by='failed-tasks' orders jobs by descending failed task count"""
+        mock_client = MagicMock()
+        job_a = MagicMock(spec=Job)
+        job_a.job_id = 1
+        job_a.num_failed_tasks = 2
+        job_b = MagicMock(spec=Job)
+        job_b.job_id = 2
+        job_b.num_failed_tasks = 9
+        job_c = MagicMock(spec=Job)
+        job_c.job_id = 3
+        job_c.num_failed_tasks = 0
+        mock_client.list_jobs.return_value = [job_a, job_b, job_c]
+        mock_get_client.return_value = mock_client
+
+        result = list_jobs("app-123", sort_by="failed-tasks")
+
+        self.assertEqual([j.job_id for j in result], [2, 1, 3])
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_jobs_default_order_failed_first(self, mock_get_client):
+        """Default ordering puts failed jobs first, then by duration descending"""
+        mock_client = MagicMock()
+
+        succeeded = MagicMock(spec=Job)
+        succeeded.job_id = 1
+        succeeded.status = "SUCCEEDED"
+        succeeded.submission_time = datetime.now() - timedelta(minutes=10)
+        succeeded.completion_time = datetime.now() - timedelta(minutes=1)  # 9 min
+
+        failed = MagicMock(spec=Job)
+        failed.job_id = 2
+        failed.status = "FAILED"
+        failed.submission_time = datetime.now() - timedelta(minutes=5)
+        failed.completion_time = datetime.now() - timedelta(minutes=4)  # 1 min
+
+        mock_client.list_jobs.return_value = [succeeded, failed]
+        mock_get_client.return_value = mock_client
+
+        result = list_jobs("app-123")
+
+        # Failed job first despite its shorter duration.
+        self.assertEqual([j.job_id for j in result], [2, 1])
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_jobs_sort_by_invalid(self, mock_get_client):
+        """An unknown sort_by value raises ValueError"""
+        mock_client = MagicMock()
+        mock_client.list_jobs.return_value = [MagicMock(spec=Job)]
+        mock_get_client.return_value = mock_client
+
+        with self.assertRaises(ValueError):
+            list_jobs("app-123", sort_by="bogus")
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_get_stage_with_attempt_id(self, mock_get_client):
@@ -502,27 +517,24 @@ class TestTools(unittest.TestCase):
     def test_list_jobs_no_filter(self, mock_get_client):
         """Test job retrieval without status filter"""
         mock_client = MagicMock()
-        mock_jobs = [MagicMock(spec=Job), MagicMock(spec=Job)]
+        mock_jobs = [self._job(0), self._job(1)]
         mock_client.list_jobs.return_value = mock_jobs
         mock_get_client.return_value = mock_client
 
         result = list_jobs("spark-app-123")
 
-        self.assertEqual(result, mock_jobs)
+        self.assertEqual({j.job_id for j in result}, {0, 1})
         mock_client.list_jobs.assert_called_once_with(
             app_id="spark-app-123",
             status=None,
             app_attempt_id=None,
-            offset=0,
-            length=None,
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_list_jobs_with_status_filter(self, mock_get_client):
         """Test job retrieval with status filter"""
         mock_client = MagicMock()
-        mock_jobs = [MagicMock(spec=Job)]
-        mock_jobs[0].status = "SUCCEEDED"
+        mock_jobs = [self._job(1, "SUCCEEDED")]
         mock_client.list_jobs.return_value = mock_jobs
         mock_get_client.return_value = mock_client
 
@@ -530,6 +542,29 @@ class TestTools(unittest.TestCase):
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].status, "SUCCEEDED")
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_jobs_with_job_id_filter(self, mock_get_client):
+        """job_id returns only the matching job"""
+        mock_client = MagicMock()
+        mock_client.list_jobs.return_value = [self._job(1), self._job(2)]
+        mock_get_client.return_value = mock_client
+
+        result = list_jobs("spark-app-123", job_id=2)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].job_id, 2)
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_jobs_with_job_id_filter_no_match(self, mock_get_client):
+        """job_id with no matching job returns an empty list"""
+        mock_client = MagicMock()
+        mock_client.list_jobs.return_value = [self._job(1)]
+        mock_get_client.return_value = mock_client
+
+        result = list_jobs("spark-app-123", job_id=99)
+
+        self.assertEqual(result, [])
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_list_jobs_empty_result(self, mock_get_client):
@@ -547,22 +582,12 @@ class TestTools(unittest.TestCase):
         """Test job status filtering logic"""
         mock_client = MagicMock()
 
-        # Create jobs with different statuses
-        job1 = MagicMock(spec=Job)
-        job1.status = "RUNNING"
-        job2 = MagicMock(spec=Job)
-        job2.status = "SUCCEEDED"
-        job3 = MagicMock(spec=Job)
-        job3.status = "FAILED"
-
-        # Mock client to return only SUCCEEDED job when filtered
-        mock_client.list_jobs.return_value = [job2]  # Only return SUCCEEDED job
+        # Client returns only the SUCCEEDED job when filtered.
+        mock_client.list_jobs.return_value = [self._job(2, "SUCCEEDED")]
         mock_get_client.return_value = mock_client
 
-        # Test filtering for SUCCEEDED jobs
         result = list_jobs("spark-app-123", status=["SUCCEEDED"])
 
-        # Should only return SUCCEEDED job
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].status, "SUCCEEDED")
 
@@ -1288,24 +1313,24 @@ class TestTools(unittest.TestCase):
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_list_jobs_with_pagination(self, mock_get_client):
-        """Test list_jobs forwards offset and length to client"""
+        """Test list_jobs applies offset and length client-side"""
         mock_client = MagicMock()
-        mock_client.list_jobs.return_value = [MagicMock(spec=Job)]
+        # Equal sort keys keep input order stable, so slicing is predictable.
+        mock_client.list_jobs.return_value = [self._job(i) for i in range(20)]
         mock_get_client.return_value = mock_client
 
-        list_jobs("spark-app-123", offset=5, length=10)
+        result = list_jobs("spark-app-123", offset=5, length=10)
 
+        self.assertEqual([j.job_id for j in result], list(range(5, 15)))
         mock_client.list_jobs.assert_called_once_with(
             app_id="spark-app-123",
             status=None,
             app_attempt_id=None,
-            offset=5,
-            length=10,
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_list_jobs_pagination_defaults(self, mock_get_client):
-        """Test list_jobs uses correct defaults (offset=0, length=None)"""
+        """Test list_jobs fetches the full set when no pagination is given"""
         mock_client = MagicMock()
         mock_client.list_jobs.return_value = []
         mock_get_client.return_value = mock_client
@@ -1316,8 +1341,6 @@ class TestTools(unittest.TestCase):
             app_id="spark-app-123",
             status=None,
             app_attempt_id=None,
-            offset=0,
-            length=None,
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")

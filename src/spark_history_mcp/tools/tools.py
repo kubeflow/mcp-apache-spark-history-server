@@ -185,7 +185,7 @@ def _sort_sql_executions(
     )
 
 
-def _sort_sql_jobs(jobs: List[Job]) -> List[Job]:
+def _default_sort_jobs(jobs: List[Job]) -> List[Job]:
     """Sort jobs failed-first, then by duration descending."""
     return sorted(
         jobs,
@@ -194,6 +194,24 @@ def _sort_sql_jobs(jobs: List[Job]) -> List[Job]:
             -_duration_ms(j.submission_time, j.completion_time),
         ),
     )
+
+
+def _sort_jobs(jobs: List[Job], sort_by: Optional[str]) -> List[Job]:
+    if sort_by == "duration":
+        return sorted(
+            jobs,
+            key=lambda j: _duration_ms(j.submission_time, j.completion_time),
+            reverse=True,
+        )
+    if sort_by == "failed-tasks":
+        return sorted(jobs, key=lambda j: j.num_failed_tasks or 0, reverse=True)
+    if sort_by == "id":
+        return sorted(jobs, key=lambda j: j.job_id or 0, reverse=True)
+    if sort_by is not None:
+        raise ValueError(
+            f"invalid sort_by {sort_by!r}; expected 'duration', 'failed-tasks', or 'id'"
+        )
+    return _default_sort_jobs(jobs)
 
 
 def _sort_sql_stages(stages: List[StageData]) -> List[StageData]:
@@ -348,6 +366,8 @@ def list_jobs(
     app_id: str,
     server: Optional[str] = None,
     status: Optional[list[str]] = None,
+    job_id: Optional[int] = None,
+    sort_by: Optional[str] = None,
     app_attempt_id: Optional[str] = None,
     offset: int = 0,
     length: Optional[int] = None,
@@ -358,10 +378,21 @@ def list_jobs(
     Returns job metadata including ID, name, status, submission/completion times,
     and task counts. Supports client-side pagination to limit response size.
 
+    By default jobs are ordered failed-status-first, then by duration descending.
+
+    Pass ``job_id`` to retrieve a single job by its ID (the returned ``Job``
+    already carries its full detail, e.g. failed/killed/skipped task and stage
+    counts).
+
+    Use ``sort_by="duration"`` with ``length=N`` to get the N slowest jobs.
+
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         status: Optional list of job status values to filter by
+        job_id: Optional job ID to return only that job
+        sort_by: Optional ordering, all descending: "duration", "failed-tasks",
+            or "id". When unset, failed jobs come first, then by duration descending.
         app_attempt_id: Optional YARN application attempt ID (latest if omitted)
         offset: Number of jobs to skip from the start (default: 0)
         length: Maximum number of jobs to return (default: None, returns all)
@@ -377,55 +408,19 @@ def list_jobs(
     if length is not None and length < 0:
         raise ValueError("length must be non-negative")
 
-    return client.list_jobs(
-        app_id=app_id,
-        status=status,
-        app_attempt_id=app_attempt_id,
-        offset=offset,
-        length=length,
-    )
+    jobs = client.list_jobs(app_id=app_id, status=status, app_attempt_id=app_attempt_id)
 
+    if job_id is not None:
+        jobs = [j for j in jobs if j.job_id == job_id]
 
-@mcp.tool()
-def list_slowest_jobs(
-    app_id: str,
-    server: Optional[str] = None,
-    include_running: bool = False,
-    n: int = 5,
-) -> List[Job]:
-    """
-    Get the N slowest jobs for a Spark application.
+    jobs = _sort_jobs(jobs, sort_by)
 
-    Retrieves all jobs for the application and returns the ones with the longest duration.
+    if offset:
+        jobs = jobs[offset:]
+    if length is not None:
+        jobs = jobs[:length]
 
-    Args:
-        app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
-        include_running: Whether to include running jobs in the search
-        n: Number of slowest jobs to return (default: 5)
-
-    Returns:
-        List of Job objects for the slowest jobs, or empty list if no jobs found
-    """
-    ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server, app_id)
-
-    jobs = client.list_jobs(app_id=app_id)
-
-    if not jobs:
-        return []
-
-    # Filter out running jobs if not included
-    if not include_running:
-        jobs = [job for job in jobs if job.status != "RUNNING"]
-
-    if not jobs:
-        return []
-
-    def get_job_duration(job):
-        return _duration_seconds(job.submission_time, job.completion_time)
-
-    return heapq.nlargest(n, jobs, key=get_job_duration)
+    return jobs
 
 
 @mcp.tool()
@@ -1318,7 +1313,7 @@ def get_sql_execution(
         stage_list: List[StageData] = []
         if job_ids:
             all_jobs = client.list_jobs(app_id=app_id, app_attempt_id=app_attempt_id)
-            jobs = _sort_sql_jobs([j for j in all_jobs if j.job_id in job_ids])
+            jobs = _default_sort_jobs([j for j in all_jobs if j.job_id in job_ids])
             stage_ids = _stage_ids_from_jobs(jobs)
             if stage_ids:
                 all_stages = client.list_stages(
@@ -1434,13 +1429,10 @@ def get_job_bottlenecks(
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
-    # Get slowest stages
     slowest_stages = list_slowest_stages(app_id, server, False, top_n)
 
-    # Get slowest jobs
-    slowest_jobs = list_slowest_jobs(app_id, server, False, top_n)
+    slowest_jobs = list_jobs(app_id, server=server, sort_by="duration", length=top_n)
 
-    # Get executor summary
     exec_summary = get_executor_summary(app_id, server)
 
     all_stages = client.list_stages(app_id=app_id)

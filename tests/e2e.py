@@ -136,6 +136,9 @@ async def test_list_jobs_no_filter():
         failed = [j for j in jobs if j.status == "FAILED"]
         assert len(failed) == 1
         assert failed[0].job_id == 4
+        # Default ordering: failed jobs first (job 4 is the only failed job).
+        assert jobs[0].job_id == 4
+        assert jobs[0].status == "FAILED"
 
 
 @pytest.mark.asyncio
@@ -149,6 +152,56 @@ async def test_list_jobs_with_status_filter():
         assert len(jobs) == 1
         assert jobs[0].status == "FAILED"
         assert jobs[0].job_id == 4
+
+
+@pytest.mark.asyncio
+async def test_list_jobs_with_job_id_filter():
+    async with McpClient() as client:
+        jobs_result = await client.call_tool(
+            "list_jobs", {"app_id": app1_id, "job_id": 4}
+        )
+        assert not jobs_result.isError
+        jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
+        assert len(jobs) == 1
+        assert jobs[0].job_id == 4
+        assert jobs[0].status == "FAILED"
+
+
+@pytest.mark.asyncio
+async def test_list_jobs_sort_by_id():
+    async with McpClient() as client:
+        jobs_result = await client.call_tool(
+            "list_jobs", {"app_id": app1_id, "sort_by": "id", "length": 5}
+        )
+        assert not jobs_result.isError
+        jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
+        # Descending job ID, limited to 5.
+        assert [j.job_id for j in jobs] == [22, 21, 20, 19, 18]
+
+
+@pytest.mark.asyncio
+async def test_list_jobs_sort_by_duration():
+    async with McpClient() as client:
+        jobs_result = await client.call_tool(
+            "list_jobs", {"app_id": app1_id, "sort_by": "duration"}
+        )
+        assert not jobs_result.isError
+        jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
+        # Job 20 is the longest-running job (~2.085s); pure duration sort ignores
+        # status, so it comes before the failed job.
+        assert jobs[0].job_id == 20
+
+
+@pytest.mark.asyncio
+async def test_list_jobs_sort_by_failed_tasks():
+    async with McpClient() as client:
+        jobs_result = await client.call_tool(
+            "list_jobs", {"app_id": app1_id, "sort_by": "failed-tasks"}
+        )
+        assert not jobs_result.isError
+        jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
+        # Job 4 has the most failed tasks (7), then job 3 (4); the rest have 0.
+        assert [j.job_id for j in jobs[:2]] == [4, 3]
 
 
 # ---------------------------------------------------------------------------
