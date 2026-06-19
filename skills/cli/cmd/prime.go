@@ -45,7 +45,7 @@ GLOBAL FLAGS
       --attempt STRING    Application attempt ID (for YARN apps with multiple attempts)
   -s, --server STRING     Server name from config file
   -o, --output FORMAT     txt (default) | json | yaml
-  -c, --config PATH       Config file (default: config.yaml)
+  -c, --config PATH       Config file (default: ./config.yaml, then ~/.config/spark-mcp/config.yaml)
       --timeout DURATION  HTTP timeout (default: 10s)
 
 LIST FLAGS (apps, jobs, stages, sql)
@@ -68,7 +68,7 @@ COMMAND DETAILS
 
 CONFIG FILE
   Generate a starter config: shs setup config > config.yaml
-  Default path: config.yaml (override with -c or SHS_CLI__CONFIG env var).
+  Lookup order: -c flag, then SHS_CLI__CONFIG, then ./config.yaml, then ~/.config/spark-mcp/config.yaml.
 
   servers:
     local:
