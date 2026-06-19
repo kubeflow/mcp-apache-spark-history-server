@@ -1,19 +1,19 @@
-import json
 from contextlib import AsyncExitStack, asynccontextmanager
 from types import TracebackType
 
 import pytest
 from mcp import ClientSession
-from mcp.client.streamable_http import streamablehttp_client
+from mcp.client.streamable_http import streamable_http_client
 from mcp.types import TextContent
 
 from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
+from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.models.mcp_types import (
     SqlExecutionComparison,
     SqlExecutionDetail,
     SqlExecutionSummary,
-    SqlPlanComparison,
 )
 
 mcp_endpoint = "http://localhost:18888/mcp/"
@@ -21,6 +21,8 @@ mcp_endpoint = "http://localhost:18888/mcp/"
 # Apps from the shared e2e corpus (see skills/cli/e2e/fixtures.yaml).
 app1_id = "local-1776286786993"  # shs-e2e-app1
 app2_id = "local-1776286804625"  # shs-e2e-app2
+# A YARN app with two attempts (attempt 2 completed, attempt 1 incomplete).
+yarn_app_id = "application_1713000000000_0001"  # shs-e2e-yarn
 
 # A SQL execution present in both apps: the join + window + aggregation query.
 sql_exec_id = 6
@@ -36,7 +38,7 @@ class McpClient:
         self._exit_stack = AsyncExitStack()
         async with AsyncExitStack() as stack:
             read, write, _ = await stack.enter_async_context(
-                streamablehttp_client(mcp_endpoint)
+                streamable_http_client(mcp_endpoint)
             )
             mcp_client = await stack.enter_async_context(ClientSession(read, write))
             await mcp_client.initialize()
@@ -67,7 +69,7 @@ class McpClient:
     async def __aenter__(self):
         self._exit_stack = AsyncExitStack()
         read, write, _ = await self._exit_stack.enter_async_context(
-            streamablehttp_client(mcp_endpoint)
+            streamable_http_client(mcp_endpoint)
         )
         self._client_session = await self._exit_stack.enter_async_context(
             ClientSession(read, write)
@@ -99,31 +101,89 @@ async def test_tools_not_empty():
             "list_sql_executions",
             "get_sql_execution",
             "compare_sql_executions",
-            "compare_sql_execution_plans",
         }.issubset(names)
 
 
 @pytest.mark.asyncio
-async def test_get_application():
+async def test_list_applications():
     async with McpClient() as client:
-        app_result = await client.call_tool("get_application", {"app_id": app1_id})
-        assert not app_result.isError
-        app_info = Application.model_validate(json.loads(app_result.content[0].text))
-        assert app_info.id == app1_id
-        assert app_info.name == "shs-e2e-app1"
+        result = await client.call_tool("list_applications", {})
+        assert not result.isError
+        apps = [Application.model_validate_json(c.text) for c in result.content]
+        by_id = {a.id: a.name for a in apps}
+        assert by_id.get(app1_id) == "shs-e2e-app1"
+        assert by_id.get(app2_id) == "shs-e2e-app2"
 
 
 @pytest.mark.asyncio
-async def test_get_application_via_secondary_server():
+async def test_list_applications_by_id():
+    async with McpClient() as client:
+        result = await client.call_tool("list_applications", {"app_id": app1_id})
+        assert not result.isError
+        apps = [Application.model_validate_json(c.text) for c in result.content]
+        assert len(apps) == 1
+        assert apps[0].id == app1_id
+        assert apps[0].name == "shs-e2e-app1"
+
+
+@pytest.mark.asyncio
+async def test_list_applications_by_id_via_secondary_server():
     async with McpClient() as client:
         # Exercise explicit multi-server routing.
-        app_result = await client.call_tool(
-            "get_application", {"app_id": app2_id, "server": "secondary"}
+        result = await client.call_tool(
+            "list_applications", {"app_id": app2_id, "server": "secondary"}
         )
-        assert not app_result.isError
-        app_info = Application.model_validate(json.loads(app_result.content[0].text))
-        assert app_info.id == app2_id
-        assert app_info.name == "shs-e2e-app2"
+        assert not result.isError
+        apps = [Application.model_validate_json(c.text) for c in result.content]
+        assert len(apps) == 1
+        assert apps[0].id == app2_id
+        assert apps[0].name == "shs-e2e-app2"
+
+
+@pytest.mark.asyncio
+async def test_list_applications_includes_attempts():
+    """The unfiltered listing embeds each application's attempts."""
+    async with McpClient() as client:
+        result = await client.call_tool("list_applications", {})
+        assert not result.isError
+        apps = [Application.model_validate_json(c.text) for c in result.content]
+        by_id = {a.id: a for a in apps}
+
+        # Single-attempt local apps still carry an attempts list.
+        app1 = by_id[app1_id]
+        assert app1.attempts is not None
+        assert len(app1.attempts) == 1
+        assert app1.attempts[0].completed is True
+
+        # The YARN app has two attempts: attempt 2 completed, attempt 1 not.
+        yarn = by_id[yarn_app_id]
+        assert yarn.attempts is not None
+        assert len(yarn.attempts) == 2
+        attempts_by_id = {a.attempt_id: a for a in yarn.attempts}
+        assert set(attempts_by_id) == {"1", "2"}
+        assert attempts_by_id["2"].completed is True
+        assert attempts_by_id["2"].duration is not None
+        assert attempts_by_id["1"].completed is False
+
+
+@pytest.mark.asyncio
+async def test_list_applications_by_id_includes_attempts():
+    """Fetching a single app by id returns the same embedded attempts."""
+    async with McpClient() as client:
+        result = await client.call_tool("list_applications", {"app_id": yarn_app_id})
+        assert not result.isError
+        apps = [Application.model_validate_json(c.text) for c in result.content]
+        assert len(apps) == 1
+        attempts = apps[0].attempts
+        assert attempts is not None
+        assert len(attempts) == 2
+        # Newest attempt is listed first and is the completed one.
+        assert attempts[0].attempt_id == "2"
+        assert attempts[0].completed is True
+        assert attempts[0].start_time is not None
+        assert attempts[0].end_time is not None
+        assert attempts[1].attempt_id == "1"
+        assert attempts[1].completed is False
 
 
 @pytest.mark.asyncio
@@ -136,6 +196,9 @@ async def test_list_jobs_no_filter():
         failed = [j for j in jobs if j.status == "FAILED"]
         assert len(failed) == 1
         assert failed[0].job_id == 4
+        # Default ordering: failed jobs first (job 4 is the only failed job).
+        assert jobs[0].job_id == 4
+        assert jobs[0].status == "FAILED"
 
 
 @pytest.mark.asyncio
@@ -149,6 +212,131 @@ async def test_list_jobs_with_status_filter():
         assert len(jobs) == 1
         assert jobs[0].status == "FAILED"
         assert jobs[0].job_id == 4
+
+
+@pytest.mark.asyncio
+async def test_list_jobs_with_job_id_filter():
+    async with McpClient() as client:
+        jobs_result = await client.call_tool(
+            "list_jobs", {"app_id": app1_id, "job_id": 4}
+        )
+        assert not jobs_result.isError
+        jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
+        assert len(jobs) == 1
+        assert jobs[0].job_id == 4
+        assert jobs[0].status == "FAILED"
+
+
+@pytest.mark.asyncio
+async def test_list_jobs_sort_by_id():
+    async with McpClient() as client:
+        jobs_result = await client.call_tool(
+            "list_jobs", {"app_id": app1_id, "sort_by": "id", "length": 5}
+        )
+        assert not jobs_result.isError
+        jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
+        # Descending job ID, limited to 5.
+        assert [j.job_id for j in jobs] == [22, 21, 20, 19, 18]
+
+
+@pytest.mark.asyncio
+async def test_list_jobs_sort_by_duration():
+    async with McpClient() as client:
+        jobs_result = await client.call_tool(
+            "list_jobs", {"app_id": app1_id, "sort_by": "duration"}
+        )
+        assert not jobs_result.isError
+        jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
+        # Job 20 is the longest-running job (~2.085s); pure duration sort ignores
+        # status, so it comes before the failed job.
+        assert jobs[0].job_id == 20
+
+
+@pytest.mark.asyncio
+async def test_list_jobs_sort_by_failed_tasks():
+    async with McpClient() as client:
+        jobs_result = await client.call_tool(
+            "list_jobs", {"app_id": app1_id, "sort_by": "failed-tasks"}
+        )
+        assert not jobs_result.isError
+        jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
+        # Job 4 has the most failed tasks (7), then job 3 (4); the rest have 0.
+        assert [j.job_id for j in jobs[:2]] == [4, 3]
+
+
+# ---------------------------------------------------------------------------
+# Stages
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_list_stages_default_order():
+    async with McpClient() as client:
+        result = await client.call_tool("list_stages", {"app_id": app1_id, "length": 5})
+        assert not result.isError
+        stages = [StageData.model_validate_json(c.text) for c in result.content]
+        # Default: failed first, then by duration descending.
+        assert [s.stage_id for s in stages] == [5, 43, 4, 0, 14]
+        assert stages[0].status == "FAILED"
+
+
+@pytest.mark.asyncio
+async def test_list_stages_sort_by_duration():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_stages", {"app_id": app1_id, "sort_by": "duration"}
+        )
+        assert not result.isError
+        stages = [StageData.model_validate_json(c.text) for c in result.content]
+        # Stage 43 is the longest-running stage (~2.083s).
+        assert stages[0].stage_id == 43
+
+
+@pytest.mark.asyncio
+async def test_list_stages_sort_by_failed_tasks():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_stages", {"app_id": app1_id, "sort_by": "failed-tasks"}
+        )
+        assert not result.isError
+        stages = [StageData.model_validate_json(c.text) for c in result.content]
+        # Stage 5 has the most failed tasks (7), then stage 4 (4); the rest have 0.
+        assert [s.stage_id for s in stages[:2]] == [5, 4]
+
+
+@pytest.mark.asyncio
+async def test_list_stages_sort_by_id():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_stages", {"app_id": app1_id, "sort_by": "id", "length": 5}
+        )
+        assert not result.isError
+        stages = [StageData.model_validate_json(c.text) for c in result.content]
+        # Descending stage ID, limited to 5 (app1 has 47 stages: 0..46).
+        assert [s.stage_id for s in stages] == [46, 45, 44, 43, 42]
+
+
+# ---------------------------------------------------------------------------
+# Executors
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_list_executors_default():
+    async with McpClient() as client:
+        result = await client.call_tool("list_executors", {"app_id": app1_id})
+        assert not result.isError
+        execs = [Executor.model_validate_json(c.text) for c in result.content]
+        # The driver is always present in this corpus (local mode).
+        assert any(e.id == "driver" for e in execs)
+
+
+@pytest.mark.asyncio
+async def test_list_executors_executor_id_filter():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_executors", {"app_id": app1_id, "executor_id": "driver"}
+        )
+        assert not result.isError
+        execs = [Executor.model_validate_json(c.text) for c in result.content]
+        assert len(execs) == 1
+        assert execs[0].id == "driver"
 
 
 # ---------------------------------------------------------------------------
@@ -312,30 +500,38 @@ async def test_compare_sql_executions():
 
 
 @pytest.mark.asyncio
-async def test_compare_sql_execution_plans():
+async def test_compare_sql_executions_with_plan_diff():
     async with McpClient() as client:
         result = await client.call_tool(
-            "compare_sql_execution_plans",
+            "compare_sql_executions",
             {
                 "app_id1": app1_id,
                 "app_id2": app2_id,
                 "execution_id1": sql_exec_id,
                 "execution_id2": sql_exec_id,
+                "include_plan_diff": True,
             },
         )
         assert not result.isError
-        cmp = _parse_one(result, SqlPlanComparison)
+        cmp = _parse_one(result, SqlExecutionComparison)
 
-        assert cmp.app_a == app1_id
-        assert cmp.app_b == app2_id
-        assert cmp.exec_id_a == sql_exec_id
-        assert cmp.exec_id_b == sql_exec_id
-        assert cmp.node_count_a == 37
-        assert cmp.node_count_b == 29
-        assert cmp.edge_count_a == 26
-        assert cmp.edge_count_b == 21
+        # Metrics are still present.
+        assert cmp.a.tasks == 47
+        assert cmp.b.tasks == 20
 
-        diffs = {d.node_type: (d.a, d.b) for d in cmp.node_type_diffs}
+        # Plan diff is attached.
+        pc = cmp.plan_comparison
+        assert pc is not None
+        assert pc.app_a == app1_id
+        assert pc.app_b == app2_id
+        assert pc.exec_id_a == sql_exec_id
+        assert pc.exec_id_b == sql_exec_id
+        assert pc.node_count_a == 37
+        assert pc.node_count_b == 29
+        assert pc.edge_count_a == 26
+        assert pc.edge_count_b == 21
+
+        diffs = {d.node_type: (d.a, d.b) for d in pc.node_type_diffs}
         assert diffs == {
             "AQEShuffleRead": (5, 3),
             "BroadcastExchange": (0, 1),

@@ -119,15 +119,6 @@ class SqlCompareSide(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class SqlExecutionComparison(BaseModel):
-    """Metrics diff between two SQL executions."""
-
-    a: SqlCompareSide
-    b: SqlCompareSide
-
-    model_config = ConfigDict(populate_by_name=True)
-
-
 class SqlNodeTypeDiff(BaseModel):
     """Count of a single plan node type on each side of a plan comparison."""
 
@@ -152,5 +143,15 @@ class SqlPlanComparison(BaseModel):
     node_type_diffs: List[SqlNodeTypeDiff] = Field(
         default_factory=list, alias="nodeTypeDiffs"
     )
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class SqlExecutionComparison(BaseModel):
+    """Metrics diff between two SQL executions, with an optional plan-structure diff."""
+
+    a: SqlCompareSide
+    b: SqlCompareSide
+    plan_comparison: Optional[SqlPlanComparison] = Field(None, alias="planComparison")
 
     model_config = ConfigDict(populate_by_name=True)

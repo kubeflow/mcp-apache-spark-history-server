@@ -252,7 +252,7 @@ Agents can target a specific server per query:
 | **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
 | **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |
 
-### Available Tools (22)
+### Available Tools (16)
 
 <details>
 <summary>Available Tools</summary>
@@ -260,28 +260,23 @@ Agents can target a specific server per query:
 #### Application Information
 | Tool | Description |
 |------|-------------|
-| `list_applications` | List applications with optional status, date, and limit filters |
-| `get_application` | Get application detail: status, resources, duration, attempts |
+| `list_applications` | List applications with optional status, date, and limit filters; pass `app_id` for a single application's detail (status, resources, duration, attempts). Returned applications always include their attempts. |
 
 #### Job Analysis
 | Tool | Description |
 |------|-------------|
-| `list_jobs` | List jobs with status filtering |
-| `list_slowest_jobs` | Top N slowest jobs |
+| `list_jobs` | List jobs with status/job-id filtering and sorting (e.g. slowest by duration) |
 
 #### Stage Analysis
 | Tool | Description |
 |------|-------------|
-| `list_stages` | List stages with status filtering |
-| `list_slowest_stages` | Top N slowest stages |
-| `get_stage` | Stage detail with attempt and summary metrics |
-| `get_stage_task_summary` | Task metric distributions (execution time, memory, I/O, spill) |
+| `list_stages` | List stages with status filtering and sorting (e.g. slowest by duration) |
+| `get_stage` | Stage detail with attempt and task metric distributions |
 
 #### Executor & Resource Analysis
 | Tool | Description |
 |------|-------------|
-| `list_executors` | List executors (active and optionally inactive) |
-| `get_executor` | Executor detail: resources, task stats, performance |
+| `list_executors` | List executors with executor-id filtering and sorting (failed-tasks/duration/gc/id) |
 | `get_executor_summary` | Aggregate metrics across all executors |
 | `get_resource_usage_timeline` | Chronological executor add/remove with resource totals |
 
@@ -295,8 +290,7 @@ Agents can target a specific server per query:
 |------|-------------|
 | `list_sql_executions` | List SQL executions as curated summaries, with status/description filters, sorting, and a default limit |
 | `get_sql_execution` | SQL execution header by default; opt-in plan, node metrics, job summaries, aggregated stage metrics, and stage list |
-| `compare_sql_executions` | Compare aggregated performance metrics (stages, tasks, shuffle, spill, GC) between two SQL executions |
-| `compare_sql_execution_plans` | Compare SQL plan structure (node types, node/edge counts) between two executions |
+| `compare_sql_executions` | Compare aggregated performance metrics (stages, tasks, shuffle, spill, GC) between two SQL executions; opt-in plan-structure diff |
 
 #### Performance & Bottleneck Analysis
 | Tool | Description |
@@ -320,8 +314,8 @@ Agents can target a specific server per query:
 </details>
 
 #### Example Agent Queries
-- *"Why is my ETL job running slower than yesterday?"* → `get_job_bottlenecks` + `list_slowest_stages` + `compare_job_performance`
-- *"What caused job 42 to fail?"* → `list_jobs` + `get_stage` + `get_stage_task_summary`
+- *"Why is my ETL job running slower than yesterday?"* → `get_job_bottlenecks` + `list_stages` + `compare_job_performance`
+- *"What caused job 42 to fail?"* → `list_jobs` + `get_stage`
 - *"Compare today's batch with yesterday's run"* → `compare_job_performance` + `compare_job_environments`
 - *"Find my slowest SQL queries and explain why"* → `list_sql_executions` + `get_sql_execution` + `compare_sql_executions`
 

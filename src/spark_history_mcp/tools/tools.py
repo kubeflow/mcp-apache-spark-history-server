@@ -4,10 +4,10 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
-from spark_history_mcp.api_client.models.task_metrics_summary import TaskMetricsSummary
 from spark_history_mcp.core.app import mcp
 from spark_history_mcp.models.mcp_types import (
     SqlCompareSide,
@@ -185,7 +185,7 @@ def _sort_sql_executions(
     )
 
 
-def _sort_sql_jobs(jobs: List[Job]) -> List[Job]:
+def _default_sort_jobs(jobs: List[Job]) -> List[Job]:
     """Sort jobs failed-first, then by duration descending."""
     return sorted(
         jobs,
@@ -196,7 +196,25 @@ def _sort_sql_jobs(jobs: List[Job]) -> List[Job]:
     )
 
 
-def _sort_sql_stages(stages: List[StageData]) -> List[StageData]:
+def _sort_jobs(jobs: List[Job], sort_by: Optional[str]) -> List[Job]:
+    if sort_by == "duration":
+        return sorted(
+            jobs,
+            key=lambda j: _duration_ms(j.submission_time, j.completion_time),
+            reverse=True,
+        )
+    if sort_by == "failed-tasks":
+        return sorted(jobs, key=lambda j: j.num_failed_tasks or 0, reverse=True)
+    if sort_by == "id":
+        return sorted(jobs, key=lambda j: j.job_id or 0, reverse=True)
+    if sort_by is not None:
+        raise ValueError(
+            f"invalid sort_by {sort_by!r}; expected 'duration', 'failed-tasks', or 'id'"
+        )
+    return _default_sort_jobs(jobs)
+
+
+def _default_sort_stages(stages: List[StageData]) -> List[StageData]:
     """Sort stages by status priority, then by duration descending."""
     return sorted(
         stages,
@@ -204,6 +222,47 @@ def _sort_sql_stages(stages: List[StageData]) -> List[StageData]:
             _STAGE_STATUS_PRIORITY.get(s.status, 99),
             -_duration_ms(s.submission_time, s.completion_time),
         ),
+    )
+
+
+def _sort_stages(stages: List[StageData], sort_by: Optional[str]) -> List[StageData]:
+    if sort_by == "duration":
+        return sorted(
+            stages,
+            key=lambda s: _duration_ms(s.submission_time, s.completion_time),
+            reverse=True,
+        )
+    if sort_by == "failed-tasks":
+        return sorted(stages, key=lambda s: s.num_failed_tasks or 0, reverse=True)
+    if sort_by == "id":
+        return sorted(stages, key=lambda s: s.stage_id or 0, reverse=True)
+    if sort_by is not None:
+        raise ValueError(
+            f"invalid sort_by {sort_by!r}; expected 'duration', 'failed-tasks', or 'id'"
+        )
+    return _default_sort_stages(stages)
+
+
+def _sort_executors(
+    executors: List[Executor], sort_by: Optional[str]
+) -> List[Executor]:
+    if sort_by == "failed-tasks":
+        return sorted(executors, key=lambda e: e.failed_tasks or 0, reverse=True)
+    if sort_by == "duration":
+        return sorted(executors, key=lambda e: e.total_duration or 0, reverse=True)
+    if sort_by == "gc":
+        return sorted(executors, key=lambda e: e.total_gc_time or 0, reverse=True)
+    if sort_by == "id":
+        # Ascending string comparison (IDs are "driver", "1", "2", ...).
+        return sorted(executors, key=lambda e: e.id or "")
+    if sort_by is not None:
+        raise ValueError(
+            f"invalid sort_by {sort_by!r}; expected 'failed-tasks', 'duration', 'gc', or 'id'"
+        )
+    # default: active executors first, then by duration descending
+    return sorted(
+        executors,
+        key=lambda e: (0 if e.is_active else 1, -(e.total_duration or 0)),
     )
 
 
@@ -258,6 +317,7 @@ def get_client_or_default(
 @mcp.tool()
 def list_applications(
     server: Optional[str] = None,
+    app_id: Optional[str] = None,
     status: Optional[list[str]] = None,
     min_date: Optional[str] = None,
     max_date: Optional[str] = None,
@@ -266,10 +326,14 @@ def list_applications(
     limit: Optional[int] = None,
 ) -> list[Application]:
     """
-    Get a list of applications from the Spark History Server.
+    Get applications from the Spark History Server.
+
+    Pass ``app_id`` to retrieve a single application by its ID, returned as a
+    one-element list (the other filters are ignored in that case).
 
     Args:
         server: Optional server name to use (uses default if not specified)
+        app_id: Optional application ID to fetch a single application
         status: Optional list only applications in the chosen state: [completed|running]
         min_date: Optional earliest start date/time to list
         max_date: Optional latest start date/time to list
@@ -285,6 +349,10 @@ def list_applications(
         List of Application objects for all applications
     """
     ctx = mcp.get_context()
+
+    if app_id:
+        client = get_client_or_default(ctx, server, app_id)
+        return [client.get_application(app_id)]
 
     if server:
         # Return from specific server
@@ -323,31 +391,12 @@ def list_applications(
 
 
 @mcp.tool()
-def get_application(app_id: str, server: Optional[str] = None) -> Application:
-    """
-    Get detailed information about a specific Spark application.
-
-    Retrieves comprehensive information about a Spark application including its
-    status, resource usage, duration, and attempt details.
-
-    Args:
-        app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
-
-    Returns:
-        Application object containing application details
-    """
-    ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server, app_id)
-
-    return client.get_application(app_id)
-
-
-@mcp.tool()
 def list_jobs(
     app_id: str,
     server: Optional[str] = None,
     status: Optional[list[str]] = None,
+    job_id: Optional[int] = None,
+    sort_by: Optional[str] = None,
     app_attempt_id: Optional[str] = None,
     offset: int = 0,
     length: Optional[int] = None,
@@ -358,10 +407,21 @@ def list_jobs(
     Returns job metadata including ID, name, status, submission/completion times,
     and task counts. Supports client-side pagination to limit response size.
 
+    By default jobs are ordered failed-status-first, then by duration descending.
+
+    Pass ``job_id`` to retrieve a single job by its ID (the returned ``Job``
+    already carries its full detail, e.g. failed/killed/skipped task and stage
+    counts).
+
+    Use ``sort_by="duration"`` with ``length=N`` to get the N slowest jobs.
+
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         status: Optional list of job status values to filter by
+        job_id: Optional job ID to return only that job
+        sort_by: Optional ordering, all descending: "duration", "failed-tasks",
+            or "id". When unset, failed jobs come first, then by duration descending.
         app_attempt_id: Optional YARN application attempt ID (latest if omitted)
         offset: Number of jobs to skip from the start (default: 0)
         length: Maximum number of jobs to return (default: None, returns all)
@@ -377,55 +437,19 @@ def list_jobs(
     if length is not None and length < 0:
         raise ValueError("length must be non-negative")
 
-    return client.list_jobs(
-        app_id=app_id,
-        status=status,
-        app_attempt_id=app_attempt_id,
-        offset=offset,
-        length=length,
-    )
+    jobs = client.list_jobs(app_id=app_id, status=status, app_attempt_id=app_attempt_id)
 
+    if job_id is not None:
+        jobs = [j for j in jobs if j.job_id == job_id]
 
-@mcp.tool()
-def list_slowest_jobs(
-    app_id: str,
-    server: Optional[str] = None,
-    include_running: bool = False,
-    n: int = 5,
-) -> List[Job]:
-    """
-    Get the N slowest jobs for a Spark application.
+    jobs = _sort_jobs(jobs, sort_by)
 
-    Retrieves all jobs for the application and returns the ones with the longest duration.
+    if offset:
+        jobs = jobs[offset:]
+    if length is not None:
+        jobs = jobs[:length]
 
-    Args:
-        app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
-        include_running: Whether to include running jobs in the search
-        n: Number of slowest jobs to return (default: 5)
-
-    Returns:
-        List of Job objects for the slowest jobs, or empty list if no jobs found
-    """
-    ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server, app_id)
-
-    jobs = client.list_jobs(app_id=app_id)
-
-    if not jobs:
-        return []
-
-    # Filter out running jobs if not included
-    if not include_running:
-        jobs = [job for job in jobs if job.status != "RUNNING"]
-
-    if not jobs:
-        return []
-
-    def get_job_duration(job):
-        return _duration_seconds(job.submission_time, job.completion_time)
-
-    return heapq.nlargest(n, jobs, key=get_job_duration)
+    return jobs
 
 
 @mcp.tool()
@@ -433,6 +457,7 @@ def list_stages(
     app_id: str,
     server: Optional[str] = None,
     status: Optional[list[str]] = None,
+    sort_by: Optional[str] = None,
     with_summaries: bool = False,
     app_attempt_id: Optional[str] = None,
     offset: int = 0,
@@ -445,10 +470,16 @@ def list_stages(
     by status and include additional details and summary metrics. Supports client-side
     pagination to limit response size.
 
+    By default stages are ordered by status priority (failed first), then by
+    duration descending. Use ``sort_by="duration"`` with ``length=N`` for the N
+    slowest stages.
+
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         status: Optional list of stage status values to filter by
+        sort_by: Optional ordering, all descending: "duration", "failed-tasks",
+            or "id". When unset, failed stages come first, then by duration descending.
         with_summaries: Whether to include summary metrics in the response
         app_attempt_id: Optional YARN application attempt ID (latest if omitted)
         offset: Number of stages to skip from the start (default: 0)
@@ -465,53 +496,21 @@ def list_stages(
     if length is not None and length < 0:
         raise ValueError("length must be non-negative")
 
-    return client.list_stages(
+    stages = client.list_stages(
         app_id=app_id,
         status=status,
         with_summaries=with_summaries,
         app_attempt_id=app_attempt_id,
-        offset=offset,
-        length=length,
     )
 
+    stages = _sort_stages(stages, sort_by)
 
-@mcp.tool()
-def list_slowest_stages(
-    app_id: str,
-    server: Optional[str] = None,
-    include_running: bool = False,
-    n: int = 5,
-) -> List[StageData]:
-    """
-    Get the N slowest stages for a Spark application.
+    if offset:
+        stages = stages[offset:]
+    if length is not None:
+        stages = stages[:length]
 
-    Retrieves all stages for the application and returns the ones with the longest duration.
-
-    Args:
-        app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
-        include_running: Whether to include running stages in the search
-        n: Number of slowest stages to return (default: 5)
-
-    Returns:
-        List of StageData objects for the slowest stages, or empty list if no stages found
-    """
-    ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server, app_id)
-
-    stages = client.list_stages(app_id=app_id)
-
-    # Filter out running stages if not included. This avoids using the `details` param which can significantly slow down the execution time
-    if not include_running:
-        stages = [stage for stage in stages if stage.status != "RUNNING"]
-
-    if not stages:
-        return []
-
-    def get_stage_duration(stage: StageData):
-        return _duration_seconds(stage.first_task_launched_time, stage.completion_time)
-
-    return heapq.nlargest(n, stages, key=get_stage_duration)
+    return stages
 
 
 @mcp.tool()
@@ -521,6 +520,7 @@ def get_stage(
     attempt_id: Optional[int] = None,
     server: Optional[str] = None,
     with_summaries: bool = False,
+    quantiles: Optional[str] = None,
 ) -> StageData:
     """
     Get information about a specific stage.
@@ -530,7 +530,9 @@ def get_stage(
         stage_id: The stage ID
         attempt_id: Optional stage attempt ID (if not provided, returns the latest attempt)
         server: Optional server name to use (uses default if not specified)
-        with_summaries: Whether to include summary metrics
+        with_summaries: Whether to include task metric distributions for the stage
+        quantiles: Optional comma-separated quantiles for the task metric
+            distributions (only used when with_summaries is set; server default if omitted)
 
     Returns:
         StageData object containing stage information
@@ -570,10 +572,12 @@ def get_stage(
         not hasattr(stage_data, "task_metrics_distributions")
         or stage_data.task_metrics_distributions is None
     ):
+        summary_kwargs = {"quantiles": quantiles} if quantiles else {}
         task_summary = client.get_stage_task_summary(
             app_id=app_id,
             stage_id=stage_id,
             attempt_id=stage_data.attempt_id,
+            **summary_kwargs,
         )
         stage_data.task_metrics_distributions = task_summary
 
@@ -608,6 +612,8 @@ def get_environment(
 def list_executors(
     app_id: str,
     server: Optional[str] = None,
+    executor_id: Optional[str] = None,
+    sort_by: Optional[str] = None,
     include_inactive: bool = False,
     app_attempt_id: Optional[str] = None,
     offset: int = 0,
@@ -620,16 +626,25 @@ def list_executors(
     with their resource allocation, task statistics, and performance metrics. Supports
     client-side pagination to limit response size.
 
+    By default executors are ordered active-first, then by duration descending.
+
+    Pass ``executor_id`` to retrieve a single executor by its ID (searches all
+    executors, including inactive; returns a list with the match or empty if none).
+
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
+        executor_id: Optional executor ID to return only that executor
+        sort_by: Optional ordering: "failed-tasks", "duration", or "gc" (descending),
+            or "id" (ascending). When unset, active executors come first, then by
+            duration descending.
         include_inactive: Whether to include inactive executors (default: False)
         app_attempt_id: Optional YARN application attempt ID (latest if omitted)
         offset: Number of executors to skip from the start (default: 0)
         length: Maximum number of executors to return (default: None, returns all)
 
     Returns:
-        List of ExecutorSummary objects containing executor information
+        List of Executor objects containing executor information
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
@@ -639,43 +654,28 @@ def list_executors(
     if length is not None and length < 0:
         raise ValueError("length must be non-negative")
 
+    if executor_id is not None:
+        # Single-executor lookup: search all executors, including inactive.
+        executors = client.list_all_executors(
+            app_id=app_id, app_attempt_id=app_attempt_id
+        )
+        return [e for e in executors if e.id == executor_id]
+
     if include_inactive:
-        return client.list_all_executors(
-            app_id=app_id, app_attempt_id=app_attempt_id, offset=offset, length=length
+        executors = client.list_all_executors(
+            app_id=app_id, app_attempt_id=app_attempt_id
         )
     else:
-        return client.list_executors(
-            app_id=app_id, app_attempt_id=app_attempt_id, offset=offset, length=length
-        )
+        executors = client.list_executors(app_id=app_id, app_attempt_id=app_attempt_id)
 
+    executors = _sort_executors(executors, sort_by)
 
-@mcp.tool()
-def get_executor(app_id: str, executor_id: str, server: Optional[str] = None):
-    """
-    Get information about a specific executor.
+    if offset:
+        executors = executors[offset:]
+    if length is not None:
+        executors = executors[:length]
 
-    Retrieves detailed information about a single executor including resource allocation,
-    task statistics, memory usage, and performance metrics.
-
-    Args:
-        app_id: The Spark application ID
-        executor_id: The executor ID
-        server: Optional server name to use (uses default if not specified)
-
-    Returns:
-        ExecutorSummary object containing executor details or None if not found
-    """
-    ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server, app_id)
-
-    # Get all executors and find the one with matching ID
-    executors = client.list_all_executors(app_id=app_id)
-
-    for executor in executors:
-        if executor.id == executor_id:
-            return executor
-
-    return None
+    return executors
 
 
 @mcp.tool()
@@ -974,52 +974,30 @@ def compare_job_performance(
     return comparison
 
 
-@mcp.tool()
-def compare_sql_execution_plans(
+def _resolve_longest_sql_id(client, app_id: str, execution_id: Optional[int]) -> int:
+    """Resolve a SQL execution id, defaulting to the longest-running execution."""
+    if execution_id is not None:
+        return execution_id
+    sql_list = client.get_sql_list(app_id=app_id, details=False)
+    if sql_list:
+        return max(sql_list, key=lambda x: x.duration or 0).id
+    raise ValueError(f"No SQL executions found in application {app_id}")
+
+
+def _compare_sql_plans(
+    client1,
     app_id1: str,
+    exec_id1: int,
+    client2,
     app_id2: str,
-    execution_id1: Optional[int] = None,
-    execution_id2: Optional[int] = None,
-    server: Optional[str] = None,
+    exec_id2: int,
 ) -> SqlPlanComparison:
-    """
-    Compare the plan structure of two SQL executions.
-
-    Compares the SQL plan DAGs of two executions by node type and counts,
-    returning only the node types whose counts differ, plus total node and edge
-    counts for each side.
-
-    Args:
-        app_id1: First Spark application ID
-        app_id2: Second Spark application ID
-        execution_id1: Execution ID for the first app (uses longest-running if omitted)
-        execution_id2: Execution ID for the second app (uses longest-running if omitted)
-        server: Optional server name to use (uses default if not specified)
-
-    Returns:
-        SqlPlanComparison with per-side node/edge counts and differing node types
-    """
-    ctx = mcp.get_context()
-    client1 = get_client_or_default(ctx, server, app_id1)
-    client2 = get_client_or_default(ctx, server, app_id2)
-
-    if execution_id1 is None:
-        sql_list1 = client1.get_sql_list(app_id=app_id1, details=False)
-        if sql_list1:
-            execution_id1 = max(sql_list1, key=lambda x: x.duration or 0).id
-    if execution_id2 is None:
-        sql_list2 = client2.get_sql_list(app_id=app_id2, details=False)
-        if sql_list2:
-            execution_id2 = max(sql_list2, key=lambda x: x.duration or 0).id
-
-    if execution_id1 is None or execution_id2 is None:
-        raise ValueError("No SQL executions found in one or both applications")
-
+    """Build a plan-structure diff between two (already resolved) SQL executions."""
     exec1 = client1.get_sql_execution(
-        app_id1, execution_id1, details=True, plan_description=False
+        app_id1, exec_id1, details=True, plan_description=False
     )
     exec2 = client2.get_sql_execution(
-        app_id2, execution_id2, details=True, plan_description=False
+        app_id2, exec_id2, details=True, plan_description=False
     )
 
     nodes1 = _count_node_types(exec1.nodes)
@@ -1038,45 +1016,13 @@ def compare_sql_execution_plans(
     return SqlPlanComparison(
         app_a=app_id1,
         app_b=app_id2,
-        exec_id_a=execution_id1,
-        exec_id_b=execution_id2,
+        exec_id_a=exec_id1,
+        exec_id_b=exec_id2,
         node_count_a=len(exec1.nodes or []),
         node_count_b=len(exec2.nodes or []),
         edge_count_a=len(exec1.edges or []),
         edge_count_b=len(exec2.edges or []),
         node_type_diffs=diffs,
-    )
-
-
-@mcp.tool()
-def get_stage_task_summary(
-    app_id: str,
-    stage_id: int,
-    attempt_id: int = 0,
-    server: Optional[str] = None,
-    quantiles: str = "0.05,0.25,0.5,0.75,0.95",
-) -> TaskMetricsSummary:
-    """
-    Get a summary of task metrics for a specific stage.
-
-    Retrieves statistical distributions of task metrics for a stage, including
-    execution times, memory usage, I/O metrics, and shuffle metrics.
-
-    Args:
-        app_id: The Spark application ID
-        stage_id: The stage ID
-        attempt_id: The stage attempt ID (default: 0)
-        server: Optional server name to use (uses default if not specified)
-        quantiles: Comma-separated list of quantiles to use for summary metrics
-
-    Returns:
-        TaskMetricsSummary object containing metric distributions
-    """
-    ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server, app_id)
-
-    return client.get_stage_task_summary(
-        app_id=app_id, stage_id=stage_id, attempt_id=attempt_id, quantiles=quantiles
     )
 
 
@@ -1318,7 +1264,7 @@ def get_sql_execution(
         stage_list: List[StageData] = []
         if job_ids:
             all_jobs = client.list_jobs(app_id=app_id, app_attempt_id=app_attempt_id)
-            jobs = _sort_sql_jobs([j for j in all_jobs if j.job_id in job_ids])
+            jobs = _default_sort_jobs([j for j in all_jobs if j.job_id in job_ids])
             stage_ids = _stage_ids_from_jobs(jobs)
             if stage_ids:
                 all_stages = client.list_stages(
@@ -1330,7 +1276,7 @@ def get_sql_execution(
                     if s.stage_id in stage_ids and s.stage_id not in seen:
                         seen.add(s.stage_id)
                         scoped.append(s)
-                stage_list = _sort_sql_stages(scoped)
+                stage_list = _default_sort_stages(scoped)
 
         detail.jobs = [_sql_job_summary(j) for j in jobs]
         if include_aggregated_metrics:
@@ -1348,6 +1294,7 @@ def compare_sql_executions(
     execution_id1: Optional[int] = None,
     execution_id2: Optional[int] = None,
     server: Optional[str] = None,
+    include_plan_diff: bool = False,
 ) -> SqlExecutionComparison:
     """
     Compare performance metrics between two SQL executions.
@@ -1356,30 +1303,30 @@ def compare_sql_executions(
     query (jobs, stages, tasks, stage time, input, shuffle read/write, disk
     spill, GC time) so the two runs can be compared side by side.
 
+    Set ``include_plan_diff`` to also attach a ``plan_comparison`` section with
+    the plan-structure diff (per-side node/edge counts and the node types whose
+    counts differ).
+
     Args:
         app_id1: First Spark application ID
         app_id2: Second Spark application ID
         execution_id1: Execution ID for the first app (uses longest-running if omitted)
         execution_id2: Execution ID for the second app (uses longest-running if omitted)
         server: Optional server name to use (uses default if not specified)
+        include_plan_diff: Also compare the SQL plan structure (default False)
 
     Returns:
-        SqlExecutionComparison with an ``a`` and ``b`` side
+        SqlExecutionComparison with an ``a`` and ``b`` side, plus an optional
+        ``plan_comparison`` when ``include_plan_diff`` is set
     """
     ctx = mcp.get_context()
     client1 = get_client_or_default(ctx, server, app_id1)
     client2 = get_client_or_default(ctx, server, app_id2)
 
-    def collect_side(
-        client, app_id: str, execution_id: Optional[int]
-    ) -> SqlCompareSide:
-        if execution_id is None:
-            sql_list = client.get_sql_list(app_id=app_id, details=False)
-            if sql_list:
-                execution_id = max(sql_list, key=lambda x: x.duration or 0).id
-        if execution_id is None:
-            raise ValueError(f"No SQL executions found in application {app_id}")
+    execution_id1 = _resolve_longest_sql_id(client1, app_id1, execution_id1)
+    execution_id2 = _resolve_longest_sql_id(client2, app_id2, execution_id2)
 
+    def collect_side(client, app_id: str, execution_id: int) -> SqlCompareSide:
         execution = client.get_sql_execution(
             app_id, execution_id, details=False, plan_description=False
         )
@@ -1407,10 +1354,17 @@ def compare_sql_executions(
             jvm_gc_time=agg.jvm_gc_time,
         )
 
-    return SqlExecutionComparison(
+    comparison = SqlExecutionComparison(
         a=collect_side(client1, app_id1, execution_id1),
         b=collect_side(client2, app_id2, execution_id2),
     )
+
+    if include_plan_diff:
+        comparison.plan_comparison = _compare_sql_plans(
+            client1, app_id1, execution_id1, client2, app_id2, execution_id2
+        )
+
+    return comparison
 
 
 @mcp.tool()
@@ -1434,13 +1388,12 @@ def get_job_bottlenecks(
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
-    # Get slowest stages
-    slowest_stages = list_slowest_stages(app_id, server, False, top_n)
+    slowest_stages = list_stages(
+        app_id, server=server, sort_by="duration", length=top_n
+    )
 
-    # Get slowest jobs
-    slowest_jobs = list_slowest_jobs(app_id, server, False, top_n)
+    slowest_jobs = list_jobs(app_id, server=server, sort_by="duration", length=top_n)
 
-    # Get executor summary
     exec_summary = get_executor_summary(app_id, server)
 
     all_stages = client.list_stages(app_id=app_id)
