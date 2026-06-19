@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
@@ -240,6 +241,29 @@ def _sort_stages(stages: List[StageData], sort_by: Optional[str]) -> List[StageD
             f"invalid sort_by {sort_by!r}; expected 'duration', 'failed-tasks', or 'id'"
         )
     return _default_sort_stages(stages)
+
+
+def _sort_executors(
+    executors: List[Executor], sort_by: Optional[str]
+) -> List[Executor]:
+    if sort_by == "failed-tasks":
+        return sorted(executors, key=lambda e: e.failed_tasks or 0, reverse=True)
+    if sort_by == "duration":
+        return sorted(executors, key=lambda e: e.total_duration or 0, reverse=True)
+    if sort_by == "gc":
+        return sorted(executors, key=lambda e: e.total_gc_time or 0, reverse=True)
+    if sort_by == "id":
+        # Ascending string comparison (IDs are "driver", "1", "2", ...).
+        return sorted(executors, key=lambda e: e.id or "")
+    if sort_by is not None:
+        raise ValueError(
+            f"invalid sort_by {sort_by!r}; expected 'failed-tasks', 'duration', 'gc', or 'id'"
+        )
+    # default: active executors first, then by duration descending
+    return sorted(
+        executors,
+        key=lambda e: (0 if e.is_active else 1, -(e.total_duration or 0)),
+    )
 
 
 def _count_node_types(nodes) -> Dict[str, int]:
@@ -600,6 +624,8 @@ def get_environment(
 def list_executors(
     app_id: str,
     server: Optional[str] = None,
+    executor_id: Optional[str] = None,
+    sort_by: Optional[str] = None,
     include_inactive: bool = False,
     app_attempt_id: Optional[str] = None,
     offset: int = 0,
@@ -612,16 +638,25 @@ def list_executors(
     with their resource allocation, task statistics, and performance metrics. Supports
     client-side pagination to limit response size.
 
+    By default executors are ordered active-first, then by duration descending.
+
+    Pass ``executor_id`` to retrieve a single executor by its ID (searches all
+    executors, including inactive; returns a list with the match or empty if none).
+
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
+        executor_id: Optional executor ID to return only that executor
+        sort_by: Optional ordering: "failed-tasks", "duration", or "gc" (descending),
+            or "id" (ascending). When unset, active executors come first, then by
+            duration descending.
         include_inactive: Whether to include inactive executors (default: False)
         app_attempt_id: Optional YARN application attempt ID (latest if omitted)
         offset: Number of executors to skip from the start (default: 0)
         length: Maximum number of executors to return (default: None, returns all)
 
     Returns:
-        List of ExecutorSummary objects containing executor information
+        List of Executor objects containing executor information
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
@@ -631,43 +666,28 @@ def list_executors(
     if length is not None and length < 0:
         raise ValueError("length must be non-negative")
 
+    if executor_id is not None:
+        # Single-executor lookup: search all executors, including inactive.
+        executors = client.list_all_executors(
+            app_id=app_id, app_attempt_id=app_attempt_id
+        )
+        return [e for e in executors if e.id == executor_id]
+
     if include_inactive:
-        return client.list_all_executors(
-            app_id=app_id, app_attempt_id=app_attempt_id, offset=offset, length=length
+        executors = client.list_all_executors(
+            app_id=app_id, app_attempt_id=app_attempt_id
         )
     else:
-        return client.list_executors(
-            app_id=app_id, app_attempt_id=app_attempt_id, offset=offset, length=length
-        )
+        executors = client.list_executors(app_id=app_id, app_attempt_id=app_attempt_id)
 
+    executors = _sort_executors(executors, sort_by)
 
-@mcp.tool()
-def get_executor(app_id: str, executor_id: str, server: Optional[str] = None):
-    """
-    Get information about a specific executor.
+    if offset:
+        executors = executors[offset:]
+    if length is not None:
+        executors = executors[:length]
 
-    Retrieves detailed information about a single executor including resource allocation,
-    task statistics, memory usage, and performance metrics.
-
-    Args:
-        app_id: The Spark application ID
-        executor_id: The executor ID
-        server: Optional server name to use (uses default if not specified)
-
-    Returns:
-        ExecutorSummary object containing executor details or None if not found
-    """
-    ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server, app_id)
-
-    # Get all executors and find the one with matching ID
-    executors = client.list_all_executors(app_id=app_id)
-
-    for executor in executors:
-        if executor.id == executor_id:
-            return executor
-
-    return None
+    return executors
 
 
 @mcp.tool()

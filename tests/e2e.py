@@ -8,6 +8,7 @@ from mcp.client.streamable_http import streamablehttp_client
 from mcp.types import TextContent
 
 from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.models.mcp_types import (
@@ -253,6 +254,31 @@ async def test_list_stages_sort_by_id():
         stages = [StageData.model_validate_json(c.text) for c in result.content]
         # Descending stage ID, limited to 5 (app1 has 47 stages: 0..46).
         assert [s.stage_id for s in stages] == [46, 45, 44, 43, 42]
+
+
+# ---------------------------------------------------------------------------
+# Executors
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_list_executors_default():
+    async with McpClient() as client:
+        result = await client.call_tool("list_executors", {"app_id": app1_id})
+        assert not result.isError
+        execs = [Executor.model_validate_json(c.text) for c in result.content]
+        # The driver is always present in this corpus (local mode).
+        assert any(e.id == "driver" for e in execs)
+
+
+@pytest.mark.asyncio
+async def test_list_executors_executor_id_filter():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_executors", {"app_id": app1_id, "executor_id": "driver"}
+        )
+        assert not result.isError
+        execs = [Executor.model_validate_json(c.text) for c in result.content]
+        assert len(execs) == 1
+        assert execs[0].id == "driver"
 
 
 # ---------------------------------------------------------------------------

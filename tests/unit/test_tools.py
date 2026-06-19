@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from spark_history_mcp.api.spark_client import SparkRestClient
 from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
@@ -1223,28 +1224,128 @@ class TestTools(unittest.TestCase):
         with self.assertRaises(ValueError):
             list_stages("spark-app-123", length=-1)
 
+    @staticmethod
+    def _exec(exec_id="1", active=True, duration=0, gc=0, failed=0):
+        e = MagicMock(spec=Executor)
+        e.id = exec_id
+        e.is_active = active
+        e.total_duration = duration
+        e.total_gc_time = gc
+        e.failed_tasks = failed
+        return e
+
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_list_executors_with_pagination(self, mock_get_client):
-        """Test list_executors forwards offset and length to client"""
+        """Test list_executors applies offset and length client-side"""
         mock_client = MagicMock()
-        mock_client.list_executors.return_value = []
+        # Equal sort keys (all active, duration 0) keep input order stable.
+        mock_client.list_executors.return_value = [
+            self._exec(str(i)) for i in range(10)
+        ]
         mock_get_client.return_value = mock_client
 
-        list_executors("spark-app-123", offset=3, length=10)
+        result = list_executors("spark-app-123", offset=3, length=2)
 
+        self.assertEqual([e.id for e in result], ["3", "4"])
         mock_client.list_executors.assert_called_once_with(
-            app_id="spark-app-123", app_attempt_id=None, offset=3, length=10
+            app_id="spark-app-123", app_attempt_id=None
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_list_executors_inactive_with_pagination(self, mock_get_client):
+    def test_list_executors_inactive_uses_list_all(self, mock_get_client):
         """Test list_executors with include_inactive uses list_all_executors"""
         mock_client = MagicMock()
         mock_client.list_all_executors.return_value = []
         mock_get_client.return_value = mock_client
 
-        list_executors("spark-app-123", include_inactive=True, offset=0, length=20)
+        list_executors("spark-app-123", include_inactive=True)
 
         mock_client.list_all_executors.assert_called_once_with(
-            app_id="spark-app-123", app_attempt_id=None, offset=0, length=20
+            app_id="spark-app-123", app_attempt_id=None
         )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_executors_executor_id_filter(self, mock_get_client):
+        """executor_id searches all executors and returns only the match"""
+        mock_client = MagicMock()
+        mock_client.list_all_executors.return_value = [
+            self._exec("driver"),
+            self._exec("1", active=False),
+        ]
+        mock_get_client.return_value = mock_client
+
+        result = list_executors("spark-app-123", executor_id="1")
+
+        self.assertEqual([e.id for e in result], ["1"])
+        # Lookup searches all executors (incl. inactive).
+        mock_client.list_all_executors.assert_called_once_with(
+            app_id="spark-app-123", app_attempt_id=None
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_executors_executor_id_no_match(self, mock_get_client):
+        """executor_id with no match returns an empty list"""
+        mock_client = MagicMock()
+        mock_client.list_all_executors.return_value = [self._exec("driver")]
+        mock_get_client.return_value = mock_client
+
+        result = list_executors("spark-app-123", executor_id="99")
+
+        self.assertEqual(result, [])
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_executors_sort_by_gc(self, mock_get_client):
+        """sort_by='gc' orders by descending GC time"""
+        mock_client = MagicMock()
+        mock_client.list_executors.return_value = [
+            self._exec("1", gc=10),
+            self._exec("2", gc=90),
+            self._exec("3", gc=50),
+        ]
+        mock_get_client.return_value = mock_client
+
+        result = list_executors("spark-app-123", sort_by="gc")
+
+        self.assertEqual([e.id for e in result], ["2", "3", "1"])
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_executors_sort_by_id_ascending(self, mock_get_client):
+        """sort_by='id' orders by ascending string ID"""
+        mock_client = MagicMock()
+        mock_client.list_executors.return_value = [
+            self._exec("2"),
+            self._exec("driver"),
+            self._exec("10"),
+            self._exec("1"),
+        ]
+        mock_get_client.return_value = mock_client
+
+        result = list_executors("spark-app-123", sort_by="id")
+
+        # Ascending lexicographic string order.
+        self.assertEqual([e.id for e in result], ["1", "10", "2", "driver"])
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_executors_default_order_active_first(self, mock_get_client):
+        """Default ordering puts active executors first, then by duration desc"""
+        mock_client = MagicMock()
+        mock_client.list_executors.return_value = [
+            self._exec("dead-long", active=False, duration=999),
+            self._exec("active-short", active=True, duration=1),
+        ]
+        mock_get_client.return_value = mock_client
+
+        result = list_executors("spark-app-123")
+
+        # Active executor first despite shorter duration.
+        self.assertEqual([e.id for e in result], ["active-short", "dead-long"])
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_executors_sort_by_invalid(self, mock_get_client):
+        """An unknown sort_by value raises ValueError"""
+        mock_client = MagicMock()
+        mock_client.list_executors.return_value = [self._exec("1")]
+        mock_get_client.return_value = mock_client
+
+        with self.assertRaises(ValueError):
+            list_executors("spark-app-123", sort_by="bogus")
