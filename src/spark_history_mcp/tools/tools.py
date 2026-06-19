@@ -20,7 +20,10 @@ from spark_history_mcp.models.mcp_types import (
     SqlNodeTypeDiff,
     SqlPlanComparison,
     SqlStageSummary,
+    StageCompareSide,
+    StageComparison,
     StageMetricsAggregation,
+    StageTaskQuantiles,
 )
 
 from ..utils.utils import parallel_execute
@@ -1418,6 +1421,121 @@ def compare_sql_executions(
         )
 
     return comparison
+
+
+# Quantile points fetched for stage task-metric distributions: p25/p50/p75/max.
+_STAGE_COMPARE_QUANTILES = "0.25,0.5,0.75,1.0"
+
+
+def _build_stage_task_quantiles(summary) -> Optional[StageTaskQuantiles]:
+    """Map a ``TaskMetricsSummary`` into the curated stage quantiles model."""
+    if summary is None:
+        return None
+
+    def nested(obj, attr):
+        return getattr(obj, attr) if obj is not None else None
+
+    return StageTaskQuantiles(
+        quantiles=summary.quantiles or [],
+        duration=summary.duration,
+        gc_time=summary.jvm_gc_time,
+        scheduler_delay=summary.scheduler_delay,
+        peak_execution_memory=summary.peak_execution_memory,
+        input_bytes=nested(summary.input_metrics, "bytes_read"),
+        output_bytes=nested(summary.output_metrics, "bytes_written"),
+        shuffle_read_bytes=nested(summary.shuffle_read_metrics, "read_bytes"),
+        shuffle_write_bytes=nested(summary.shuffle_write_metrics, "write_bytes"),
+        disk_bytes_spilled=summary.disk_bytes_spilled,
+        memory_bytes_spilled=summary.memory_bytes_spilled,
+    )
+
+
+def _collect_stage_side(client, app_id: str, stage_id: int) -> StageCompareSide:
+    """Build one side of a stage comparison from the latest stage attempt."""
+    attempts = client.list_stage_attempts(
+        app_id=app_id,
+        stage_id=stage_id,
+        details=False,
+        with_summaries=False,
+    )
+    if not attempts:
+        raise ValueError(
+            f"No stage found with ID {stage_id} in application {app_id} "
+            "(it may have been skipped by AQE)"
+        )
+
+    stage = max(attempts, key=lambda s: s.attempt_id or 0)
+    attempt_id = stage.attempt_id or 0
+
+    # Task-metric quantiles are best-effort; a missing summary just omits them.
+    try:
+        summary = client.get_stage_task_summary(
+            app_id=app_id,
+            stage_id=stage_id,
+            attempt_id=attempt_id,
+            quantiles=_STAGE_COMPARE_QUANTILES,
+        )
+    except Exception:
+        summary = None
+
+    return StageCompareSide(
+        app=app_id,
+        stage_id=stage.stage_id,
+        attempt_id=attempt_id,
+        status=stage.status,
+        description=stage.description or stage.name,
+        duration=_duration_ms(stage.submission_time, stage.completion_time),
+        tasks=stage.num_tasks or 0,
+        failed_tasks=stage.num_failed_tasks or 0,
+        input_bytes=stage.input_bytes or 0,
+        output_bytes=stage.output_bytes or 0,
+        shuffle_read_bytes=stage.shuffle_read_bytes or 0,
+        shuffle_write_bytes=stage.shuffle_write_bytes or 0,
+        disk_bytes_spilled=stage.disk_bytes_spilled or 0,
+        memory_bytes_spilled=stage.memory_bytes_spilled or 0,
+        jvm_gc_time=stage.jvm_gc_time or 0,
+        task_quantiles=_build_stage_task_quantiles(summary),
+    )
+
+
+@mcp.tool()
+def compare_stages(
+    app_id1: str,
+    stage_id1: int,
+    app_id2: str,
+    stage_id2: int,
+    server: Optional[str] = None,
+) -> StageComparison:
+    """
+    Compare two stages side by side, optionally across applications.
+
+    For each stage the latest attempt is used. Returns stage-level metrics
+    (duration, task counts, input/output, shuffle read/write, disk/memory spill,
+    GC time) plus per-task metric distributions at the p25/p50/p75/max quantiles
+    (duration, GC time, scheduler delay, peak execution memory, input, output,
+    shuffle read/write, disk spill, memory spill).
+
+    The two stages may belong to different applications. Deltas are not
+    precomputed; compare the ``a`` and ``b`` sides directly.
+
+    Args:
+        app_id1: Application ID for the first stage
+        stage_id1: Stage ID within the first application
+        app_id2: Application ID for the second stage
+        stage_id2: Stage ID within the second application
+        server: Optional server name to use (uses default if not specified)
+
+    Returns:
+        StageComparison with an ``a`` and ``b`` side
+    """
+    ctx = mcp.get_context()
+    client1 = get_client_or_default(ctx, server, app_id1)
+    client2 = get_client_or_default(ctx, server, app_id2)
+
+    return StageComparison(
+        a=_collect_stage_side(client1, app_id1, stage_id1),
+        b=_collect_stage_side(client2, app_id2, stage_id2),
+    )
 
 
 @mcp.tool()

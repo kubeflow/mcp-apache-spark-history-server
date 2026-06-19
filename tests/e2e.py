@@ -15,6 +15,7 @@ from spark_history_mcp.models.mcp_types import (
     SqlExecutionComparison,
     SqlExecutionDetail,
     SqlExecutionSummary,
+    StageComparison,
 )
 
 mcp_endpoint = "http://localhost:18888/mcp/"
@@ -593,5 +594,142 @@ async def test_get_environment_invalid_section():
     async with McpClient() as client:
         result = await client.call_tool(
             "get_environment", {"app_id": app1_id, "section": "invalid"}
+        )
+        assert result.isError
+
+
+# ---------------------------------------------------------------------------
+# compare_stages tool
+# ---------------------------------------------------------------------------
+# Stage 43 of app1 and stage 33 of app2 are the same query stage in each run
+# (see skills/cli/e2e/compare_stages.json for the golden values).
+app1_stage_id = 43
+app2_stage_id = 33
+
+
+@pytest.mark.asyncio
+async def test_compare_stages_across_apps():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "compare_stages",
+            {
+                "app_id1": app1_id,
+                "stage_id1": app1_stage_id,
+                "app_id2": app2_id,
+                "stage_id2": app2_stage_id,
+            },
+        )
+        assert not result.isError
+        cmp = _parse_one(result, StageComparison)
+
+        # Side A: app1 / stage 43.
+        a = cmp.a
+        assert a.app == app1_id
+        assert a.stage_id == app1_stage_id
+        assert a.attempt_id == 0
+        assert a.status == "COMPLETE"
+        assert a.duration == 2083
+        assert a.tasks == 3
+        assert a.failed_tasks == 0
+        assert a.input_bytes == 0
+        assert a.output_bytes == 57978751
+        assert a.shuffle_read_bytes == 60573008
+        assert a.shuffle_write_bytes == 0
+        assert a.disk_bytes_spilled == 70308061
+        assert a.memory_bytes_spilled == 83884800
+        assert a.jvm_gc_time == 96
+
+        # Side B: app2 / stage 33.
+        b = cmp.b
+        assert b.app == app2_id
+        assert b.stage_id == app2_stage_id
+        assert b.duration == 1407
+        assert b.tasks == 3
+        assert b.output_bytes == 57979805
+        assert b.shuffle_read_bytes == 60597318
+        assert b.disk_bytes_spilled == 0
+        assert b.memory_bytes_spilled == 0
+        assert b.jvm_gc_time == 84
+
+
+@pytest.mark.asyncio
+async def test_compare_stages_task_quantiles():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "compare_stages",
+            {
+                "app_id1": app1_id,
+                "stage_id1": app1_stage_id,
+                "app_id2": app2_id,
+                "stage_id2": app2_stage_id,
+            },
+        )
+        assert not result.isError
+        cmp = _parse_one(result, StageComparison)
+
+        qa = cmp.a.task_quantiles
+        assert qa is not None
+        assert qa.quantiles == [0.25, 0.5, 0.75, 1.0]
+        # Small integer-valued metrics are exact.
+        assert qa.duration == [1008, 1055, 1063, 1063]
+        assert qa.gc_time == [18, 36, 42, 42]
+        assert qa.scheduler_delay == [4, 6, 9, 9]
+        assert qa.peak_execution_memory == [6291392, 6291392, 12582784, 12582784]
+        assert qa.input_bytes == [0, 0, 0, 0]
+        assert qa.shuffle_write_bytes == [0, 0, 0, 0]
+        # Large byte-valued metrics are 32-bit floats in the API; the Python
+        # client widens them to 64-bit, so they differ by a few bytes from the
+        # Go CLI golden values. Tolerate that representation gap.
+        assert qa.output_bytes == pytest.approx(
+            [14679969, 14719199, 28579584, 28579584], abs=2
+        )
+        assert qa.shuffle_read_bytes == pytest.approx(
+            [15329098, 15377783, 29866128, 29866128], abs=2
+        )
+        assert qa.disk_bytes_spilled == pytest.approx(
+            [17384420, 17588552, 35335090, 35335090], abs=2
+        )
+        assert qa.memory_bytes_spilled == pytest.approx(
+            [20971200, 20971200, 41942400, 41942400], abs=2
+        )
+
+        # Side B has no spill, so its spill quantiles are all zero.
+        qb = cmp.b.task_quantiles
+        assert qb is not None
+        assert qb.disk_bytes_spilled == [0, 0, 0, 0]
+        assert qb.duration == [273, 1118, 1264, 1264]
+
+
+@pytest.mark.asyncio
+async def test_compare_stages_same_stage():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "compare_stages",
+            {
+                "app_id1": app1_id,
+                "stage_id1": app1_stage_id,
+                "app_id2": app1_id,
+                "stage_id2": app1_stage_id,
+            },
+        )
+        assert not result.isError
+        cmp = _parse_one(result, StageComparison)
+        # Comparing a stage with itself yields identical sides.
+        assert cmp.a.duration == cmp.b.duration
+        assert cmp.a.output_bytes == cmp.b.output_bytes
+        assert cmp.a.task_quantiles.duration == cmp.b.task_quantiles.duration
+
+
+@pytest.mark.asyncio
+async def test_compare_stages_not_found():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "compare_stages",
+            {
+                "app_id1": app1_id,
+                "stage_id1": 999999,
+                "app_id2": app2_id,
+                "stage_id2": app2_stage_id,
+            },
         )
         assert result.isError

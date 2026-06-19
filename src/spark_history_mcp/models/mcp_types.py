@@ -155,3 +155,61 @@ class SqlExecutionComparison(BaseModel):
     plan_comparison: Optional[SqlPlanComparison] = Field(None, alias="planComparison")
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class StageTaskQuantiles(BaseModel):
+    """Per-task metric distributions for a stage at the requested quantiles.
+
+    Each metric is a list aligned with ``quantiles`` (e.g. ``[p25, p50, p75,
+    max]``). Time metrics are milliseconds; byte metrics are bytes.
+    """
+
+    quantiles: List[float] = Field(default_factory=list)
+    duration: Optional[List[float]] = None
+    gc_time: Optional[List[float]] = Field(None, alias="gcTime")
+    scheduler_delay: Optional[List[float]] = Field(None, alias="schedulerDelay")
+    peak_execution_memory: Optional[List[float]] = Field(
+        None, alias="peakExecutionMemory"
+    )
+    input_bytes: Optional[List[float]] = Field(None, alias="inputBytes")
+    output_bytes: Optional[List[float]] = Field(None, alias="outputBytes")
+    shuffle_read_bytes: Optional[List[float]] = Field(None, alias="shuffleReadBytes")
+    shuffle_write_bytes: Optional[List[float]] = Field(None, alias="shuffleWriteBytes")
+    disk_bytes_spilled: Optional[List[float]] = Field(None, alias="diskBytesSpilled")
+    memory_bytes_spilled: Optional[List[float]] = Field(
+        None, alias="memoryBytesSpilled"
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class StageCompareSide(BaseModel):
+    """One side of a stage comparison: stage-level metrics and task quantiles."""
+
+    app: str
+    stage_id: Optional[int] = Field(None, alias="stageId")
+    attempt_id: Optional[int] = Field(None, alias="attemptId")
+    status: Optional[str] = None
+    description: Optional[str] = None
+    duration: int = 0  # milliseconds (wall time, submission -> completion)
+    tasks: int = 0
+    failed_tasks: int = Field(0, alias="failedTasks")
+    input_bytes: int = Field(0, alias="inputBytes")
+    output_bytes: int = Field(0, alias="outputBytes")
+    shuffle_read_bytes: int = Field(0, alias="shuffleReadBytes")
+    shuffle_write_bytes: int = Field(0, alias="shuffleWriteBytes")
+    disk_bytes_spilled: int = Field(0, alias="diskBytesSpilled")
+    memory_bytes_spilled: int = Field(0, alias="memoryBytesSpilled")
+    jvm_gc_time: int = Field(0, alias="jvmGcTime")  # milliseconds
+    task_quantiles: Optional[StageTaskQuantiles] = Field(None, alias="taskQuantiles")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class StageComparison(BaseModel):
+    """Metrics and task-quantile diff between two stages."""
+
+    a: StageCompareSide
+    b: StageCompareSide
+
+    model_config = ConfigDict(populate_by_name=True)

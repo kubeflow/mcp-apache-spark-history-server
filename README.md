@@ -252,7 +252,7 @@ Agents can target a specific server per query:
 | **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
 | **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |
 
-### Available Tools (16)
+### Available Tools (17)
 
 <details>
 <summary>Available Tools</summary>
@@ -283,7 +283,7 @@ Agents can target a specific server per query:
 #### Configuration & Environment
 | Tool | Description |
 |------|-------------|
-| `get_environment` | Spark config, JVM info, system properties, classpath |
+| `get_environment` | Spark config, JVM info, system properties, classpath; optional `section` filter to return a single part |
 
 #### SQL & Query Analysis
 | Tool | Description |
@@ -302,6 +302,7 @@ Agents can target a specific server per query:
 |------|-------------|
 | `compare_job_environments` | Diff Spark configs between two applications |
 | `compare_job_performance` | Diff performance metrics between two applications |
+| `compare_stages` | Compare two stages (optionally across applications): stage metrics and per-task p25/p50/p75/max quantiles |
 
 #### AWS Spark Troubleshooting (opt-in)
 | Tool | Description |

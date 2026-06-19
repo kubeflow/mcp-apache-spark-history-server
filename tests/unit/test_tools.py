@@ -11,9 +11,11 @@ from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.api_client.models.task_metrics_summary import TaskMetricsSummary
 from spark_history_mcp.tools.tools import (
+    _build_stage_task_quantiles,
     _calculate_executor_metrics,
     _filter_environment_section,
     compare_sql_executions,
+    compare_stages,
     get_client_or_default,
     get_environment,
     get_sql_execution,
@@ -1405,3 +1407,41 @@ class TestTools(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             get_environment("spark-app-123", section="bogus")
+
+    # Tests for compare_stages
+    def test_build_stage_task_quantiles_maps_nested_metrics(self):
+        """Nested input/output/shuffle metrics are flattened into the model."""
+        summary = TaskMetricsSummary.from_dict(
+            {
+                "quantiles": [0.25, 0.5, 0.75, 1.0],
+                "duration": [1, 2, 3, 4],
+                "jvmGcTime": [0, 1, 1, 2],
+                "schedulerDelay": [1, 1, 1, 1],
+                "inputMetrics": {"bytesRead": [10, 20, 30, 40]},
+                "outputMetrics": {"bytesWritten": [1, 2, 3, 4]},
+                "shuffleReadMetrics": {"readBytes": [5, 6, 7, 8]},
+                "shuffleWriteMetrics": {"writeBytes": [0, 0, 0, 0]},
+            }
+        )
+        q = _build_stage_task_quantiles(summary)
+        self.assertEqual(q.quantiles, [0.25, 0.5, 0.75, 1.0])
+        self.assertEqual(q.duration, [1, 2, 3, 4])
+        self.assertEqual(q.gc_time, [0, 1, 1, 2])
+        self.assertEqual(q.input_bytes, [10, 20, 30, 40])
+        self.assertEqual(q.output_bytes, [1, 2, 3, 4])
+        self.assertEqual(q.shuffle_read_bytes, [5, 6, 7, 8])
+        self.assertEqual(q.shuffle_write_bytes, [0, 0, 0, 0])
+
+    def test_build_stage_task_quantiles_none(self):
+        """A missing summary maps to None."""
+        self.assertIsNone(_build_stage_task_quantiles(None))
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_compare_stages_not_found(self, mock_get_client):
+        """A stage with no attempts raises ValueError."""
+        mock_client = MagicMock()
+        mock_client.list_stage_attempts.return_value = []
+        mock_get_client.return_value = mock_client
+
+        with self.assertRaises(ValueError):
+            compare_stages("app-1", 999, "app-2", 1)
