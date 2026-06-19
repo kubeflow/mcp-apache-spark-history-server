@@ -61,6 +61,9 @@ class McpClient:
     async def list_tools(self):
         return await self._client_session.list_tools()
 
+    async def get_prompt(self, name, arguments):
+        return await self._client_session.get_prompt(name=name, arguments=arguments)
+
     async def __aexit__(
         self,
         exc_type: type[BaseException] | None,
@@ -105,6 +108,89 @@ async def test_tools_not_empty():
             "get_sql_execution",
             "compare_sql_executions",
         }.issubset(names)
+
+
+def _prompt_text(result):
+    """Concatenate the text of every message in a GetPromptResult."""
+    parts = []
+    for message in result.messages:
+        content = message.content
+        if isinstance(content, TextContent):
+            parts.append(content.text)
+    return "\n".join(parts)
+
+
+@pytest.mark.asyncio
+async def test_investigate_failure_prompt_without_server():
+    """The prompt renders with the app id and explains cross-server discovery
+    when no server is specified, without injecting a concrete server name."""
+    async with McpClient() as client:
+        result = await client.get_prompt("investigate_failure", {"app_id": app1_id})
+        text = _prompt_text(result)
+
+        assert app1_id in text
+        # Names the investigation tools the agent should call.
+        for tool_name in ("list_jobs", "list_stages", "list_stage_task_failures"):
+            assert tool_name in text
+        # Explains automatic discovery; no concrete server name is threaded in.
+        assert "search every configured" in text
+        assert 'server="local"' not in text
+        assert 'server="secondary"' not in text
+
+
+@pytest.mark.asyncio
+async def test_investigate_failure_prompt_with_server():
+    """When a server is specified, it is threaded into the rendered tool calls."""
+    async with McpClient() as client:
+        result = await client.get_prompt(
+            "investigate_failure", {"app_id": app1_id, "server": "secondary"}
+        )
+        text = _prompt_text(result)
+
+        assert app1_id in text
+        assert 'server="secondary"' in text
+
+
+@pytest.mark.asyncio
+async def test_compare_applications_prompt_without_server():
+    """The compare prompt renders both app ids and the comparison tools, and
+    explains cross-environment discovery without injecting a server name."""
+    async with McpClient() as client:
+        result = await client.get_prompt(
+            "compare_applications", {"app_a": app1_id, "app_b": app2_id}
+        )
+        text = _prompt_text(result)
+
+        assert app1_id in text
+        assert app2_id in text
+        for tool_name in (
+            "compare_job_environments",
+            "compare_job_performance",
+            "compare_sql_executions",
+        ):
+            assert tool_name in text
+        assert "may live on different" in text
+        assert 'server="local"' not in text
+        assert 'server="secondary"' not in text
+
+
+@pytest.mark.asyncio
+async def test_compare_applications_prompt_with_server_and_context():
+    """A specified server is threaded into the calls and context is embedded."""
+    async with McpClient() as client:
+        result = await client.get_prompt(
+            "compare_applications",
+            {
+                "app_a": app1_id,
+                "app_b": app2_id,
+                "server": "secondary",
+                "context": "A is the baseline run",
+            },
+        )
+        text = _prompt_text(result)
+
+        assert 'server="secondary"' in text
+        assert "A is the baseline run" in text
 
 
 @pytest.mark.asyncio
