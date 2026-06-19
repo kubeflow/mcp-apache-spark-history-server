@@ -7,7 +7,17 @@ Connect Kiro IDE to Spark History Server for intelligent Spark analysis directly
 1. **Download and Install Kiro:**
 Follow the installation steps in the [public documentation](https://kiro.dev/docs/getting-started/installation/)
 
-2. **Clone and setup repository**:
+2. **Install `uv`** (used to run the MCP server):
+```bash
+# See https://docs.astral.sh/uv/getting-started/installation/ for all options
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+This is the only requirement for the MCP server itself — the `uvx` command in the [Setup](#setup) step downloads and runs the published package automatically. You do **not** need to clone this repository to use the integration.
+
+### (Optional) Run a local Spark History Server with sample data
+
+If you don't already have a Spark History Server to point at, you can start the bundled sample server. This is the only part that needs the repository and the [Task](https://taskfile.dev/installation/) runner:
+
 ```bash
 git clone https://github.com/kubeflow/mcp-apache-spark-history-server.git
 cd mcp-apache-spark-history-server
@@ -18,18 +28,12 @@ brew install go-task  # macOS
 
 # Setup dependencies
 task install
-```
 
-3. **Start Spark History Server with sample data**:
-```bash
+# Start Spark History Server at http://localhost:18080 with 3 sample applications
 task start-spark-bg
-# Starts server at http://localhost:18080 with 3 sample applications
-```
 
-4. **Verify setup**:
-```bash
+# Verify it returns 3 applications
 curl http://localhost:18080/api/v1/applications
-# Should return 3 applications
 ```
 
 ## Setup
@@ -44,8 +48,8 @@ Create or edit the Kiro MCP configuration file at `.kiro/settings/mcp.json` in y
 {
   "mcpServers": {
     "spark-history-server": {
-      "command": "/<LOCAL_PATH_TO_REPO>/spark-history-server-mcp/spark_history_server_mcp_launcher.sh",
-      "args": ["-p", "kiro"],
+      "command": "uvx",
+      "args": ["--from", "mcp-apache-spark-history-server", "spark-mcp"],
       "env": {
         "SHS_MCP_TRANSPORT": "stdio"
       },
@@ -55,6 +59,8 @@ Create or edit the Kiro MCP configuration file at `.kiro/settings/mcp.json` in y
   }
 }
 ```
+
+This runs the published package directly with [`uvx`](https://docs.astral.sh/uv/) — no repository clone, local path, or Task runner required. The server reads its server connections from a `config.yaml` in the working directory; pass an explicit path with `"args": ["--from", "mcp-apache-spark-history-server", "spark-mcp", "--config", "/absolute/path/to/config.yaml"]` if needed.
 
 2. **Restart Kiro or reconnect MCP servers** from the Kiro feature panel.
 
