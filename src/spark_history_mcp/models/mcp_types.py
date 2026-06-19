@@ -213,3 +213,20 @@ class StageComparison(BaseModel):
     b: StageCompareSide
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class FailedTask(BaseModel):
+    """A single failed task with its error message.
+
+    Curated subset of the raw task payload focused on failure investigation;
+    the heavy per-task metrics are intentionally omitted.
+    """
+
+    task_id: Optional[int] = Field(None, alias="taskId")
+    attempt: Optional[int] = None
+    executor_id: Optional[str] = Field(None, alias="executorId")
+    host: Optional[str] = None
+    status: Optional[str] = None
+    error_message: Optional[str] = Field(None, alias="errorMessage")
+
+    model_config = ConfigDict(populate_by_name=True)

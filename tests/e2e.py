@@ -12,6 +12,7 @@ from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.models.mcp_types import (
+    FailedTask,
     SqlExecutionComparison,
     SqlExecutionDetail,
     SqlExecutionSummary,
@@ -760,5 +761,57 @@ async def test_get_executor_thread_dump_completed_app_errors():
         result = await client.call_tool(
             "get_executor_thread_dump",
             {"app_id": app1_id, "executor_id": "driver"},
+        )
+        assert result.isError
+
+
+# ---------------------------------------------------------------------------
+# list_stage_task_failures tool
+# ---------------------------------------------------------------------------
+# Stage 5 of app1 is a FAILED stage with 7 failed tasks, each raising a Python
+# UDF exception (see skills/cli/e2e/fixtures.yaml: stage5_errors_app1).
+failed_stage_id = 5
+
+
+@pytest.mark.asyncio
+async def test_list_stage_task_failures():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_stage_task_failures",
+            {"app_id": app1_id, "stage_id": failed_stage_id},
+        )
+        assert not result.isError
+        tasks = _parse_list(result, FailedTask)
+        assert len(tasks) == 7
+        for t in tasks:
+            assert t.status == "FAILED"
+            assert t.executor_id == "driver"
+            assert t.error_message is not None
+            assert t.error_message.startswith(
+                "org.apache.spark.api.python.PythonException"
+            )
+        # Task IDs match the failed tasks recorded in the corpus.
+        assert sorted(t.task_id for t in tasks) == [13, 14, 15, 16, 17, 18, 19]
+
+
+@pytest.mark.asyncio
+async def test_list_stage_task_failures_none_for_successful_stage():
+    async with McpClient() as client:
+        # Stage 43 completed successfully, so it has no failed tasks.
+        result = await client.call_tool(
+            "list_stage_task_failures",
+            {"app_id": app1_id, "stage_id": app1_stage_id},
+        )
+        assert not result.isError
+        tasks = _parse_list(result, FailedTask)
+        assert tasks == []
+
+
+@pytest.mark.asyncio
+async def test_list_stage_task_failures_not_found():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_stage_task_failures",
+            {"app_id": app1_id, "stage_id": 999999},
         )
         assert result.isError

@@ -27,6 +27,7 @@ from spark_history_mcp.tools.tools import (
     list_executors,
     list_jobs,
     list_sql_executions,
+    list_stage_task_failures,
     list_stages,
 )
 
@@ -1502,3 +1503,55 @@ class TestTools(unittest.TestCase):
         mock_client.get_executor_thread_dump.assert_called_once_with(
             app_id="app-1", executor_id="driver", app_attempt_id=None
         )
+
+    # Tests for list_stage_task_failures
+    @patch("spark_history_mcp.tools.tools.mcp")
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_stage_task_failures(self, mock_get_client, mock_mcp):
+        from spark_history_mcp.api_client.models.task import Task
+
+        mock_client = MagicMock()
+        # Two stage attempts; the tool should use the latest (id 1).
+        attempt0 = MagicMock()
+        attempt0.attempt_id = 0
+        attempt1 = MagicMock()
+        attempt1.attempt_id = 1
+        mock_client.list_stage_attempts.return_value = [attempt0, attempt1]
+        mock_client.list_stage_tasks.return_value = [
+            Task(
+                taskId=7,
+                attempt=2,
+                executorId="driver",
+                host="h1",
+                status="FAILED",
+                errorMessage="org.apache.spark.SparkException: boom\n at ...",
+            )
+        ]
+        mock_get_client.return_value = mock_client
+
+        failures = list_stage_task_failures("app-1", 5)
+
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(failures[0].task_id, 7)
+        self.assertEqual(failures[0].executor_id, "driver")
+        self.assertTrue(
+            failures[0].error_message.startswith("org.apache.spark.SparkException")
+        )
+        # Latest attempt resolved and a failed-status filter applied.
+        mock_client.list_stage_tasks.assert_called_once_with(
+            app_id="app-1",
+            stage_id=5,
+            attempt_id=1,
+            status="failed",
+            app_attempt_id=None,
+        )
+
+    @patch("spark_history_mcp.tools.tools.mcp")
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_stage_task_failures_not_found(self, mock_get_client, mock_mcp):
+        mock_client = MagicMock()
+        mock_client.list_stage_attempts.return_value = []
+        mock_get_client.return_value = mock_client
+
+        with self.assertRaises(ValueError):
+            list_stage_task_failures("app-1", 999)

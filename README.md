@@ -252,7 +252,7 @@ Agents can target a specific server per query:
 | **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
 | **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |
 
-### Available Tools (18)
+### Available Tools (19)
 
 <details>
 <summary>Available Tools</summary>
@@ -272,6 +272,7 @@ Agents can target a specific server per query:
 |------|-------------|
 | `list_stages` | List stages with status filtering and sorting (e.g. slowest by duration) |
 | `get_stage` | Stage detail with attempt and task metric distributions |
+| `list_stage_task_failures` | Failed tasks of a stage with their error messages (exception/stack trace) |
 
 #### Executor & Resource Analysis
 | Tool | Description |

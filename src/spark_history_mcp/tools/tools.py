@@ -11,6 +11,7 @@ from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.core.app import mcp
 from spark_history_mcp.models.mcp_types import (
+    FailedTask,
     SqlCompareSide,
     SqlExecutionComparison,
     SqlExecutionDetail,
@@ -593,6 +594,87 @@ def get_stage(
         stage_data.task_metrics_distributions = task_summary
 
     return stage_data
+
+
+def _resolve_latest_stage_attempt_id(client, app_id: str, stage_id: int) -> int:
+    """Return the highest attempt id for a stage, or raise if the stage is absent."""
+    attempts = client.list_stage_attempts(
+        app_id=app_id,
+        stage_id=stage_id,
+        details=False,
+        with_summaries=False,
+    )
+    if not attempts:
+        raise ValueError(
+            f"No stage found with ID {stage_id} in application {app_id} "
+            "(it may have been skipped by AQE)"
+        )
+    return max(attempts, key=lambda s: s.attempt_id or 0).attempt_id or 0
+
+
+@mcp.tool()
+def list_stage_task_failures(
+    app_id: str,
+    stage_id: int,
+    server: Optional[str] = None,
+    stage_attempt_id: Optional[int] = None,
+    app_attempt_id: Optional[str] = None,
+) -> list:
+    """
+    Get the per-task error messages for a stage's failed tasks.
+
+    Use this to diagnose *why* a stage failed: it returns the actual exception
+    and stack trace recorded for each failed task, which the stage- and
+    job-level tools do not expose. A typical workflow is to find a failed or
+    slow stage with ``list_stages`` (or a failed job with ``list_jobs``), then
+    call this tool with that stage ID to read the underlying errors.
+
+    Only tasks with status ``FAILED`` are returned. By default the latest stage
+    attempt is inspected; pass ``stage_attempt_id`` to target a specific one.
+    The full, untruncated ``error_message`` is preserved so the complete stack
+    trace is available.
+
+    Args:
+        app_id: The Spark application ID.
+        stage_id: The stage ID to inspect.
+        server: Server name to query; uses the default server if omitted.
+        stage_attempt_id: Specific stage attempt to inspect; defaults to the
+            latest attempt.
+        app_attempt_id: YARN application attempt ID; uses the latest if omitted.
+
+    Returns:
+        A list of ``FailedTask`` objects, one per failed task, each with
+        ``task_id``, ``attempt``, ``executor_id``, ``host``, ``status``, and the
+        full ``error_message``. Empty if the stage attempt has no failed tasks.
+
+    Raises:
+        ValueError: If the stage does not exist (e.g. it was skipped by AQE).
+    """
+    ctx = mcp.get_context()
+    client = get_client_or_default(ctx, server, app_id)
+
+    if stage_attempt_id is None:
+        stage_attempt_id = _resolve_latest_stage_attempt_id(client, app_id, stage_id)
+
+    tasks = client.list_stage_tasks(
+        app_id=app_id,
+        stage_id=stage_id,
+        attempt_id=stage_attempt_id,
+        status="failed",
+        app_attempt_id=app_attempt_id,
+    )
+
+    return [
+        FailedTask(
+            task_id=t.task_id,
+            attempt=t.attempt,
+            executor_id=t.executor_id,
+            host=t.host,
+            status=t.status,
+            error_message=t.error_message,
+        )
+        for t in tasks
+    ]
 
 
 # Environment sections that can be requested individually via ``section``.
