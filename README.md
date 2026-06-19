@@ -125,6 +125,52 @@ spark-mcp
 
 The package is published to [PyPI](https://pypi.org/project/mcp-apache-spark-history-server/).
 
+### Coding Agent Integration
+
+Register the server with a single command. Both examples run it over **stdio** via `uvx`.
+With no config file present, the server defaults to a Spark History Server at `http://localhost:18080`;
+point it elsewhere with a [config file](#config-file-location) or `SHS_SERVERS_LOCAL_URL`.
+
+**Claude Code** (`claude mcp add`):
+
+```bash
+claude mcp add --env SHS_MCP_TRANSPORT=stdio --transport stdio spark-history \
+  -- uvx --from mcp-apache-spark-history-server spark-mcp
+```
+
+**Kiro CLI** (`kiro-cli mcp add`):
+
+```bash
+kiro-cli mcp add --name spark-history --command uvx \
+  --args --from --args mcp-apache-spark-history-server --args spark-mcp \
+  --env SHS_MCP_TRANSPORT=stdio
+```
+
+Verify in either client with `claude mcp list` / `kiro-cli mcp list`, then ask the agent to *"list the available Spark applications."*
+
+#### Passing server flags and environment
+
+The commands above have two layers: the **client's** own options and the arguments/environment forwarded to **`spark-mcp`**. `spark-mcp` itself takes a single flag, `--config` / `-c`; everything else is set through `SHS_*` [environment variables](#configure).
+
+| To pass to `spark-mcp`… | Claude Code | Kiro CLI |
+|---|---|---|
+| A flag (e.g. `--config`) | append after `--`: `… spark-mcp --config /path/config.yaml` | add `--args` pairs: `--args --config --args /path/config.yaml` |
+| An environment variable | `--env KEY=value` (before `--transport`) | `--env KEY=value` |
+
+For example, to point at a remote Spark History Server with an explicit config file:
+
+```bash
+# Claude Code
+claude mcp add --env SHS_MCP_TRANSPORT=stdio --transport stdio spark-history \
+  -- uvx --from mcp-apache-spark-history-server spark-mcp --config ~/.config/spark-mcp/config.yaml
+
+# Kiro CLI
+kiro-cli mcp add --name spark-history --command uvx \
+  --args --from --args mcp-apache-spark-history-server --args spark-mcp \
+  --args --config --args ~/.config/spark-mcp/config.yaml \
+  --env SHS_MCP_TRANSPORT=stdio
+```
+
 ### Configure
 
 Basic configuration below. Create a file named `config.yaml`:
@@ -144,6 +190,19 @@ mcp:
   port: "18888"
   debug: false
 ```
+
+#### Config file location
+
+The server looks for its config file in the following order and uses the first one it finds:
+
+1. The `--config` / `-c` flag (e.g. `spark-mcp --config /path/to/config.yaml`)
+2. The `SHS_MCP_CONFIG` environment variable
+3. `./config.yaml` in the current working directory
+4. `~/.config/spark-mcp/config.yaml` (honors `$XDG_CONFIG_HOME` when set)
+
+If none exist, the server starts with built-in defaults that can be overridden by `SHS_*` environment variables. When a path is given explicitly via the flag or `SHS_MCP_CONFIG` but the file is missing, the server fails fast instead of falling back.
+
+> **Tip for MCP clients:** when the server is launched by an MCP client (Claude Desktop, Kiro, etc.), the working directory is not guaranteed, so a `./config.yaml` may not be found. Prefer `--config` / `SHS_MCP_CONFIG`, or place the file at `~/.config/spark-mcp/config.yaml`.
 
 Configurations can be overriden with environment variables.
 
