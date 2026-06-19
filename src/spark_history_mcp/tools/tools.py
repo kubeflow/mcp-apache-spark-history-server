@@ -7,7 +7,6 @@ from spark_history_mcp.api_client.models.application import Application
 from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
-from spark_history_mcp.api_client.models.task_metrics_summary import TaskMetricsSummary
 from spark_history_mcp.core.app import mcp
 from spark_history_mcp.models.mcp_types import (
     SqlCompareSide,
@@ -214,7 +213,7 @@ def _sort_jobs(jobs: List[Job], sort_by: Optional[str]) -> List[Job]:
     return _default_sort_jobs(jobs)
 
 
-def _sort_sql_stages(stages: List[StageData]) -> List[StageData]:
+def _default_sort_stages(stages: List[StageData]) -> List[StageData]:
     """Sort stages by status priority, then by duration descending."""
     return sorted(
         stages,
@@ -223,6 +222,24 @@ def _sort_sql_stages(stages: List[StageData]) -> List[StageData]:
             -_duration_ms(s.submission_time, s.completion_time),
         ),
     )
+
+
+def _sort_stages(stages: List[StageData], sort_by: Optional[str]) -> List[StageData]:
+    if sort_by == "duration":
+        return sorted(
+            stages,
+            key=lambda s: _duration_ms(s.submission_time, s.completion_time),
+            reverse=True,
+        )
+    if sort_by == "failed-tasks":
+        return sorted(stages, key=lambda s: s.num_failed_tasks or 0, reverse=True)
+    if sort_by == "id":
+        return sorted(stages, key=lambda s: s.stage_id or 0, reverse=True)
+    if sort_by is not None:
+        raise ValueError(
+            f"invalid sort_by {sort_by!r}; expected 'duration', 'failed-tasks', or 'id'"
+        )
+    return _default_sort_stages(stages)
 
 
 def _count_node_types(nodes) -> Dict[str, int]:
@@ -428,6 +445,7 @@ def list_stages(
     app_id: str,
     server: Optional[str] = None,
     status: Optional[list[str]] = None,
+    sort_by: Optional[str] = None,
     with_summaries: bool = False,
     app_attempt_id: Optional[str] = None,
     offset: int = 0,
@@ -440,10 +458,16 @@ def list_stages(
     by status and include additional details and summary metrics. Supports client-side
     pagination to limit response size.
 
+    By default stages are ordered by status priority (failed first), then by
+    duration descending. Use ``sort_by="duration"`` with ``length=N`` for the N
+    slowest stages.
+
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         status: Optional list of stage status values to filter by
+        sort_by: Optional ordering, all descending: "duration", "failed-tasks",
+            or "id". When unset, failed stages come first, then by duration descending.
         with_summaries: Whether to include summary metrics in the response
         app_attempt_id: Optional YARN application attempt ID (latest if omitted)
         offset: Number of stages to skip from the start (default: 0)
@@ -460,53 +484,21 @@ def list_stages(
     if length is not None and length < 0:
         raise ValueError("length must be non-negative")
 
-    return client.list_stages(
+    stages = client.list_stages(
         app_id=app_id,
         status=status,
         with_summaries=with_summaries,
         app_attempt_id=app_attempt_id,
-        offset=offset,
-        length=length,
     )
 
+    stages = _sort_stages(stages, sort_by)
 
-@mcp.tool()
-def list_slowest_stages(
-    app_id: str,
-    server: Optional[str] = None,
-    include_running: bool = False,
-    n: int = 5,
-) -> List[StageData]:
-    """
-    Get the N slowest stages for a Spark application.
+    if offset:
+        stages = stages[offset:]
+    if length is not None:
+        stages = stages[:length]
 
-    Retrieves all stages for the application and returns the ones with the longest duration.
-
-    Args:
-        app_id: The Spark application ID
-        server: Optional server name to use (uses default if not specified)
-        include_running: Whether to include running stages in the search
-        n: Number of slowest stages to return (default: 5)
-
-    Returns:
-        List of StageData objects for the slowest stages, or empty list if no stages found
-    """
-    ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server, app_id)
-
-    stages = client.list_stages(app_id=app_id)
-
-    # Filter out running stages if not included. This avoids using the `details` param which can significantly slow down the execution time
-    if not include_running:
-        stages = [stage for stage in stages if stage.status != "RUNNING"]
-
-    if not stages:
-        return []
-
-    def get_stage_duration(stage: StageData):
-        return _duration_seconds(stage.first_task_launched_time, stage.completion_time)
-
-    return heapq.nlargest(n, stages, key=get_stage_duration)
+    return stages
 
 
 @mcp.tool()
@@ -516,6 +508,7 @@ def get_stage(
     attempt_id: Optional[int] = None,
     server: Optional[str] = None,
     with_summaries: bool = False,
+    quantiles: Optional[str] = None,
 ) -> StageData:
     """
     Get information about a specific stage.
@@ -525,7 +518,9 @@ def get_stage(
         stage_id: The stage ID
         attempt_id: Optional stage attempt ID (if not provided, returns the latest attempt)
         server: Optional server name to use (uses default if not specified)
-        with_summaries: Whether to include summary metrics
+        with_summaries: Whether to include task metric distributions for the stage
+        quantiles: Optional comma-separated quantiles for the task metric
+            distributions (only used when with_summaries is set; server default if omitted)
 
     Returns:
         StageData object containing stage information
@@ -565,10 +560,12 @@ def get_stage(
         not hasattr(stage_data, "task_metrics_distributions")
         or stage_data.task_metrics_distributions is None
     ):
+        summary_kwargs = {"quantiles": quantiles} if quantiles else {}
         task_summary = client.get_stage_task_summary(
             app_id=app_id,
             stage_id=stage_id,
             attempt_id=stage_data.attempt_id,
+            **summary_kwargs,
         )
         stage_data.task_metrics_distributions = task_summary
 
@@ -1043,38 +1040,6 @@ def compare_sql_execution_plans(
     )
 
 
-@mcp.tool()
-def get_stage_task_summary(
-    app_id: str,
-    stage_id: int,
-    attempt_id: int = 0,
-    server: Optional[str] = None,
-    quantiles: str = "0.05,0.25,0.5,0.75,0.95",
-) -> TaskMetricsSummary:
-    """
-    Get a summary of task metrics for a specific stage.
-
-    Retrieves statistical distributions of task metrics for a stage, including
-    execution times, memory usage, I/O metrics, and shuffle metrics.
-
-    Args:
-        app_id: The Spark application ID
-        stage_id: The stage ID
-        attempt_id: The stage attempt ID (default: 0)
-        server: Optional server name to use (uses default if not specified)
-        quantiles: Comma-separated list of quantiles to use for summary metrics
-
-    Returns:
-        TaskMetricsSummary object containing metric distributions
-    """
-    ctx = mcp.get_context()
-    client = get_client_or_default(ctx, server, app_id)
-
-    return client.get_stage_task_summary(
-        app_id=app_id, stage_id=stage_id, attempt_id=attempt_id, quantiles=quantiles
-    )
-
-
 def truncate_plan_description(plan_desc: str, max_length: int) -> str:
     """
     Truncate plan description while preserving structure.
@@ -1325,7 +1290,7 @@ def get_sql_execution(
                     if s.stage_id in stage_ids and s.stage_id not in seen:
                         seen.add(s.stage_id)
                         scoped.append(s)
-                stage_list = _sort_sql_stages(scoped)
+                stage_list = _default_sort_stages(scoped)
 
         detail.jobs = [_sql_job_summary(j) for j in jobs]
         if include_aggregated_metrics:
@@ -1429,7 +1394,9 @@ def get_job_bottlenecks(
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
-    slowest_stages = list_slowest_stages(app_id, server, False, top_n)
+    slowest_stages = list_stages(
+        app_id, server=server, sort_by="duration", length=top_n
+    )
 
     slowest_jobs = list_jobs(app_id, server=server, sort_by="duration", length=top_n)
 

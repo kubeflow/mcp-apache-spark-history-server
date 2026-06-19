@@ -9,6 +9,7 @@ from mcp.types import TextContent
 
 from spark_history_mcp.api_client.models.application import Application
 from spark_history_mcp.api_client.models.job import Job
+from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.models.mcp_types import (
     SqlExecutionComparison,
     SqlExecutionDetail,
@@ -202,6 +203,56 @@ async def test_list_jobs_sort_by_failed_tasks():
         jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
         # Job 4 has the most failed tasks (7), then job 3 (4); the rest have 0.
         assert [j.job_id for j in jobs[:2]] == [4, 3]
+
+
+# ---------------------------------------------------------------------------
+# Stages
+# ---------------------------------------------------------------------------
+@pytest.mark.asyncio
+async def test_list_stages_default_order():
+    async with McpClient() as client:
+        result = await client.call_tool("list_stages", {"app_id": app1_id, "length": 5})
+        assert not result.isError
+        stages = [StageData.model_validate_json(c.text) for c in result.content]
+        # Default: failed first, then by duration descending.
+        assert [s.stage_id for s in stages] == [5, 43, 4, 0, 14]
+        assert stages[0].status == "FAILED"
+
+
+@pytest.mark.asyncio
+async def test_list_stages_sort_by_duration():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_stages", {"app_id": app1_id, "sort_by": "duration"}
+        )
+        assert not result.isError
+        stages = [StageData.model_validate_json(c.text) for c in result.content]
+        # Stage 43 is the longest-running stage (~2.083s).
+        assert stages[0].stage_id == 43
+
+
+@pytest.mark.asyncio
+async def test_list_stages_sort_by_failed_tasks():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_stages", {"app_id": app1_id, "sort_by": "failed-tasks"}
+        )
+        assert not result.isError
+        stages = [StageData.model_validate_json(c.text) for c in result.content]
+        # Stage 5 has the most failed tasks (7), then stage 4 (4); the rest have 0.
+        assert [s.stage_id for s in stages[:2]] == [5, 4]
+
+
+@pytest.mark.asyncio
+async def test_list_stages_sort_by_id():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_stages", {"app_id": app1_id, "sort_by": "id", "length": 5}
+        )
+        assert not result.isError
+        stages = [StageData.model_validate_json(c.text) for c in result.content]
+        # Descending stage ID, limited to 5 (app1 has 47 stages: 0..46).
+        assert [s.stage_id for s in stages] == [46, 45, 44, 43, 42]
 
 
 # ---------------------------------------------------------------------------
