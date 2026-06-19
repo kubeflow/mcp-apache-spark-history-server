@@ -6,7 +6,7 @@ import logging
 import os
 import sys
 
-from spark_history_mcp.config.config import Config
+from spark_history_mcp.config.config import Config, resolve_config_path
 from spark_history_mcp.core import app
 
 # Configure logging
@@ -22,19 +22,32 @@ def main():
     parser.add_argument(
         "--config",
         "-c",
-        default=os.getenv("SHS_MCP_CONFIG", "config.yaml"),
-        help="Path to config file (default: config.yaml, env: SHS_MCP_CONFIG)",
+        default=None,
+        help=(
+            "Path to config file. If omitted, the server searches "
+            "$SHS_MCP_CONFIG, then ./config.yaml, then "
+            "~/.config/spark-mcp/config.yaml (env: SHS_MCP_CONFIG)."
+        ),
     )
     args = parser.parse_args()
 
     try:
         logger.info("Starting Spark History Server MCP...")
-        logger.info(f"Using config file: {args.config}")
 
-        # Set the config file path in environment for Pydantic Settings
-        os.environ["SHS_MCP_CONFIG"] = args.config
+        # An explicit --config flag wins over a pre-existing SHS_MCP_CONFIG;
+        # if omitted, leave the env untouched so discovery can run.
+        if args.config is not None:
+            os.environ["SHS_MCP_CONFIG"] = args.config
 
-        # Now Config() will automatically load from the specified YAML file
+        config_path, _ = resolve_config_path()
+        if config_path is not None:
+            logger.info(f"Using config file: {config_path}")
+        else:
+            logger.info(
+                "No config file found; using built-in defaults and SHS_* env vars"
+            )
+
+        # Now Config() will automatically load using the resolution cascade
         config = Config()
         if config.mcp.debug:
             logger.setLevel(logging.DEBUG)

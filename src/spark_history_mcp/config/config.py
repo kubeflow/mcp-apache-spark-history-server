@@ -1,4 +1,6 @@
+import logging
 import os
+from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple
 
 import yaml
@@ -10,13 +12,45 @@ from pydantic_settings import (
     SettingsConfigDict,
 )
 
+logger = logging.getLogger(__name__)
+
+# Per-user config lives at ~/.config/spark-mcp/config.yaml.
+DEFAULT_CONFIG_FILENAME = "config.yaml"
+APP_CONFIG_DIR = "spark-mcp"
+
+
+def user_config_path() -> str:
+    """Per-user config path: $XDG_CONFIG_HOME (if set) or ~/.config."""
+    xdg_config_home = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+    return os.path.join(xdg_config_home, APP_CONFIG_DIR, DEFAULT_CONFIG_FILENAME)
+
+
+def resolve_config_path() -> Tuple[Optional[str], bool]:
+    """Resolve which config file to load, highest precedence first.
+
+    1. ``SHS_MCP_CONFIG`` env var / ``--config`` flag (explicit)
+    2. ``./config.yaml``
+    3. ``~/.config/spark-mcp/config.yaml``
+
+    Returns ``(path, is_explicit)``; ``path`` is ``None`` when nothing is found
+    (use defaults) and ``is_explicit`` marks a missing file as fatal.
+    """
+    explicit_path = os.getenv("SHS_MCP_CONFIG")
+    if explicit_path:
+        return explicit_path, True
+
+    if os.path.exists(DEFAULT_CONFIG_FILENAME):
+        return DEFAULT_CONFIG_FILENAME, False
+
+    user_path = user_config_path()
+    if os.path.exists(user_path):
+        return user_path, False
+
+    return None, False
+
 
 class YamlConfigSettingsSource(PydanticBaseSettingsSource):
-    """Custom settings source that loads configuration from a YAML file.
-
-    The file path is determined by the SHS_MCP_CONFIG environment variable,
-    defaulting to 'config.yaml' if not set.
-    """
+    """Settings source that loads YAML located via :func:`resolve_config_path`."""
 
     def get_field_value(
         self, field: FieldInfo, field_name: str
@@ -26,17 +60,18 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
 
     def __call__(self) -> Dict[str, Any]:
         """Load and return the YAML configuration data."""
-        config_path = os.getenv("SHS_MCP_CONFIG", "config.yaml")
-        is_explicitly_set = "SHS_MCP_CONFIG" in os.environ
+        config_path, is_explicit = resolve_config_path()
+
+        if config_path is None:
+            return {}
 
         if not os.path.exists(config_path):
-            # If the config file was explicitly specified but doesn't exist, fail fast
-            if is_explicitly_set:
+            # Explicitly requested but missing -> fatal; discovered -> defaults.
+            if is_explicit:
                 raise FileNotFoundError(
                     f"Config file not found: {config_path}\n"
-                    f"Specified via: SHS_MCP_CONFIG environment variable"
+                    f"Specified via: --config flag or SHS_MCP_CONFIG environment variable"
                 )
-            # If using default and it doesn't exist, return empty (will use defaults)
             return {}
 
         with open(config_path, "r") as f:
@@ -51,6 +86,8 @@ class AuthConfig(BaseSettings):
     username: Optional[str] = Field(None)
     password: Optional[str] = Field(None)
     token: Optional[str] = Field(None)
+    # Ignore unknown keys for compatibility with the shared shs CLI config.
+    model_config = SettingsConfigDict(extra="ignore")
 
 
 class ServerConfig(BaseSettings):
@@ -64,6 +101,8 @@ class ServerConfig(BaseSettings):
     use_proxy: bool = False
     timeout: int = 30  # HTTP request timeout in seconds
     include_plan_description: Optional[bool] = None
+    # Ignore unknown keys for compatibility with the shared shs CLI config.
+    model_config = SettingsConfigDict(extra="ignore")
 
 
 class TransportSecurityConfig(BaseSettings):
@@ -94,7 +133,7 @@ class McpConfig(BaseSettings):
     """Configuration for the MCP server."""
 
     transports: List[Literal["stdio", "sse", "streamable-http"]] = Field(
-        default_factory=list
+        default_factory=lambda: ["streamable-http"]
     )
     address: Optional[str] = "localhost"
     port: Optional[int | str] = "18888"

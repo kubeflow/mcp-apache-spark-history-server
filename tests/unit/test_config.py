@@ -21,7 +21,7 @@ class TestConfig(unittest.TestCase):
         # Sample config data for testing
         self.config_data = {
             "servers": {
-                "test_server": {
+                "testserver": {
                     "url": "http://test-server:18080",
                     "auth": {"username": "test_user", "password": "test_pass"},
                     "default": True,
@@ -57,8 +57,8 @@ class TestConfig(unittest.TestCase):
             self.assertFalse(config.mcp.debug)
 
             # Verify server config
-            self.assertIn("test_server", config.servers)
-            server = config.servers["test_server"]
+            self.assertIn("testserver", config.servers)
+            server = config.servers["testserver"]
             self.assertEqual(server.url, "http://test-server:18080")
             self.assertEqual(server.auth.username, "test_user")
             self.assertEqual(server.auth.password, "test_pass")
@@ -80,14 +80,19 @@ class TestConfig(unittest.TestCase):
             "SHS_MCP_ADDRESS": "env_host",
             "SHS_MCP_PORT": "8888",
             "SHS_MCP_DEBUG": "true",
-            "SHS_SERVERS_ENV_SERVER_URL": "http://env-server:18080",
-            "SHS_SERVERS_ENV_SERVER_AUTH_USERNAME": "env_user",
-            "SHS_SERVERS_ENV_SERVER_AUTH_PASSWORD": "env_pass",
-            "SHS_SERVERS_ENV_SERVER_DEFAULT": "true",
+            "SHS_SERVERS_ENVSERVER_URL": "http://env-server:18080",
+            "SHS_SERVERS_ENVSERVER_AUTH_USERNAME": "env_user",
+            "SHS_SERVERS_ENVSERVER_AUTH_PASSWORD": "env_pass",
+            "SHS_SERVERS_ENVSERVER_DEFAULT": "true",
         },
     )
     def test_config_from_env_vars(self):
-        """Test loading configuration from environment variables."""
+        """Test loading configuration from environment variables.
+
+        Note: server names must not contain underscores because the settings
+        env_nested_delimiter is '_'. ``SHS_SERVERS_ENVSERVER_URL`` maps to
+        ``servers.envserver.url``.
+        """
         # Create minimal config with empty servers dict to be populated from env
         minimal_config = {"servers": {}}
 
@@ -105,8 +110,8 @@ class TestConfig(unittest.TestCase):
             self.assertTrue(config.mcp.debug)
 
             # Verify server config from env vars
-            self.assertIn("env_server", config.servers)
-            server = config.servers["env_server"]
+            self.assertIn("envserver", config.servers)
+            server = config.servers["envserver"]
             self.assertEqual(server.url, "http://env-server:18080")
             self.assertEqual(server.auth.username, "env_user")
             self.assertEqual(server.auth.password, "env_pass")
@@ -119,8 +124,8 @@ class TestConfig(unittest.TestCase):
         {
             "SHS_MCP_ADDRESS": "override_host",
             "SHS_MCP_PORT": "7777",
-            "SHS_SERVERS_TEST_SERVER_URL": "http://override-server:18080",
-            "SHS_SERVERS_TEST_SERVER_AUTH_USERNAME": "override_user",
+            "SHS_SERVERS_TESTSERVER_URL": "http://override-server:18080",
+            "SHS_SERVERS_TESTSERVER_AUTH_USERNAME": "override_user",
         },
     )
     def test_env_vars_override_file_config(self):
@@ -138,7 +143,7 @@ class TestConfig(unittest.TestCase):
             self.assertEqual(config.mcp.port, "7777")
 
             # Verify that server config is overridden
-            server = config.servers["test_server"]
+            server = config.servers["testserver"]
             self.assertEqual(server.url, "http://override-server:18080")
             self.assertEqual(server.auth.username, "override_user")
 
@@ -183,11 +188,11 @@ class TestConfig(unittest.TestCase):
         auth = AuthConfig(username="test_user", password="")
         server = ServerConfig(url="http://test:18080", auth=auth)
 
-        # Test that auth is excluded from serialization
+        # auth is declared with exclude=True, so it must not appear in a dump.
         server_dict = server.model_dump()
-        self.assertIn("auth", server_dict)
+        self.assertNotIn("auth", server_dict)
 
-        # Test with explicit exclude
+        # Explicitly excluding it as well keeps it absent.
         server_dict = server.model_dump(exclude={"auth"})
         self.assertNotIn("auth", server_dict)
 
@@ -270,7 +275,7 @@ class TestTransportSecurityConfig(unittest.TestCase):
             os.unlink(temp_file_path)
 
     def test_transport_security_default_when_not_specified(self):
-        """Test transport security defaults when not specified in config."""
+        """Transport security is None when not specified (disabled by default)."""
         config_data = {
             "servers": {"local": {"url": "http://localhost:18080", "default": True}},
             "mcp": {"transports": ["streamable-http"]},
@@ -284,12 +289,9 @@ class TestTransportSecurityConfig(unittest.TestCase):
             with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
                 config = Config()
 
-            # Transport security should have default values
-            ts = config.mcp.transport_security
-            self.assertIsNotNone(ts)
-            self.assertFalse(ts.enable_dns_rebinding_protection)
-            self.assertEqual(ts.allowed_hosts, [])
-            self.assertEqual(ts.allowed_origins, [])
+            # Not configured -> None; app.run() then leaves the MCP library
+            # defaults in place (DNS rebinding protection off).
+            self.assertIsNone(config.mcp.transport_security)
         finally:
             os.unlink(temp_file_path)
 
