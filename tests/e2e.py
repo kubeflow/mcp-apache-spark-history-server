@@ -7,6 +7,7 @@ from mcp.client.streamable_http import streamable_http_client
 from mcp.types import TextContent
 
 from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.environment import Environment
 from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.stage_data import StageData
@@ -543,3 +544,54 @@ async def test_compare_sql_executions_with_plan_diff():
             "WholeStageCodegen (8)": (1, 0),
             "WholeStageCodegen (9)": (1, 0),
         }
+
+
+# ---------------------------------------------------------------------------
+# Environment tool
+# ---------------------------------------------------------------------------
+# Every individually selectable section of the Environment model.
+ENV_SECTION_FIELDS = [
+    "runtime",
+    "spark_properties",
+    "system_properties",
+    "hadoop_properties",
+    "metrics_properties",
+    "classpath_entries",
+]
+
+
+@pytest.mark.asyncio
+async def test_get_environment_full():
+    async with McpClient() as client:
+        result = await client.call_tool("get_environment", {"app_id": app1_id})
+        assert not result.isError
+        env = _parse_one(result, Environment)
+        # The full environment exposes every section the corpus provides.
+        for field in ENV_SECTION_FIELDS:
+            assert getattr(env, field) is not None, field
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("section", ENV_SECTION_FIELDS)
+async def test_get_environment_section(section):
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "get_environment", {"app_id": app1_id, "section": section}
+        )
+        assert not result.isError
+        env = _parse_one(result, Environment)
+        # The requested section is populated and every other section is cleared.
+        assert getattr(env, section) is not None, section
+        for other in ENV_SECTION_FIELDS:
+            if other != section:
+                assert getattr(env, other) is None, other
+        assert env.resource_profiles is None
+
+
+@pytest.mark.asyncio
+async def test_get_environment_invalid_section():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "get_environment", {"app_id": app1_id, "section": "invalid"}
+        )
+        assert result.isError

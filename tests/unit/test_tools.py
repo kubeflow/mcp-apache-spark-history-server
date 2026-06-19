@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 from spark_history_mcp.api.spark_client import SparkRestClient
 from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.environment import Environment
 from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
@@ -11,8 +12,10 @@ from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.api_client.models.task_metrics_summary import TaskMetricsSummary
 from spark_history_mcp.tools.tools import (
     _calculate_executor_metrics,
+    _filter_environment_section,
     compare_sql_executions,
     get_client_or_default,
+    get_environment,
     get_sql_execution,
     get_stage,
     list_applications,
@@ -1362,3 +1365,43 @@ class TestTools(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             list_executors("spark-app-123", sort_by="bogus")
+
+    # Tests for get_environment section filtering
+    @staticmethod
+    def _environment():
+        return Environment.from_dict(
+            {
+                "runtime": {"javaVersion": "17", "scalaVersion": "2.12"},
+                "sparkProperties": [["spark.app.name", "demo"]],
+                "systemProperties": [["os.name", "Linux"]],
+                "hadoopProperties": [["fs.defaultFS", "file:///"]],
+                "metricsProperties": [["*.sink.csv.class", "x"]],
+                "classpathEntries": [["/opt/spark/jars/x.jar", "System Classpath"]],
+            }
+        )
+
+    def test_filter_environment_section_keeps_only_requested(self):
+        """Filtering keeps the requested section and clears the others."""
+        env = _filter_environment_section(self._environment(), "spark_properties")
+        self.assertTrue(env.spark_properties)
+        self.assertIsNone(env.runtime)
+        self.assertIsNone(env.system_properties)
+        self.assertIsNone(env.hadoop_properties)
+        self.assertIsNone(env.metrics_properties)
+        self.assertIsNone(env.classpath_entries)
+
+    def test_filter_environment_section_runtime(self):
+        """The runtime section maps to the runtime field."""
+        env = _filter_environment_section(self._environment(), "runtime")
+        self.assertIsNotNone(env.runtime)
+        self.assertIsNone(env.spark_properties)
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_environment_invalid_section(self, mock_get_client):
+        """An unknown section raises ValueError."""
+        mock_client = MagicMock()
+        mock_client.get_environment.return_value = self._environment()
+        mock_get_client.return_value = mock_client
+
+        with self.assertRaises(ValueError):
+            get_environment("spark-app-123", section="bogus")

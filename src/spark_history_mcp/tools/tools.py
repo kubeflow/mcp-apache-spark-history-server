@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
 from spark_history_mcp.api_client.models.application import Application
+from spark_history_mcp.api_client.models.environment import Environment
 from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
@@ -584,9 +585,51 @@ def get_stage(
     return stage_data
 
 
+# Environment sections that can be requested individually via ``section``.
+_ENVIRONMENT_SECTION_FIELDS = (
+    "runtime",
+    "spark_properties",
+    "system_properties",
+    "hadoop_properties",
+    "metrics_properties",
+    "classpath_entries",
+)
+
+
+def _resolve_environment_section(section: str) -> str:
+    """Resolve a requested ``section`` to a canonical environment field name.
+
+    Accepts the field names in ``_ENVIRONMENT_SECTION_FIELDS``, compared
+    case-insensitively. Raises ``ValueError`` for anything else.
+    """
+    keep_field = section.strip().lower()
+    if keep_field not in _ENVIRONMENT_SECTION_FIELDS:
+        valid = ", ".join(repr(s) for s in _ENVIRONMENT_SECTION_FIELDS)
+        raise ValueError(f"invalid section {section!r}; expected one of {valid}")
+    return keep_field
+
+
+def _filter_environment_section(env: Environment, section: str) -> Environment:
+    """Return a copy of ``env`` with only the requested section populated.
+
+    Fields for the other sections — and ``resource_profiles`` — are cleared so
+    the response carries only the requested data.
+    """
+    keep_field = _resolve_environment_section(section)
+    filtered = env.model_copy(deep=True)
+    for env_field in _ENVIRONMENT_SECTION_FIELDS:
+        if env_field != keep_field:
+            setattr(filtered, env_field, None)
+    filtered.resource_profiles = None
+    return filtered
+
+
 @mcp.tool()
 def get_environment(
-    app_id: str, server: Optional[str] = None, app_attempt_id: Optional[str] = None
+    app_id: str,
+    server: Optional[str] = None,
+    app_attempt_id: Optional[str] = None,
+    section: Optional[str] = None,
 ):
     """
     Get the comprehensive Spark runtime configuration for a Spark application.
@@ -598,14 +641,24 @@ def get_environment(
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         app_attempt_id: Optional YARN application attempt ID (latest if omitted)
+        section: Optional section filter to return only one part of the
+            environment. One of "runtime", "spark_properties",
+            "system_properties", "hadoop_properties", "metrics_properties", or
+            "classpath_entries". When omitted, all sections are returned.
 
     Returns:
-        ApplicationEnvironmentInfo object containing environment details
+        ApplicationEnvironmentInfo object containing environment details. When
+        ``section`` is given, only that section is populated.
     """
     ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
-    return client.get_environment(app_id=app_id, app_attempt_id=app_attempt_id)
+    env = client.get_environment(app_id=app_id, app_attempt_id=app_attempt_id)
+
+    if section is not None:
+        env = _filter_environment_section(env, section)
+
+    return env
 
 
 @mcp.tool()
