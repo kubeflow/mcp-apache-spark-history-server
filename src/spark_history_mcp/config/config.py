@@ -1,7 +1,8 @@
 import logging
 import os
+import warnings
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Annotated, Any, Dict, List, Literal, Optional, Tuple
 
 import yaml
 from pydantic import Field
@@ -17,6 +18,45 @@ logger = logging.getLogger(__name__)
 # Per-user config lives at ~/.config/spark-mcp/config.yaml.
 DEFAULT_CONFIG_FILENAME = "config.yaml"
 APP_CONFIG_DIR = "spark-mcp"
+ENV_VAR_PREFIX = "SHS_"
+
+# Legacy single-underscore SHS_* env vars are deprecated in favor of the
+# double-underscore (__) delimiter.
+
+# Direct-read vars (not Config fields); excluded from delimiter detection.
+_DIRECT_READ_VARS = frozenset({"SHS_MCP_CONFIG", "SHS_MCP_TRANSPORT"})
+
+
+def _warn_legacy_env(names: List[str]) -> None:
+    message = (
+        "Single-underscore SHS_* environment variables are deprecated and will "
+        "be removed in a future major release; use the double-underscore (__) "
+        f"delimiter instead. In use: {', '.join(names)}"
+    )
+    warnings.warn(message, DeprecationWarning, stacklevel=2)
+    logger.warning(message)
+
+
+def _legacy_config_vars() -> List[str]:
+    """SHS_* config vars (excluding direct-read vars) using a single underscore."""
+    return [
+        env
+        for env in os.environ
+        if env.startswith(ENV_VAR_PREFIX)
+        and env not in _DIRECT_READ_VARS
+        and "__" not in env
+    ]
+
+
+def legacy_env_mode() -> bool:
+    for env in os.environ:
+        if (
+            env.startswith(ENV_VAR_PREFIX)
+            and env not in _DIRECT_READ_VARS
+            and "__" not in env
+        ):
+            return True
+    return False
 
 
 def user_config_path() -> str:
@@ -132,9 +172,14 @@ class TransportSecurityConfig(BaseSettings):
 class McpConfig(BaseSettings):
     """Configuration for the MCP server."""
 
-    transports: List[Literal["stdio", "sse", "streamable-http"]] = Field(
-        default_factory=lambda: ["streamable-http"]
-    )
+    transport: Optional[Literal["stdio", "streamable-http"]] = None
+    transports: Annotated[
+        Optional[List[Literal["stdio", "streamable-http"]]],
+        Field(
+            default=None,
+            deprecated="mcp.transports is deprecated; use the singular mcp.transport instead.",
+        ),
+    ]
     address: Optional[str] = "localhost"
     port: Optional[int | str] = "18888"
     debug: Optional[bool] = False
@@ -151,10 +196,10 @@ class Config(BaseSettings):
     servers: Dict[str, ServerConfig] = {
         "local": ServerConfig(url="http://localhost:18080", default=True),
     }
-    mcp: Optional[McpConfig] = McpConfig(transports=["streamable-http"])
+    mcp: Optional[McpConfig] = McpConfig()
     model_config = SettingsConfigDict(
-        env_prefix="SHS_",
-        env_nested_delimiter="_",
+        env_prefix=ENV_VAR_PREFIX,
+        env_nested_delimiter="__",
         env_file=".env",
         env_file_encoding="utf-8",
     )
@@ -181,3 +226,22 @@ class Config(BaseSettings):
             init_settings,
             file_secret_settings,
         )
+
+
+class LegacyConfig(Config):
+    """Config parsed with the deprecated single-underscore nesting delimiter."""
+
+    model_config = SettingsConfigDict(
+        env_prefix=ENV_VAR_PREFIX,
+        env_nested_delimiter="_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+    )
+
+
+def load_config() -> Config:
+    """Build the configuration, falling back to the legacy delimiter when in use."""
+    if legacy_env_mode():
+        _warn_legacy_env(_legacy_config_vars())
+        return LegacyConfig()
+    return Config()

@@ -45,7 +45,7 @@ curl http://localhost:18080/api/v1/applications
                 "spark-mcp",
             ],
             "env": {
-                "SHS_MCP_TRANSPORT": "stdio"
+                "SHS_MCP__TRANSPORT": "stdio"
             }
         }
     }
@@ -140,8 +140,7 @@ servers:
     default: true
     url: "http://localhost:18080"
 mcp:
-  transports:
-    - stdio
+  transport: "stdio"
 ```
 
 2. **Add MCP server**

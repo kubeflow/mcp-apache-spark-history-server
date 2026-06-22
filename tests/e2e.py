@@ -1,3 +1,8 @@
+import os
+import socket
+import subprocess
+import sys
+import time
 from contextlib import AsyncExitStack, asynccontextmanager
 from types import TracebackType
 
@@ -901,3 +906,90 @@ async def test_list_stage_task_failures_not_found():
             {"app_id": app1_id, "stage_id": 999999},
         )
         assert result.isError
+
+
+# Spark History Server backing the e2e corpus (started by `task cli:start-shs`).
+shs_url = "http://localhost:18080"
+
+
+def _wait_for_port(host, port, timeout=30.0):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(1.0)
+            if sock.connect_ex((host, port)) == 0:
+                return True
+        time.sleep(0.5)
+    return False
+
+
+@asynccontextmanager
+async def _mcp_client_at(endpoint):
+    async with AsyncExitStack() as stack:
+        read, write, _ = await stack.enter_async_context(
+            streamable_http_client(endpoint)
+        )
+        session = await stack.enter_async_context(ClientSession(read, write))
+        await session.initialize()
+        yield session
+
+
+@pytest.mark.asyncio
+async def test_legacy_single_underscore_env_vars_still_work(tmp_path):
+    """A server configured entirely with deprecated single-underscore SHS_* env
+    vars still starts, serves, and warns about the deprecation.
+
+    SHS_MCP_PORT proves the value was applied (the server listens on that port)
+    and SHS_SERVERS_LOCAL_URL proves the configured Spark History Server is
+    reached (the e2e corpus comes back).
+    """
+    # Drop every SHS_* var the harness set, then configure exclusively through
+    # the legacy single-underscore form. This dict is the child's env only; the
+    # pytest process environment is never modified.
+
+    # A distinct port so the legacy-config server never clashes with the harness.
+    legacy_mcp_port = 18899
+    legacy_mcp_endpoint = f"http://localhost:{legacy_mcp_port}/mcp/"
+
+    env = {k: v for k, v in os.environ.items() if not k.startswith("SHS_")}
+    env["SHS_MCP_TRANSPORT"] = "streamable-http"
+    env["SHS_MCP_PORT"] = str(legacy_mcp_port)
+    env["SHS_MCP_ADDRESS"] = "localhost"
+    env["SHS_SERVERS_LOCAL_URL"] = shs_url
+    env["SHS_SERVERS_LOCAL_DEFAULT"] = "true"
+
+    log_path = tmp_path / "legacy-mcp.log"
+    with open(log_path, "w") as log_file:
+        proc = subprocess.Popen(  # noqa: S603  # fully controlled command
+            [sys.executable, "-m", "spark_history_mcp.core.main"],
+            env=env,
+            cwd=tmp_path,  # avoid discovering any ./config.yaml in the repo
+            stdout=log_file,
+            stderr=subprocess.STDOUT,
+        )
+        try:
+            assert _wait_for_port("localhost", legacy_mcp_port), (
+                "server did not start on the port from SHS_MCP_PORT; log:\n"
+                + log_path.read_text()
+            )
+            # Listening on legacy_mcp_port proves SHS_MCP_PORT was honored.
+            async with _mcp_client_at(legacy_mcp_endpoint) as client:
+                result = await client.call_tool("list_applications", {})
+                assert not result.isError
+                apps = [Application.model_validate_json(c.text) for c in result.content]
+                by_id = {a.id: a.name for a in apps}
+                # SHS_SERVERS_LOCAL_URL routed to the e2e corpus.
+                assert by_id.get(app1_id) == "shs-e2e-app1"
+        finally:
+            proc.terminate()
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait(timeout=10)
+
+    log = log_path.read_text()
+    # The deprecation warning fired and named the legacy variables in use.
+    assert "deprecated" in log.lower()
+    assert "SHS_MCP_PORT" in log
+    assert "SHS_SERVERS_LOCAL_URL" in log

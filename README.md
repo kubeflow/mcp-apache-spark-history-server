@@ -97,12 +97,12 @@ The package is published to [PyPI](https://pypi.org/project/mcp-apache-spark-his
 
 Register the server with a single command. Both examples run it over **stdio** via `uvx`.
 With no config file present, the server defaults to a Spark History Server at `http://localhost:18080`;
-point it elsewhere with a [config file](#config-file-location) or `SHS_SERVERS_LOCAL_URL`.
+point it elsewhere with a [config file](#config-file-location) or `SHS_SERVERS__LOCAL__URL`.
 
 **Claude Code** (`claude mcp add`):
 
 ```bash
-claude mcp add --env SHS_MCP_TRANSPORT=stdio --env SHS_SERVERS_LOCAL_URL=http://localhost:18080\
+claude mcp add --env SHS_MCP__TRANSPORT=stdio --env SHS_SERVERS__LOCAL__URL=http://localhost:18080\
   --transport stdio spark-history \
   -- uvx --from mcp-apache-spark-history-server spark-mcp
 ```
@@ -112,7 +112,7 @@ claude mcp add --env SHS_MCP_TRANSPORT=stdio --env SHS_SERVERS_LOCAL_URL=http://
 ```bash
 kiro-cli mcp add --name spark-history --command uvx \
   --args --from --args mcp-apache-spark-history-server --args spark-mcp \
-  --env SHS_MCP_TRANSPORT=stdio --env SHS_SERVERS_LOCAL_URL=http://localhost:18080
+  --env SHS_MCP__TRANSPORT=stdio --env SHS_SERVERS__LOCAL__URL=http://localhost:18080
 ```
 
 Verify in either client with `claude mcp list` / `kiro-cli mcp list`, then ask the agent to *"list the available Spark applications."*
@@ -132,14 +132,14 @@ For example, to point at a remote Spark History Server with an explicit config f
 
 ```bash
 # Claude Code
-claude mcp add --env SHS_MCP_TRANSPORT=stdio --transport stdio spark-history \
+claude mcp add --env SHS_MCP__TRANSPORT=stdio --transport stdio spark-history \
   -- uvx --from mcp-apache-spark-history-server spark-mcp --config ~/.config/spark-mcp/config.yaml
 
 # Kiro CLI
 kiro-cli mcp add --name spark-history --command uvx \
   --args --from --args mcp-apache-spark-history-server --args spark-mcp \
   --args --config --args ~/.config/spark-mcp/config.yaml \
-  --env SHS_MCP_TRANSPORT=stdio
+  --env SHS_MCP__TRANSPORT=stdio
 ```
 
 ### Configure
@@ -156,8 +156,7 @@ servers:
       password: "pass"
     include_plan_description: false   # include SQL plans by default (default: false)
 mcp:
-  transports:
-    - streamable-http   # or: stdio
+  transport: "streamable-http"   # or: stdio
   port: "18888"
   debug: false
 ```
@@ -175,21 +174,24 @@ If none exist, the server starts with built-in defaults that can be overridden b
 
 > **Tip for MCP clients:** when the server is launched by an MCP client (Claude Desktop, Kiro, etc.), the working directory is not guaranteed, so a `./config.yaml` may not be found. Prefer `--config` / `SHS_MCP_CONFIG`, or place the file at `~/.config/spark-mcp/config.yaml`.
 
-Configurations can be overriden with environment variables.
+Configurations can be overriden with environment variables. Nesting levels are
+separated by a **double underscore** (`__`), so field names and server names may
+themselves contain single underscores (e.g. `SHS_SERVERS__MY_SERVER__URL` maps
+to `servers.my_server.url`).
 
 ```
-SHS_MCP_PORT          Port for MCP server (default: 18888)
-SHS_MCP_TRANSPORT     Transport mode: streamable-http or stdio
-SHS_MCP_DEBUG         Enable debug mode (default: false)
-SHS_MCP_ADDRESS       Bind address (default: localhost)
-SHS_SERVERS_*_URL     URL for a specific server
-SHS_SERVERS_*_AUTH_USERNAME
-SHS_SERVERS_*_AUTH_PASSWORD
-SHS_SERVERS_*_AUTH_TOKEN
-SHS_SERVERS_*_VERIFY_SSL
-SHS_SERVERS_*_TIMEOUT
-SHS_SERVERS_*_EMR_CLUSTER_ARN
-SHS_SERVERS_*_INCLUDE_PLAN_DESCRIPTION
+SHS_MCP__PORT          Port for MCP server (default: 18888)
+SHS_MCP__TRANSPORT     Transport mode: streamable-http or stdio
+SHS_MCP__DEBUG         Enable debug mode (default: false)
+SHS_MCP__ADDRESS       Bind address (default: localhost)
+SHS_SERVERS__*__URL     URL for a specific server
+SHS_SERVERS__*__AUTH__USERNAME
+SHS_SERVERS__*__AUTH__PASSWORD
+SHS_SERVERS__*__AUTH__TOKEN
+SHS_SERVERS__*__VERIFY_SSL
+SHS_SERVERS__*__TIMEOUT
+SHS_SERVERS__*__EMR_CLUSTER_ARN
+SHS_SERVERS__*__INCLUDE_PLAN_DESCRIPTION
 ```
 
 ### Multi-Server Setup

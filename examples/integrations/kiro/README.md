@@ -51,7 +51,7 @@ Create or edit the Kiro MCP configuration file at `.kiro/settings/mcp.json` in y
       "command": "uvx",
       "args": ["--from", "mcp-apache-spark-history-server", "spark-mcp"],
       "env": {
-        "SHS_MCP_TRANSPORT": "stdio"
+        "SHS_MCP__TRANSPORT": "stdio"
       },
       "disabled": false,
       "autoApprove": []

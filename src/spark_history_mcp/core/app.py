@@ -11,7 +11,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 
 from spark_history_mcp.api.emr_persistent_ui_client import EMRPersistentUIClient
 from spark_history_mcp.api.spark_client import SparkRestClient
-from spark_history_mcp.config.config import Config
+from spark_history_mcp.config.config import Config, load_config
 
 from ..utils.utils import ApplicationDiscovery
 
@@ -31,8 +31,7 @@ class AppContext:
 
 @asynccontextmanager
 async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
-    # Config() automatically loads from SHS_MCP_CONFIG env var (set in main.py)
-    config = Config()
+    config = load_config()
 
     clients: dict[str, SparkRestClient] = {}
     default_client = None
@@ -104,7 +103,16 @@ def run(config: Config):
             allowed_origins=ts_config.allowed_origins,
         )
 
-    mcp.run(transport=os.getenv("SHS_MCP_TRANSPORT", config.mcp.transports[0]))
+    mcp_cfg = config.mcp
+    transport = os.getenv("SHS_MCP_TRANSPORT") or mcp_cfg.transport
+    if (
+        not transport
+        and "transports" in mcp_cfg.model_fields_set
+        and mcp_cfg.transports
+    ):
+        transport = mcp_cfg.transports[0]
+    transport = transport or "streamable-http"
+    mcp.run(transport=transport)
 
 
 mcp = FastMCP("Spark Events", lifespan=app_lifespan)

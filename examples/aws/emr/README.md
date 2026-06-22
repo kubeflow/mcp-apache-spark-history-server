@@ -44,7 +44,7 @@ If you need to access an EMR Spark History Server running in private subnets:
 ssh -AL 8157:localhost:8157 ec2-user@YOUR_BASTION_DNS -t ssh -ND 8157 hadoop@YOUR_PRIMARY_NODE_PRIVATE_DNS
 
 # Use the tool with proxy enabled
-SHS_SERVERS_LOCAL_URL=http://YOUR_PRIMARY_NODE_PRIVATE_DNS:18080 USE_PROXY=1 task start-mcp
+SHS_SERVERS__LOCAL__URL=http://YOUR_PRIMARY_NODE_PRIVATE_DNS:18080 USE_PROXY=1 task start-mcp
 ```
 
 **Note**: When configuring an EMR cluster ARN, the MCP server will automatically check for an existing Persistent UI. If one does not exist, it will create a new Persistent UI for the specified cluster. If a Persistent UI already exists, the server will use the existing one. This creation happens automatically during server initialization to enable Spark History Server access.
