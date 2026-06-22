@@ -36,38 +36,6 @@ This project provides **two interfaces** to your Spark History Server data:
 
 ---
 
-## 🏗️ Architecture
-
-```mermaid
-graph TB
-    subgraph Clients
-        A[🤖 AI Agent / LLM]
-        B[👩‍💻 Engineer / Script / CI]
-        C[🔧 Coding Agent - Claude Code / Kiro]
-    end
-
-    subgraph "Kubeflow Spark AI Toolkit"
-        D[⚡ MCP Server]
-        E[🛠️ CLI - shs]
-    end
-
-    subgraph "Spark History Servers"
-        F[🔥 Production]
-        G[🔥 Staging / Dev]
-    end
-
-    A -->|MCP Protocol| D
-    B -->|Terminal commands| E
-    C -->|shs skill file| E
-
-    D -->|REST API| F
-    D -->|REST API| G
-    E -->|REST API| F
-    E -->|REST API| G
-```
-
----
-
 ## 🛠️ SHS CLI (`shs`) — For Engineers & Scripts
 
 A standalone Go binary. Query your Spark History Server directly from the terminal, shell scripts, or CI/CD pipelines. Also works as a **skill** for coding agents like Claude Code and Kiro.
@@ -134,7 +102,8 @@ point it elsewhere with a [config file](#config-file-location) or `SHS_SERVERS_L
 **Claude Code** (`claude mcp add`):
 
 ```bash
-claude mcp add --env SHS_MCP_TRANSPORT=stdio --transport stdio spark-history \
+claude mcp add --env SHS_MCP_TRANSPORT=stdio --env SHS_SERVERS_LOCAL_URL=http://localhost:18080\
+  --transport stdio spark-history \
   -- uvx --from mcp-apache-spark-history-server spark-mcp
 ```
 
@@ -143,10 +112,12 @@ claude mcp add --env SHS_MCP_TRANSPORT=stdio --transport stdio spark-history \
 ```bash
 kiro-cli mcp add --name spark-history --command uvx \
   --args --from --args mcp-apache-spark-history-server --args spark-mcp \
-  --env SHS_MCP_TRANSPORT=stdio
+  --env SHS_MCP_TRANSPORT=stdio --env SHS_SERVERS_LOCAL_URL=http://localhost:18080
 ```
 
 Verify in either client with `claude mcp list` / `kiro-cli mcp list`, then ask the agent to *"list the available Spark applications."*
+
+The server also ships **prompts** — guided, multi-step workflows you run as a command. In Claude Code: `/mcp__spark-history__investigate_failure <app_id>`. In Kiro CLI: `/prompts investigate_failure` (or `@investigate_failure`). See [Prompts](#prompts-2) for the full list and arguments.
 
 #### Passing server flags and environment
 
@@ -241,6 +212,36 @@ Agents can target a specific server per query:
 
 > *"Get application `<app_id>` from the production server"*
 
+## 🏗️ Architecture
+
+```mermaid
+graph TB
+    subgraph Clients
+        A[🤖 AI Agent / LLM]
+        B[👩‍💻 Engineer / Script / CI]
+        C[🔧 Coding Agent - Claude Code / Kiro]
+    end
+
+    subgraph "Kubeflow Spark AI Toolkit"
+        D[⚡ MCP Server]
+        E[🛠️ CLI - shs]
+    end
+
+    subgraph "Spark History Servers"
+        F[🔥 Production]
+        G[🔥 Staging / Dev]
+    end
+
+    A -->|MCP Protocol| D
+    B -->|Terminal commands| E
+    C -->|shs skill file| E
+
+    D -->|REST API| F
+    D -->|REST API| G
+    E -->|REST API| F
+    E -->|REST API| G
+```
+
 ### Connect an AI Agent
 
 | Agent | Transport | Guide |
@@ -321,6 +322,49 @@ Agents can target a specific server per query:
 - *"What caused job 42 to fail?"* → `list_jobs` + `get_stage`
 - *"Compare today's batch with yesterday's run"* → `compare_job_performance` + `compare_job_environments`
 - *"Find my slowest SQL queries and explain why"* → `list_sql_executions` + `get_sql_execution` + `compare_sql_executions`
+
+### Prompts (2)
+
+Beyond tools, the server exposes **MCP prompts** — reusable, multi-step investigation workflows that your agent runs as a single command. Each prompt expands into a guided sequence of tool calls (which the agent still executes one at a time), so you get a consistent, evidence-driven analysis without having to remember the right tool order.
+
+| Prompt | Arguments | Description |
+|--------|-----------|-------------|
+| `investigate_failure` | `app_id` (required), `server` (optional) | Guided root-cause investigation for a failed Spark application — walks from the failed app down to the individual task exceptions. |
+| `compare_applications` | `app_a` (required), `app_b` (required), `server` (optional), `context` (optional) | Layered, descriptive comparison of two applications (configuration → app metrics → SQL/jobs → stages). |
+
+> `server` is optional: when omitted, the prompt searches every configured server for the application(s). Pass `server="<name>"` only to target a specific server or disambiguate an id that exists on more than one.
+
+#### Using prompts in Claude Code
+
+MCP prompts surface as slash commands with the format `/mcp__<server>__<prompt>` (note the **double underscores**), where `<server>` is the name you registered the server under (`spark-history` in the [examples above](#coding-agent-integration)). Type `/` to discover them, then pass arguments space-separated after the command:
+
+```text
+# Investigate a failed application
+/mcp__spark-history__investigate_failure spark-cc4d615a5e6b4500b8eb1e9deb48cb4e
+
+# Target a specific configured server
+/mcp__spark-history__investigate_failure spark-cc4d615a5e6b4500b8eb1e9deb48cb4e production
+
+# Compare two applications
+/mcp__spark-history__compare_applications spark-app-A spark-app-B
+```
+
+#### Using prompts in Kiro CLI
+
+List and run prompts with the `/prompts` command, or type `@` then Tab to autocomplete. Run a prompt by name and supply its arguments:
+
+```text
+# Open the prompt picker (shows prompts from all MCP servers)
+/prompts
+
+# Run a prompt directly
+/prompts investigate_failure
+
+# Or use the @ shortcut
+@investigate_failure
+```
+
+Kiro CLI prompts you for arguments interactively when the prompt declares them, so you can run `/prompts investigate_failure` and provide `app_id` (and optionally `server`) when asked.
 
 ---
 
