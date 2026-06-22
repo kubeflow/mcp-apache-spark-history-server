@@ -29,7 +29,7 @@ Update the `timeout` value in your MCP client configuration (e.g., `mcp.json`):
     "--frozen"
   ],
   "env": {
-    "SHS_MCP_TRANSPORT": "stdio"
+    "SHS_MCP__TRANSPORT": "stdio"
   },
   "disabled": false,
   "autoApprove": [],
@@ -58,8 +58,8 @@ Set the server timeout environment variable:
     "--frozen"
   ],
   "env": {
-    "SHS_MCP_TRANSPORT": "stdio",
-    "SHS_SERVERS_LOCAL_TIMEOUT": "500" <-- Set this value in seconds
+    "SHS_MCP__TRANSPORT": "stdio",
+    "SHS_SERVERS__LOCAL__TIMEOUT": "500" <-- Set this value in seconds
   },
   "disabled": false,
   "autoApprove": [],
@@ -67,7 +67,7 @@ Set the server timeout environment variable:
 }
 ```
 
-**Note:** SHS_SERVERS_<Replace with server name in config.yaml>_TIMEOUT
+**Note:** SHS_SERVERS__<Replace with server name in config.yaml>__TIMEOUT
 
 ### 3: JVM Heap Exhaustion
 

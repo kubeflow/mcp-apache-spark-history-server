@@ -8,8 +8,7 @@ servers:
     url: "http://localhost:18080"
 
 mcp:
-  transports:
-    - streamable-http
+  transport: "streamable-http"
   port: "18888"
   debug: true
   address: localhost

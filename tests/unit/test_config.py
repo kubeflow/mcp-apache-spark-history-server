@@ -31,7 +31,7 @@ class TestConfig(unittest.TestCase):
             "mcp": {
                 "address": "test_host",
                 "port": 9999,
-                "transports": ["streamable-http", "sse"],
+                "transport": "streamable-http",
                 "debug": False,
             },
         }
@@ -51,9 +51,7 @@ class TestConfig(unittest.TestCase):
             # Verify the loaded configuration
             self.assertEqual(config.mcp.address, "test_host")
             self.assertEqual(config.mcp.port, 9999)
-            self.assertEqual(len(config.mcp.transports), 2)
-            self.assertIn("streamable-http", config.mcp.transports)
-            self.assertIn("sse", config.mcp.transports)
+            self.assertEqual(config.mcp.transport, "streamable-http")
             self.assertFalse(config.mcp.debug)
 
             # Verify server config
@@ -77,21 +75,22 @@ class TestConfig(unittest.TestCase):
     @patch.dict(
         os.environ,
         {
-            "SHS_MCP_ADDRESS": "env_host",
-            "SHS_MCP_PORT": "8888",
-            "SHS_MCP_DEBUG": "true",
-            "SHS_SERVERS_ENVSERVER_URL": "http://env-server:18080",
-            "SHS_SERVERS_ENVSERVER_AUTH_USERNAME": "env_user",
-            "SHS_SERVERS_ENVSERVER_AUTH_PASSWORD": "env_pass",
-            "SHS_SERVERS_ENVSERVER_DEFAULT": "true",
+            "SHS_MCP__ADDRESS": "env_host",
+            "SHS_MCP__PORT": "8888",
+            "SHS_MCP__DEBUG": "true",
+            "SHS_SERVERS__ENVSERVER__URL": "http://env-server:18080",
+            "SHS_SERVERS__ENVSERVER__AUTH__USERNAME": "env_user",
+            "SHS_SERVERS__ENVSERVER__AUTH__PASSWORD": "env_pass",
+            "SHS_SERVERS__ENVSERVER__DEFAULT": "true",
         },
     )
     def test_config_from_env_vars(self):
         """Test loading configuration from environment variables.
 
-        Note: server names must not contain underscores because the settings
-        env_nested_delimiter is '_'. ``SHS_SERVERS_ENVSERVER_URL`` maps to
-        ``servers.envserver.url``.
+        Nesting levels are separated by a double underscore (``__``), so
+        ``SHS_SERVERS__ENVSERVER__URL`` maps to ``servers.envserver.url``.
+        Because ``__`` (not a single ``_``) delimits levels, both field names
+        and server names may themselves contain single underscores.
         """
         # Create minimal config with empty servers dict to be populated from env
         minimal_config = {"servers": {}}
@@ -122,10 +121,51 @@ class TestConfig(unittest.TestCase):
     @patch.dict(
         os.environ,
         {
-            "SHS_MCP_ADDRESS": "override_host",
-            "SHS_MCP_PORT": "7777",
-            "SHS_SERVERS_TESTSERVER_URL": "http://override-server:18080",
-            "SHS_SERVERS_TESTSERVER_AUTH_USERNAME": "override_user",
+            "SHS_SERVERS__MY_PROD_SERVER__URL": "http://prod-server:18080",
+            "SHS_SERVERS__MY_PROD_SERVER__AUTH__USERNAME": "prod_user",
+            "SHS_SERVERS__MY_PROD_SERVER__VERIFY_SSL": "false",
+            "SHS_SERVERS__MY_PROD_SERVER__EMR_CLUSTER_ARN": "arn:aws:emr:us-east-1:123:cluster/j-ABC",
+            "SHS_SERVERS__MY_PROD_SERVER__DEFAULT": "true",
+        },
+    )
+    def test_env_vars_server_name_with_underscores(self):
+        """Server names and underscore-containing fields resolve via the ``__`` delimiter.
+
+        This is the primary benefit of using ``__`` instead of ``_``:
+        ``SHS_SERVERS__MY_PROD_SERVER__URL`` unambiguously maps to
+        ``servers.my_prod_server.url`` even though both the server name
+        (``my_prod_server``) and the fields (``verify_ssl``,
+        ``emr_cluster_arn``) contain single underscores.
+        """
+        minimal_config = {"servers": {}}
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            yaml.dump(minimal_config, temp_file)
+            temp_file_path = temp_file.name
+
+        try:
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
+                config = Config()
+
+            self.assertIn("my_prod_server", config.servers)
+            server = config.servers["my_prod_server"]
+            self.assertEqual(server.url, "http://prod-server:18080")
+            self.assertEqual(server.auth.username, "prod_user")
+            self.assertFalse(server.verify_ssl)
+            self.assertEqual(
+                server.emr_cluster_arn, "arn:aws:emr:us-east-1:123:cluster/j-ABC"
+            )
+            self.assertTrue(server.default)
+        finally:
+            os.unlink(temp_file_path)
+
+    @patch.dict(
+        os.environ,
+        {
+            "SHS_MCP__ADDRESS": "override_host",
+            "SHS_MCP__PORT": "7777",
+            "SHS_SERVERS__TESTSERVER__URL": "http://override-server:18080",
+            "SHS_SERVERS__TESTSERVER__AUTH__USERNAME": "override_user",
         },
     )
     def test_env_vars_override_file_config(self):
@@ -168,7 +208,6 @@ class TestConfig(unittest.TestCase):
             self.assertEqual(config.mcp.address, "localhost")
             self.assertEqual(config.mcp.port, "18888")
             self.assertFalse(config.mcp.debug)
-            self.assertEqual(config.mcp.transports, ["streamable-http"])
 
             # Check server defaults
             server = config.servers["minimal"]

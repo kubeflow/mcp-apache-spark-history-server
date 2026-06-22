@@ -6,7 +6,7 @@ import logging
 import os
 import sys
 
-from spark_history_mcp.config.config import Config, resolve_config_path
+from spark_history_mcp.config.config import load_config, resolve_config_path
 from spark_history_mcp.core import app
 
 # Configure logging
@@ -47,8 +47,7 @@ def main():
                 "No config file found; using built-in defaults and SHS_* env vars"
             )
 
-        # Now Config() will automatically load using the resolution cascade
-        config = Config()
+        config = load_config()
         if config.mcp.debug:
             logger.setLevel(logging.DEBUG)
         logger.debug(json.dumps(json.loads(config.model_dump_json()), indent=4))

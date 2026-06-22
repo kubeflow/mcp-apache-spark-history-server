@@ -10,7 +10,7 @@
                 "spark_history_mcp.core.main"
             ],
             "env": {
-                "SHS_MCP_TRANSPORT": "stdio"
+                "SHS_MCP__TRANSPORT": "stdio"
             }
         }
     }
