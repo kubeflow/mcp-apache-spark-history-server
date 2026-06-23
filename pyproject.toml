@@ -96,11 +96,15 @@ dev = [
     "pytest>=8.4,<10.0",
     "pytest-cov~=4.0",
     "black>=23,<27",
-    "ruff~=0.1",
+    "ruff>=0.15.17,<0.16",
     "mypy~=1.7",
-    "pre-commit~=3.0",
-    "pytest-asyncio~=1.0",
+    "pre-commit~=4.6",
+    "pytest-asyncio~=1.4",
 ]
+
+[tool.uv]
+# Ignore package versions published in the last 10 days (supply-chain safety).
+exclude-newer = "10 days"
 
 [[tool.uv.index]]
 name = "pypi-test"
