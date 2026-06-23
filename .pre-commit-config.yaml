@@ -19,19 +19,18 @@ repos:
       - id: mixed-line-ending
         args: ['--fix=lf']
 
-  # Python linting and formatting with Ruff
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: 3d44372123ca5e8617fdb65d9f11facd159b9e95  # v0.12.3
+  # Python linting and formatting with Ruff run through `task lint`
+  # (ruff pinned via uv.lock) so there is a single source of truth and no
+  # second, drifting ruff version.
+  - repo: local
     hooks:
-      # Run the linter
-      - id: ruff-check
-        types_or: [python, pyi]
-        args: [--fix]
-        exclude: ^(src/spark_history_mcp/api_client/|skills/cli/)  # skills/cli is a Go project; Python files there are test helpers only
-      # Run the formatter
-      - id: ruff-format
-        types_or: [python, pyi]
-        exclude: ^(src/spark_history_mcp/api_client/|skills/cli/)  # skills/cli is a Go project; Python files there are test helpers only
+      - id: task-lint
+        name: task lint
+        entry: task lint
+        language: system
+        pass_filenames: false      # task lint runs on the whole repo
+        types_or: [python, pyi]    # only trigger when Python files are staged
+        require_serial: true
 
   # Type checking with mypy (temporarily disabled - TODO: fix type annotations)
   # - repo: https://github.com/pre-commit/mirrors-mypy

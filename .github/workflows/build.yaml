@@ -23,7 +23,14 @@ jobs:
       id: setup-uv
       uses: astral-sh/setup-uv@bd01e18f51369d5a26f1651c3cb451d3417e3bba
       with:
+        version: "0.11.23"
         enable-cache: true
+
+    - name: Install Task
+      uses: arduino/setup-task@b91d5d2c96a56797b48ac1e0e89220bf64044611 # v2.0.0
+      with:
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+        version: 3.x
 
     - name: Run pre-commit
       run: uv run pre-commit run --all-files --show-diff-on-failure

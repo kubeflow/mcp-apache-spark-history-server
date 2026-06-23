@@ -13,24 +13,41 @@ includes:
 vars:
   PROJECT_NAME: mcp-apache-spark-history-server
   PYTHON_VERSION: 3.12
+  UV_VERSION: '{{.UV_VERSION | default "0.11.23"}}'
   OS: '{{OS}}'
   ARCH: '{{ARCH}}'
   BIN_DIR: .bin
+  # Explicit path to the repo-local, pinned uv binary installed by check-uv.
+  UV: '{{.ROOT_DIR}}/{{.BIN_DIR}}/uv'
 
 run: once
 silent: true
 
 tasks:
   check-uv:
-    desc: Check if uv is installed and install if needed
+    desc: Install the pinned uv into the repo-local bin dir if missing
     internal: true
+    vars:
+      UV_ARCH: '{{if eq ARCH "amd64"}}x86_64{{else if eq ARCH "arm64"}}aarch64{{else}}{{ARCH}}{{end}}'
+      UV_OS: '{{if eq OS "darwin"}}apple-darwin{{else}}unknown-linux-gnu{{end}}'
+      UV_TARGET: 'uv-{{.UV_ARCH}}-{{.UV_OS}}'
+    status:
+      - test -x "{{.UV}}"
     cmds:
       - |
-        if ! command -v uv &> /dev/null; then
-          echo "📦 Installing uv..."
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          export PATH="$HOME/.local/bin:$PATH"
-          echo "✅ uv installed! Please restart your terminal or run: exPORT PATH=\"\$HOME/.local/bin:\$PATH\""
+        if [ ! -x "{{.UV}}" ]; then
+          echo "📦 Installing uv {{.UV_VERSION}}..."
+          mkdir -p "{{.BIN_DIR}}"
+          base="https://github.com/astral-sh/uv/releases/download/{{.UV_VERSION}}"
+          tmp="$(mktemp -d)"
+          curl -fsSL "$base/{{.UV_TARGET}}.tar.gz"        -o "$tmp/uv.tar.gz"
+          curl -fsSL "$base/{{.UV_TARGET}}.tar.gz.sha256" -o "$tmp/uv.tar.gz.sha256"
+          # The .sha256 file references the original asset name; verify by our local name.
+          ( cd "$tmp" && echo "$(cut -d' ' -f1 uv.tar.gz.sha256)  uv.tar.gz" | shasum -a 256 -c - )
+          tar -xzf "$tmp/uv.tar.gz" -C "{{.BIN_DIR}}" --strip-components=1 \
+            "{{.UV_TARGET}}/uv" "{{.UV_TARGET}}/uvx"
+          rm -rf "$tmp"
+          echo "✅ uv installed to {{.BIN_DIR}}/"
         else
           echo "✅ uv is already installed"
         fi
@@ -39,37 +56,30 @@ tasks:
     desc: Install project dependencies
     deps: [check-uv]
     cmds:
-      - uv sync --group dev --frozen
+      - "{{.UV}} sync --group dev --frozen"
       - echo "✅ Dependencies installed!"
 
   lint:
     desc: Run code linting with ruff
+    deps: [check-uv]
     cmds:
-      - uv run ruff check .
+      - "{{.UV}} run ruff check --fix ."
       - echo "✅ Linting completed!"
-
-  format:
-    desc: Format code with ruff
-    cmds:
-      - uv run ruff format .
+      - "{{.UV}} run ruff format ."
       - echo "✅ Code formatted!"
-
-  lint-fix:
-    desc: Run linting with auto-fix
-    cmds:
-      - uv run ruff check --fix .
-      - echo "✅ Linting issues fixed!"
 
   type-check:
     desc: Run type checking with mypy
+    deps: [check-uv]
     cmds:
-      - uv run mypy *.py --ignore-missing-imports
+      - "{{.UV}} run mypy *.py --ignore-missing-imports"
       - echo "✅ Type checking completed!"
 
   test:
     desc: Run tests with pytest
+    deps: [check-uv]
     cmds:
-      - uv run pytest --cov=. -cov-report=xml --cov-report=term-missing .
+      - "{{.UV}} run pytest --cov=. -cov-report=xml --cov-report=term-missing ."
       - echo "✅ Tests completed!"
 
   test-helm:
@@ -81,6 +91,7 @@ tasks:
 
   test-e2e:
     desc: Run end-to-end tests against the Spark History Server e2e corpus
+    deps: [check-uv]
     cmds:
       - echo "🧪 Starting end-to-end tests..."
       - defer:
@@ -95,31 +106,28 @@ tasks:
           CONFIG: tests/config-e2e.yaml
       - |
         echo "Running e2e tests..."
-        uv run pytest tests/e2e.py -v
-
-  test-verbose:
-    desc: Run tests with verbose output
-    cmds:
-      - uv run pytest -v --cov=. --cov-report=term-missing
+        {{.UV}} run pytest tests/e2e.py -v
 
   security:
     desc: Run security scan with bandit
+    deps: [check-uv]
     cmds:
-      - uv run bandit -r . --exclude src/spark_history_mcp/api_client -f json -o bandit-report.json
+      - "{{.UV}} run bandit -r . --exclude src/spark_history_mcp/api_client -f json -o bandit-report.json"
       - echo "✅ Security scan completed! Check bandit-report.json"
 
   pre-commit:
     desc: Run all pre-commit checks
     deps: [pre-commit-install]
     cmds:
-      - uv run pre-commit run --all-files
+      - "{{.UV}} run pre-commit run --all-files"
       - echo "✅ Pre-commit checks completed!"
 
   pre-commit-install:
     desc: Install pre-commit hooks
     internal: true
+    deps: [check-uv]
     cmds:
-      - uv run pre-commit install
+      - "{{.UV}} run pre-commit install"
       - echo "✅ Pre-commit hooks installed!"
 
   clean:
@@ -169,16 +177,18 @@ tasks:
   start-mcp:
     desc: Start MCP server
     interactive: true
+    deps: [check-uv]
     cmds:
-      - uv run -m spark_history_mcp.core.main --frozen
+      - "{{.UV}} run -m spark_history_mcp.core.main --frozen"
       - task: wait-for-mcp
 
   start-mcp-bg:
     desc: Start MCP server in background
+    deps: [check-uv]
     cmds:
       - |
         echo "Starting MCP server in background..."
-        {{if .CONFIG}}export SHS_MCP_CONFIG="{{.CONFIG}}"; {{end}}bash -c 'nohup uv run -m spark_history_mcp.core.main > mcp-server.log 2>&1 &'
+        {{if .CONFIG}}export SHS_MCP_CONFIG="{{.CONFIG}}"; {{end}}bash -c 'nohup {{.UV}} run -m spark_history_mcp.core.main > mcp-server.log 2>&1 &'
 
       - task: wait-for-mcp
     status:
@@ -233,18 +243,6 @@ tasks:
         docker stop $(docker ps -q --filter "label=mcp-spark-test=true") 2>/dev/null || true
         sleep 1
         echo "✅ All services stopped!"
-
-  validate:
-    desc: Run all validation checks (lint, type-check, test)
-    deps: [lint, test]
-    cmds:
-      - echo "✅ All validations passed!"
-
-  ci:
-    desc: Run full CI pipeline locally
-    deps: [lint, test, security]
-    cmds:
-      - echo "✅ CI pipeline completed successfully!"
 
   dev-setup:
     desc: Complete development environment setup
@@ -320,23 +318,3 @@ tasks:
         done
         echo "❌ Timed out waiting for MCP Server after 60 seconds"
         exit 1
-
-# Not implemented yet
-#  docs-serve:
-#    desc: Serve documentation locally (if using mkdocs)
-#    cmds:
-#      - echo "📚 Documentation server would start here"
-#      - echo "💡 Consider adding mkdocs for documentation"
-#
-#  benchmark:
-#    desc: Run performance benchmarks
-#    cmds:
-#      - echo "🏃 Running performance benchmarks..."
-#      - echo "💡 Add specific benchmark commands here"
-#
-#  release-check:
-#    desc: Pre-release validation
-#    deps: [clean, install, ci]
-#    cmds:
-#      - echo "🚀 Release validation completed!"
-#      - echo "✅ Ready for release!"
