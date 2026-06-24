@@ -1,0 +1,9 @@
+servers:
+  local:
+    default: true
+    url: "http://localhost:18080"
+mcp:
+  transports:
+    - streamable-http
+  port: "18888"
+  debug: true
