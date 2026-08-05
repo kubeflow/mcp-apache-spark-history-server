@@ -1,5 +1,7 @@
 # Kubeflow Spark AI Toolkit
 
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fkubeflow%2Fmcp-apache-spark-history-server.svg)](https://mcptoplist.com/server/glama%2Fkubeflow%2Fmcp-apache-spark-history-server)
+
 [![CI](https://github.com/kubeflow/mcp-apache-spark-history-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/kubeflow/mcp-apache-spark-history-server/actions)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![MCP](https://img.shields.io/badge/MCP-Compatible-green.svg)](https://modelcontextprotocol.io/)
