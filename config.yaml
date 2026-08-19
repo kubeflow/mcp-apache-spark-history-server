@@ -25,7 +25,7 @@ servers:
   #   verify_ssl: true
   #   auth:
       # username: ${SHS_SERVERS__STAGING__AUTH__USERNAME}
-      # token: ${SHS_SERVERS__STAGING__AUTH__PASSWORD}
+      # token: ${SHS_SERVERS__STAGING__AUTH__TOKEN}
 
   # AWS Glue Spark History Server example
   # glue_ec2:
@@ -79,4 +79,5 @@ mcp:
 # SHS_SERVERS__*__AUTH__PASSWORD - Password for a specific server
 # SHS_SERVERS__*__AUTH__TOKEN - Token for a specific server
 # SHS_SERVERS__*__VERIFY_SSL - Whether to verify SSL for a specific server (true/false)
+# SHS_SERVERS__*__TIMEOUT - HTTP request timeout in seconds for a specific server (default: 30)
 # SHS_SERVERS__*__EMR_CLUSTER_ARN - EMR cluster ARN for a specific server
