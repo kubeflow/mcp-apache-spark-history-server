@@ -346,7 +346,7 @@ def list_applications(
     Args:
         server: Optional server name to use (uses default if not specified)
         app_id: Optional application ID to fetch a single application
-        status: Optional list only applications in the chosen state: [completed|running]
+        status: Optional list of application states to filter by, e.g. ["completed"] or ["running"]
         min_date: Optional earliest start date/time to list
         max_date: Optional latest start date/time to list
         min_end_date: Optional earliest end date/time to list

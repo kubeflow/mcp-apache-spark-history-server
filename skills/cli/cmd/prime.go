@@ -20,6 +20,11 @@ COMMANDS
   shs executors -a APP_ID EXEC    Get executor detail
   shs executors -a APP_ID --summary   Peak memory, lifecycle, remove reasons
   shs executors -a APP_ID --timeline  Executor add/remove timeline with resource totals
+  shs threaddump -a APP_ID driver         JVM thread dump for the driver (running app only)
+  shs threaddump -a APP_ID EXEC           JVM thread dump for an executor
+  shs logs -a APP_ID --executor EXEC          Get stdout/stderr/spark.log URLs for an executor
+  shs logs -a APP_ID --task TASK              Get log URLs for a task (auto-scans stages)
+  shs logs -a APP_ID --task TASK --stage S    Faster when the stage is known
   shs sql -a APP_ID               List SQL executions
   shs sql -a APP_ID EXEC_ID       Get SQL execution header (status, duration, job IDs)
   shs sql -a APP_ID EXEC_ID --plan          Include query plan and node metrics
@@ -61,6 +66,11 @@ COMMAND DETAILS
   stages     --status active|complete|pending|failed  --sort failed-tasks|duration|id  --errors
   executors  --all (include dead)  --summary (peak memory/OOM view)  --timeline (resource usage over time)
              --sort failed-tasks|duration|gc|id
+  threaddump --state STATE (RUNNABLE|BLOCKED|WAITING|TIMED_WAITING|...)  --name SUBSTR (case-insensitive)
+             --blocked-only (only threads holding or awaiting a lock).  Running apps only;
+             default output is a thread summary table, use -o json|yaml for full stack traces.
+  logs       --executor EXEC | --task TASK (mutually exclusive; exactly one required)
+             --stage STAGE (optional, narrows --task search)  --stage-attempt N (optional)
   sql        --status completed|running|failed  --sort duration|id  --description TEXT  --plan  --summary  --initial-plan
   env        --section runtime|spark|system|hadoop|metrics|classpath
   compare    sql (default: metrics diff)  sql --env (config diff)  sql --plans (plan structure diff)

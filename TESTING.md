@@ -62,7 +62,7 @@ Your 3 real Spark applications (all successful):
 - `spark-110be3a8424d4a2789cb88134418217b` - Data processing job (512K events)
 - `spark-cc4d115f011443d787f03a71a476a745` - Multi-stage analytics job (704K events)
 
-**Note**: Testing uses HTTP transport with `main.py` providing access to all 18 tools.
+**Note**: Testing uses HTTP transport with `main.py` providing access to all 19 tools.
 
 ## 🌐 Using MCP Inspector
 
@@ -76,9 +76,9 @@ Once the MCP Inspector opens in your browser (http://localhost:6274), you can:
 ### Example Tool Tests:
 
 #### Get Application Details
-- **Tool**: `get_application`
+- **Tool**: `list_applications`
 - **Parameter**: `app_id` = `spark-cc4d115f011443d787f03a71a476a745`
-- **Expected**: Application info including name, duration, status
+- **Expected**: A one-element list with application info including name, duration, status
 
 #### List All Applications
 - **Tool**: `list_applications`
