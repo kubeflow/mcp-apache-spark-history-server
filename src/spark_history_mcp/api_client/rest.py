@@ -83,6 +83,12 @@ class RESTClientObject:
             "key_file": configuration.key_file,
             "ca_cert_data": configuration.ca_cert_data,
         }
+        if configuration.verify_ssl and configuration.ssl_ca_cert:
+            ssl_context = ssl.create_default_context()
+            ssl_context.load_verify_locations(cafile=configuration.ssl_ca_cert)
+            pool_args["ssl_context"] = ssl_context
+            # The explicit context already contains the default and custom roots.
+            pool_args["ca_certs"] = None
         if configuration.assert_hostname is not None:
             pool_args['assert_hostname'] = (
                 configuration.assert_hostname

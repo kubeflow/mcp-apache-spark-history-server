@@ -13,6 +13,8 @@ servers:
   # production:
   #   url: "https://spark-history.company.com:18080"
   #   verify_ssl: true
+  #   # Path inside the process/container to a PEM bundle for a private CA.
+  #   ssl_ca_cert: "/etc/ssl/custom-ca/ca-bundle.pem"
   #   auth:
       # Use environment variables for production
       # username: ${SHS_SERVERS__PRODUCTION__AUTH__USERNAME}
@@ -79,4 +81,5 @@ mcp:
 # SHS_SERVERS__*__AUTH__PASSWORD - Password for a specific server
 # SHS_SERVERS__*__AUTH__TOKEN - Token for a specific server
 # SHS_SERVERS__*__VERIFY_SSL - Whether to verify SSL for a specific server (true/false)
+# SHS_SERVERS__*__SSL_CA_CERT - Path to a PEM CA bundle for a specific server
 # SHS_SERVERS__*__EMR_CLUSTER_ARN - EMR cluster ARN for a specific server

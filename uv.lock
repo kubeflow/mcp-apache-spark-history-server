@@ -1009,8 +1009,8 @@ requires-dist = [
     { name = "pydantic-settings", specifier = "~=2.13" },
     { name = "pysocks", specifier = "~=1.7" },
     { name = "pyyaml", specifier = "~=6.0" },
-    { name = "requests", specifier = "~=2.32" },
-    { name = "requests", extras = ["socks"], specifier = "~=2.32" },
+    { name = "requests", specifier = ">=2.32.3,<3.0" },
+    { name = "requests", extras = ["socks"], specifier = ">=2.32.3,<3.0" },
 ]
 
 [package.metadata.requires-dev]

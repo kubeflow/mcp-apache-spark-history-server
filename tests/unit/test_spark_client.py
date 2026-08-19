@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from spark_history_mcp.api.spark_client import AttemptRequiredError, SparkRestClient
 from spark_history_mcp.api_client.exceptions import (
@@ -184,6 +184,26 @@ class TestSparkRestClient(unittest.TestCase):
 
         with self.assertRaises(NotFoundException):
             self.client.list_jobs("app-123")
+
+    @patch("spark_history_mcp.api_client.rest.ssl.create_default_context")
+    def test_custom_ca_bundle_configuration(self, mock_create_default_context):
+        ssl_context = MagicMock()
+        mock_create_default_context.return_value = ssl_context
+        client = SparkRestClient(
+            ServerConfig(
+                url="https://spark-history-server:18080",
+                ssl_ca_cert="/etc/ssl/custom-ca/ca-bundle.pem",
+            )
+        )
+        configuration = client._api.api_client.configuration
+        self.assertTrue(configuration.verify_ssl)
+        self.assertEqual(configuration.ssl_ca_cert, "/etc/ssl/custom-ca/ca-bundle.pem")
+        ssl_context.load_verify_locations.assert_called_once_with(
+            cafile="/etc/ssl/custom-ca/ca-bundle.pem"
+        )
+        pool_args = client._api.api_client.rest_client.pool_manager.connection_pool_kw
+        self.assertIs(pool_args["ssl_context"], ssl_context)
+        self.assertIsNone(pool_args["ca_certs"])
 
     def test_proxy_configuration(self):
         client = SparkRestClient(

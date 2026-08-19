@@ -155,6 +155,7 @@ servers:
       username: "user"
       password: "pass"
     include_plan_description: false   # include SQL plans by default (default: false)
+
 mcp:
   transport: "streamable-http"   # or: stdio
   port: "18888"
@@ -189,6 +190,7 @@ SHS_SERVERS__*__AUTH__USERNAME
 SHS_SERVERS__*__AUTH__PASSWORD
 SHS_SERVERS__*__AUTH__TOKEN
 SHS_SERVERS__*__VERIFY_SSL
+SHS_SERVERS__*__SSL_CA_CERT    Path to a PEM CA bundle for a specific server
 SHS_SERVERS__*__TIMEOUT
 SHS_SERVERS__*__EMR_CLUSTER_ARN
 SHS_SERVERS__*__INCLUDE_PLAN_DESCRIPTION
@@ -213,6 +215,21 @@ servers:
 Agents can target a specific server per query:
 
 > *"Get application `<app_id>` from the production server"*
+
+### Custom CA bundle
+
+For a private CA or TLS-inspecting proxy, keep `verify_ssl: true` and point
+`ssl_ca_cert` to a mounted PEM bundle:
+
+```yaml
+servers:
+  local:
+    ssl_ca_cert: "/etc/ssl/custom-ca/ca-bundle.pem"
+```
+
+Set the same path with `SHS_SERVERS__LOCAL__SSL_CA_CERT`. The CA certificates
+in the bundle are added to the container's default trust roots, so include the
+issuing CA and intermediates.
 
 ## 🏗️ Architecture
 
