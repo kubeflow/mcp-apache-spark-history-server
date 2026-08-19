@@ -6,4 +6,5 @@ This project uses GitHub Issues to track bugs and feature requests. Please searc
 issues before filing new issues to avoid duplicates.  For new issues, file your bug or
 feature request as a new Issue.
 
-For help and questions about using this project, please contact <TOOD: INSERT SLACK CHANNEL>
+For help and questions about using this project, join the CNCF Slack channel
+[#mcp-apache-spark-history-server](https://cloud-native.slack.com/archives/C09FRRM6QM7).

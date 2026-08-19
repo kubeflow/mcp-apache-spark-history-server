@@ -175,7 +175,7 @@ If none exist, the server starts with built-in defaults that can be overridden b
 
 > **Tip for MCP clients:** when the server is launched by an MCP client (Claude Desktop, Kiro, etc.), the working directory is not guaranteed, so a `./config.yaml` may not be found. Prefer `--config` / `SHS_MCP_CONFIG`, or place the file at `~/.config/spark-mcp/config.yaml`.
 
-Configurations can be overriden with environment variables. Nesting levels are
+Configurations can be overridden with environment variables. Nesting levels are
 separated by a **double underscore** (`__`), so field names and server names may
 themselves contain single underscores (e.g. `SHS_SERVERS__MY_SERVER__URL` maps
 to `servers.my_server.url`).
