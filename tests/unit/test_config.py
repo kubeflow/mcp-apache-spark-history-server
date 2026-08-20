@@ -26,6 +26,7 @@ class TestConfig(unittest.TestCase):
                     "auth": {"username": "test_user", "password": "test_pass"},
                     "default": True,
                     "verify_ssl": True,
+                    "ssl_ca_cert": "/etc/ssl/custom-ca/ca-bundle.pem",
                 }
             },
             "mcp": {
@@ -62,6 +63,7 @@ class TestConfig(unittest.TestCase):
             self.assertEqual(server.auth.password, "test_pass")
             self.assertTrue(server.default)
             self.assertTrue(server.verify_ssl)
+            self.assertEqual(server.ssl_ca_cert, "/etc/ssl/custom-ca/ca-bundle.pem")
         finally:
             # Clean up the temporary file
             os.unlink(temp_file_path)
@@ -124,6 +126,7 @@ class TestConfig(unittest.TestCase):
             "SHS_SERVERS__MY_PROD_SERVER__URL": "http://prod-server:18080",
             "SHS_SERVERS__MY_PROD_SERVER__AUTH__USERNAME": "prod_user",
             "SHS_SERVERS__MY_PROD_SERVER__VERIFY_SSL": "false",
+            "SHS_SERVERS__MY_PROD_SERVER__SSL_CA_CERT": "/etc/ssl/custom-ca/ca-bundle.pem",
             "SHS_SERVERS__MY_PROD_SERVER__EMR_CLUSTER_ARN": "arn:aws:emr:us-east-1:123:cluster/j-ABC",
             "SHS_SERVERS__MY_PROD_SERVER__DEFAULT": "true",
         },
@@ -152,6 +155,7 @@ class TestConfig(unittest.TestCase):
             self.assertEqual(server.url, "http://prod-server:18080")
             self.assertEqual(server.auth.username, "prod_user")
             self.assertFalse(server.verify_ssl)
+            self.assertEqual(server.ssl_ca_cert, "/etc/ssl/custom-ca/ca-bundle.pem")
             self.assertEqual(
                 server.emr_cluster_arn, "arn:aws:emr:us-east-1:123:cluster/j-ABC"
             )

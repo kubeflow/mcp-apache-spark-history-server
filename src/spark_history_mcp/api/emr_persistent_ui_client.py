@@ -6,6 +6,7 @@ an authenticated HTTP session (cookie-based) for Spark History Server access.
 """
 
 import logging
+import ssl
 import time
 from contextlib import contextmanager
 from typing import Dict, Optional, Tuple
@@ -14,6 +15,7 @@ from urllib.parse import urlparse
 import boto3
 import requests
 from botocore.exceptions import ClientError
+from requests.adapters import HTTPAdapter
 
 from spark_history_mcp.config.config import ServerConfig
 
@@ -21,6 +23,24 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+
+class _CustomCAAdapter(HTTPAdapter):
+    """Use an SSL context containing default and configured CA roots."""
+
+    def __init__(self, ssl_context: ssl.SSLContext):
+        self._ssl_context = ssl_context
+        super().__init__()
+
+    def build_connection_pool_key_attributes(self, request, verify, cert=None):
+        host_params, pool_kwargs = super().build_connection_pool_key_attributes(
+            request, verify, cert
+        )
+        if verify is not False:
+            pool_kwargs.pop("ca_certs", None)
+            pool_kwargs.pop("ca_cert_dir", None)
+            pool_kwargs["ssl_context"] = self._ssl_context
+        return host_params, pool_kwargs
 
 
 @contextmanager
@@ -46,6 +66,12 @@ class EMRPersistentUIClient:
         self.emr_client = boto3.client("emr", region_name=self.region)
 
         self.session = requests.Session()
+        if not server_config.verify_ssl:
+            self.session.verify = False
+        elif server_config.ssl_ca_cert:
+            ssl_context = ssl.create_default_context()
+            ssl_context.load_verify_locations(cafile=server_config.ssl_ca_cert)
+            self.session.mount("https://", _CustomCAAdapter(ssl_context))
         self.persistent_ui_id: Optional[str] = None
         self.presigned_url: Optional[str] = None
         self.base_url: Optional[str] = None

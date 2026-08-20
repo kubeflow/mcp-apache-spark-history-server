@@ -3,6 +3,8 @@ import sys
 import unittest
 from unittest.mock import MagicMock, patch
 
+import requests
+
 # Add root directory to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from spark_history_mcp.api.emr_persistent_ui_client import EMRPersistentUIClient
@@ -45,6 +47,43 @@ class TestEMRIntegration(unittest.TestCase):
         spark_client._api.list_applications.return_value = []
         self.assertEqual(spark_client.list_applications(), [])
         spark_client._api.list_applications.assert_called_once()
+
+    @patch("spark_history_mcp.api.emr_persistent_ui_client.ssl.create_default_context")
+    @patch("spark_history_mcp.api.emr_persistent_ui_client.boto3.client")
+    def test_emr_session_appends_custom_ca_bundle(
+        self, mock_boto_client, mock_create_default_context
+    ):
+        """The pre-signed URL session appends the configured CA to default roots."""
+        ssl_context = MagicMock()
+        mock_create_default_context.return_value = ssl_context
+        client = EMRPersistentUIClient(
+            ServerConfig(
+                emr_cluster_arn=self.emr_cluster_arn,
+                ssl_ca_cert="/etc/ssl/custom-ca/ca-bundle.pem",
+            )
+        )
+
+        ssl_context.load_verify_locations.assert_called_once_with(
+            cafile="/etc/ssl/custom-ca/ca-bundle.pem"
+        )
+        adapter = client.session.get_adapter("https://example.com")
+        self.assertIs(adapter._ssl_context, ssl_context)
+        request = requests.Request("GET", "https://example.com").prepare()
+        _, pool_args = adapter.build_connection_pool_key_attributes(request, True)
+        self.assertIs(pool_args["ssl_context"], ssl_context)
+        self.assertNotIn("ca_certs", pool_args)
+        self.assertTrue(client.session.verify)
+        mock_boto_client.assert_called_once_with("emr", region_name="us-east-1")
+
+    @patch("spark_history_mcp.api.emr_persistent_ui_client.boto3.client")
+    def test_emr_session_honors_verify_ssl_false(self, mock_boto_client):
+        """The pre-signed URL session matches the configured TLS verification mode."""
+        client = EMRPersistentUIClient(
+            ServerConfig(emr_cluster_arn=self.emr_cluster_arn, verify_ssl=False)
+        )
+
+        self.assertFalse(client.session.verify)
+        mock_boto_client.assert_called_once_with("emr", region_name="us-east-1")
 
     @patch("spark_history_mcp.core.app.EMRPersistentUIClient")
     @patch("spark_history_mcp.core.app.load_config")

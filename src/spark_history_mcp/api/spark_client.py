@@ -106,6 +106,7 @@ class SparkRestClient:
         self.base_url = self.config.url.rstrip("/") + "/api/v1"
         self.use_proxy = self.config.use_proxy
         self.verify_ssl = self.config.verify_ssl
+        self.ssl_ca_cert = self.config.ssl_ca_cert
         self.timeout = self.config.timeout
 
         # Optional callback returning a fresh Cookie header (EMR re-auth).
@@ -114,7 +115,11 @@ class SparkRestClient:
         self._api = self._build_api_client()
 
     def _build_api_client(self) -> DefaultApi:
-        configuration = Configuration(host=self.base_url, verify_ssl=self.verify_ssl)
+        configuration = Configuration(
+            host=self.base_url,
+            verify_ssl=self.verify_ssl,
+            ssl_ca_cert=self.ssl_ca_cert,
+        )
 
         # Keep "/" unescaped in path parameters so a composite application id
         # ("{base-app-id}/{attempt-id}") is sent as a real path, not "%2F".
