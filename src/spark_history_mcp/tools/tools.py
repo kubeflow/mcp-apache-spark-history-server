@@ -3,6 +3,8 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
+from mcp.types import ToolAnnotations
+
 from spark_history_mcp.api_client.models.application import Application
 from spark_history_mcp.api_client.models.environment import Environment
 from spark_history_mcp.api_client.models.executor import Executor
@@ -326,7 +328,7 @@ def get_client_or_default(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_applications(
     server: Optional[str] = None,
     app_id: Optional[str] = None,
@@ -402,7 +404,7 @@ def list_applications(
         return all_apps
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_jobs(
     app_id: str,
     server: Optional[str] = None,
@@ -464,7 +466,7 @@ def list_jobs(
     return jobs
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_stages(
     app_id: str,
     server: Optional[str] = None,
@@ -525,7 +527,7 @@ def list_stages(
     return stages
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_stage(
     app_id: str,
     stage_id: int,
@@ -612,7 +614,7 @@ def _resolve_latest_stage_attempt_id(client, app_id: str, stage_id: int) -> int:
     return max(attempts, key=lambda s: s.attempt_id or 0).attempt_id or 0
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_stage_task_failures(
     app_id: str,
     stage_id: int,
@@ -716,7 +718,7 @@ def _filter_environment_section(env: Environment, section: str) -> Environment:
     return filtered
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_environment(
     app_id: str,
     server: Optional[str] = None,
@@ -753,7 +755,7 @@ def get_environment(
     return env
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_executors(
     app_id: str,
     server: Optional[str] = None,
@@ -823,7 +825,7 @@ def list_executors(
     return executors
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_executor_summary(app_id: str, server: Optional[str] = None):
     """
     Aggregates metrics across all executors for a Spark application.
@@ -863,7 +865,7 @@ def _filter_threads(threads, state, name, blocked_only):
     return result
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_executor_thread_dump(
     app_id: str,
     executor_id: str,
@@ -909,7 +911,7 @@ def get_executor_thread_dump(
     return threads
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def compare_job_environments(
     app_id1: str, app_id2: str, server: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -1029,7 +1031,7 @@ def _calc_executor_summary_from_client(client, app_id: str):
     return _calculate_executor_metrics(executors)
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def compare_job_performance(
     app_id1: str, app_id2: str, server: Optional[str] = None
 ) -> Dict[str, Any]:
@@ -1322,7 +1324,7 @@ def _build_node_metrics(nodes) -> List[SqlNodeMetrics]:
     return result
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_sql_executions(
     app_id: str,
     server: Optional[str] = None,
@@ -1396,7 +1398,7 @@ def list_sql_executions(
     return [_sql_execution_summary(e) for e in all_executions]
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_sql_execution(
     app_id: str,
     execution_id: int,
@@ -1496,7 +1498,7 @@ def get_sql_execution(
     return detail
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def compare_sql_executions(
     app_id1: str,
     app_id2: str,
@@ -1651,7 +1653,7 @@ def _collect_stage_side(client, app_id: str, stage_id: int) -> StageCompareSide:
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def compare_stages(
     app_id1: str,
     stage_id1: int,
@@ -1691,7 +1693,7 @@ def compare_stages(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_job_bottlenecks(
     app_id: str, server: Optional[str] = None, top_n: int = 5
 ) -> Dict[str, Any]:
@@ -1828,7 +1830,7 @@ def get_job_bottlenecks(
     return bottlenecks
 
 
-@mcp.tool()
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_resource_usage_timeline(
     app_id: str, server: Optional[str] = None
 ) -> Dict[str, Any]:

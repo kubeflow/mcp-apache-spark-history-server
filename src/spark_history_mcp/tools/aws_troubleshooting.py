@@ -11,6 +11,7 @@ from importlib.metadata import version as pkg_version
 from typing import Any, Dict
 
 from mcp.client.session import ClientSession
+from mcp.types import ToolAnnotations
 from mcp_proxy_for_aws.client import aws_iam_streamablehttp_client
 
 from spark_history_mcp.core.app import mcp
@@ -59,7 +60,7 @@ async def _call_remote_tool(
 def register_troubleshooting_tools(region: str):
     """Register AWS troubleshooting tools with the MCP server."""
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def aws_analyze_spark_workload(
         platform_type: str,
         platform_params: Dict[str, str],
@@ -88,7 +89,7 @@ def register_troubleshooting_tools(region: str):
             },
         )
 
-    @mcp.tool()
+    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def aws_spark_code_recommendation(
         platform_type: str,
         platform_params: Dict[str, str],
