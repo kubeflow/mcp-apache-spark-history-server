@@ -414,7 +414,7 @@ See [`deploy/kubernetes/helm/`](deploy/kubernetes/helm/) for full configuration 
 
 When deployed in Kubernetes, connect Claude Desktop via `mcp-remote`:
 ```bash
-kubectl port-forward svc/mcp-apache-spark-history-server 18888:18888
+kubectl port-forward svc/spark-history-mcp 18888:18888
 ```
 
 ---

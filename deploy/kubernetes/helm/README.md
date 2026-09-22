@@ -21,6 +21,15 @@ helm install my-spark-mcp ./deploy/kubernetes/helm/mcp-apache-spark-history-serv
   --create-namespace
 ```
 
+### Resource Names
+
+By default, Kubernetes resources use the Helm release name. For example, a
+release named `spark-history-server-mcp` creates a Deployment named
+`spark-history-server-mcp` rather than repeating the chart name.
+
+Set `nameOverride` to append a custom name to the release name, or set
+`fullnameOverride` to replace the generated resource name completely.
+
 ### Install with Custom Values
 
 ```bash
@@ -359,6 +368,15 @@ helm rollback my-spark-mcp 1
 ```
 
 ### Migration Guide
+
+The shorter naming behavior changes the default resource name from
+`<release>-mcp-apache-spark-history-server` to `<release>`. When upgrading an
+existing installation, set `fullnameOverride` to the previously rendered name
+if you need to preserve resource names during the transition:
+
+```yaml
+fullnameOverride: my-spark-mcp-mcp-apache-spark-history-server
+```
 
 When upgrading from v0.0.x to v0.1.x:
 

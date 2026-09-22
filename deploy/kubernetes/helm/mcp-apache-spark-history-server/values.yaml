@@ -8,6 +8,8 @@ image:
   tag: "v0.1.0"
 
 imagePullSecrets: []
+# Resource names use the Helm release name by default. nameOverride adds a
+# custom suffix to the release name, while fullnameOverride replaces it.
 nameOverride: ""
 fullnameOverride: ""
 

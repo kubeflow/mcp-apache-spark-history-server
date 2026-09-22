@@ -1,0 +1,47 @@
+suite: Resource naming
+templates:
+  - deployment.yaml
+  - configmap.yaml
+
+tests:
+  - it: uses the release name by default
+    release:
+      name: spark-history-server-mcp
+    asserts:
+      - equal:
+          path: metadata.name
+          value: spark-history-server-mcp
+        template: deployment.yaml
+
+  - it: appends an explicit nameOverride to the release name
+    release:
+      name: spark
+    set:
+      nameOverride: history-mcp
+    asserts:
+      - equal:
+          path: metadata.name
+          value: spark-history-mcp
+        template: deployment.yaml
+
+  - it: avoids repeating a nameOverride already contained in the release name
+    release:
+      name: spark-history-mcp
+    set:
+      nameOverride: history-mcp
+    asserts:
+      - equal:
+          path: metadata.name
+          value: spark-history-mcp
+        template: deployment.yaml
+
+  - it: uses fullnameOverride exactly
+    release:
+      name: spark
+    set:
+      fullnameOverride: custom-mcp-name
+    asserts:
+      - equal:
+          path: metadata.name
+          value: custom-mcp-name
+        template: deployment.yaml
