@@ -226,6 +226,39 @@ class TestConfig(unittest.TestCase):
         finally:
             os.unlink(temp_file_path)
 
+    @patch.dict(
+        os.environ,
+        {
+            "USERNAME": "ambient_user",
+            "PASSWORD": "ambient_pass",
+            "TOKEN": "ambient_token",
+        },
+    )
+    def test_ambient_env_vars_do_not_leak_into_auth(self):
+        """Unprefixed ambient env vars must not become server credentials.
+
+        Credentials are read only from the namespaced
+        ``SHS_SERVERS__<name>__AUTH__*`` environment variables and YAML. The
+        ambient ``USERNAME`` (always set on Windows), ``PASSWORD`` and
+        ``TOKEN`` variables must not leak into the default auth config.
+        """
+        minimal_config = {"servers": {"minimal": {"url": "http://minimal:18080"}}}
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            yaml.dump(minimal_config, temp_file)
+            temp_file_path = temp_file.name
+
+        try:
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
+                config = Config()
+
+            server = config.servers["minimal"]
+            self.assertIsNone(server.auth.username)
+            self.assertIsNone(server.auth.password)
+            self.assertIsNone(server.auth.token)
+        finally:
+            os.unlink(temp_file_path)
+
     def test_model_serialization(self):
         """Test that models serialize correctly, especially with excluded fields."""
         auth = AuthConfig(username="test_user", password="")

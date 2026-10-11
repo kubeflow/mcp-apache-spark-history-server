@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Annotated, Any, Dict, List, Literal, Optional, Tuple
 
 import yaml
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic.fields import FieldInfo
 from pydantic_settings import (
     BaseSettings,
@@ -120,18 +120,29 @@ class YamlConfigSettingsSource(PydanticBaseSettingsSource):
         return config_data or {}
 
 
-class AuthConfig(BaseSettings):
-    """Authentication configuration for the Spark server."""
+class AuthConfig(BaseModel):
+    """Authentication configuration for the Spark server.
+
+    A plain model (not ``BaseSettings``): the root ``Config`` reads credentials
+    from the namespaced environment (``SHS_SERVERS__<name>__AUTH__*``) and YAML.
+    If this class read the ambient environment itself, unprefixed variables such
+    as ``USERNAME``, ``PASSWORD`` or ``TOKEN`` would be picked up as credentials.
+    """
 
     username: Optional[str] = Field(None)
     password: Optional[str] = Field(None)
     token: Optional[str] = Field(None)
     # Ignore unknown keys for compatibility with the shared shs CLI config.
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore")
 
 
-class ServerConfig(BaseSettings):
-    """Server configuration for the Spark server."""
+class ServerConfig(BaseModel):
+    """Server configuration for the Spark server.
+
+    Like ``AuthConfig``, populated by the root ``Config`` (YAML and
+    ``SHS_SERVERS__<name>__*`` environment variables), never from ambient
+    environment variables.
+    """
 
     url: Optional[str] = None
     auth: AuthConfig = Field(default_factory=AuthConfig, exclude=True)
@@ -143,10 +154,10 @@ class ServerConfig(BaseSettings):
     timeout: int = 30  # HTTP request timeout in seconds
     include_plan_description: Optional[bool] = None
     # Ignore unknown keys for compatibility with the shared shs CLI config.
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore")
 
 
-class TransportSecurityConfig(BaseSettings):
+class TransportSecurityConfig(BaseModel):
     """Transport security configuration for DNS rebinding protection.
 
     See: https://github.com/modelcontextprotocol/python-sdk/issues/1798
@@ -167,11 +178,15 @@ class TransportSecurityConfig(BaseSettings):
         description="List of allowed Origin header values. Supports wildcard ports "
         '(e.g., "http://localhost:*", "http://your-gateway:*").',
     )
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore")
 
 
-class McpConfig(BaseSettings):
-    """Configuration for the MCP server."""
+class McpConfig(BaseModel):
+    """Configuration for the MCP server.
+
+    Populated by the root ``Config`` (YAML and ``SHS_MCP__*`` environment
+    variables); it never reads the ambient environment directly.
+    """
 
     transport: Optional[Literal["stdio", "streamable-http"]] = None
     transports: Annotated[
@@ -188,7 +203,7 @@ class McpConfig(BaseSettings):
         default=None,
         description="Transport security settings for DNS rebinding protection.",
     )
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="ignore")
 
 
 class Config(BaseSettings):
