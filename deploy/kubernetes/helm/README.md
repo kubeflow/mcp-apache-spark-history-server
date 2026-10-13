@@ -91,6 +91,13 @@ config:
 ```
 
 #### 2. Authentication Setup
+
+Use one shared credential for every Spark History Server, or give individual
+servers their own credentials.
+
+Shared credentials, applied to every server that does not define its own
+secret:
+
 ```yaml
 auth:
   enabled: true
@@ -100,6 +107,39 @@ auth:
     password: "super_secure_password"
     token: "jwt_token_here"
 ```
+
+Different credentials per server, each sourced from its own Kubernetes Secret:
+
+```yaml
+config:
+  servers:
+    default:
+      default: true
+      url: "http://spark-history-server:18080"
+    staging:
+      url: "http://staging-spark-history:18080"
+
+auth:
+  enabled: true
+  servers:
+    # The chart creates this Secret from the values below.
+    default:
+      secret:
+        create: true
+        username: "default_user"
+        password: "default_password"
+    # This Secret must already exist with username/password/token keys.
+    staging:
+      secret:
+        name: "staging-spark-auth"
+```
+
+Each server's credentials reach the MCP server through the
+`SHS_SERVERS__<SERVER>__AUTH__USERNAME`, `..._PASSWORD` and `..._TOKEN`
+environment variables, so servers can authenticate with different accounts.
+Server names must be lowercase when authentication is enabled, because the
+server lowercases env-derived keys. `externalsecret` and `csisecretstore`
+keep managing the shared secret for servers without their own entry.
 
 #### 3. High Availability Setup
 ```yaml

@@ -99,13 +99,35 @@ config:
 auth:
   enabled: false
 
-  # secret: use Kubernetes Secret to store spark history server credentials as environment variables
+  # secret: use Kubernetes Secret to store spark history server credentials as
+  # environment variables (keys: username, password, token). The shared secret
+  # applies to every server under config.servers that does not define its own
+  # credentials in auth.servers below.
   secret:
     create: false
     name: ""
     username: ""
     password: ""
     token: ""
+
+  # servers: per-server credentials, each backed by its own Kubernetes Secret.
+  # Use this when different Spark History Servers require different
+  # credentials. Keys must match a server name from config.servers (server
+  # names must be lowercase while auth is enabled), and each Secret must
+  # contain one or more of the keys username, password and token.
+  servers: {}
+    # Let the chart create a Secret from inline values:
+    # production:
+    #   secret:
+    #     create: true
+    #     username: "spark_user"
+    #     password: "secure_password"
+    #     token: ""
+    # Or reference a Secret that already exists:
+    # staging:
+    #   secret:
+    #     create: false
+    #     name: "staging-spark-auth"
 
   # externalsecret: use External Secrets Operator to sync a Secret from a secret provider.
   # Requiring External Secrets Operator to be installed in the k8s cluster.

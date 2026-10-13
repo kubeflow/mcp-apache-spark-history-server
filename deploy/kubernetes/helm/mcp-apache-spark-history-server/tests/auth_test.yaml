@@ -1,0 +1,239 @@
+suite: Authentication secrets
+templates:
+  - secret.yaml
+  - deployment.yaml
+  - configmap.yaml
+
+tests:
+  - it: renders no secret and no auth envs when auth is disabled
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: secret.yaml
+      - equal:
+          path: spec.template.spec.containers[0].env
+          value:
+            - name: SHS_MCP__PORT
+              value: "18888"
+            - name: SHS_MCP__DEBUG
+              value: "false"
+        template: deployment.yaml
+      - notExists:
+          path: spec.template.metadata.annotations["checksum/secret"]
+        template: deployment.yaml
+
+  - it: applies the shared secret to every server without its own secret
+    set:
+      auth.enabled: true
+      auth.secret.create: true
+      auth.secret.username: shared-user
+      auth.secret.password: shared-pass
+      config.servers.staging.url: "http://staging-spark-history:18080"
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: secret.yaml
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-auth
+        template: secret.yaml
+      - equal:
+          path: stringData.username
+          value: shared-user
+        template: secret.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SHS_SERVERS__DEFAULT__AUTH__USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-auth
+                key: username
+                optional: true
+        template: deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SHS_SERVERS__STAGING__AUTH__PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-auth
+                key: password
+                optional: true
+        template: deployment.yaml
+      - exists:
+          path: spec.template.metadata.annotations["checksum/secret"]
+        template: deployment.yaml
+
+  - it: overrides the shared secret for a server with its own secret
+    set:
+      auth.enabled: true
+      auth.secret.create: true
+      auth.secret.username: shared-user
+      auth.secret.password: shared-pass
+      config.servers.staging.url: "http://staging-spark-history:18080"
+      auth.servers.staging.secret.create: true
+      auth.servers.staging.secret.username: staging-user
+      auth.servers.staging.secret.password: staging-pass
+    asserts:
+      - hasDocuments:
+          count: 2
+        template: secret.yaml
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-auth-staging
+        documentIndex: 0
+        template: secret.yaml
+      - equal:
+          path: stringData.username
+          value: staging-user
+        documentIndex: 0
+        template: secret.yaml
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-auth
+        documentIndex: 1
+        template: secret.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SHS_SERVERS__STAGING__AUTH__USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-auth-staging
+                key: username
+                optional: true
+        template: deployment.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SHS_SERVERS__DEFAULT__AUTH__USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-auth
+                key: username
+                optional: true
+        template: deployment.yaml
+      - exists:
+          path: spec.template.metadata.annotations["checksum/secret"]
+        template: deployment.yaml
+
+  - it: references an existing secret for one server
+    set:
+      auth.enabled: true
+      auth.servers.default.secret.name: custom-spark-auth
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: secret.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SHS_SERVERS__DEFAULT__AUTH__TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: custom-spark-auth
+                key: token
+                optional: true
+        template: deployment.yaml
+      - notExists:
+          path: spec.template.metadata.annotations["checksum/secret"]
+        template: deployment.yaml
+
+  - it: creates a secret for a single per-server override without a shared secret
+    set:
+      auth.enabled: true
+      auth.servers.default.secret.create: true
+      auth.servers.default.secret.username: solo-user
+      auth.servers.default.secret.password: solo-pass
+    asserts:
+      - hasDocuments:
+          count: 1
+        template: secret.yaml
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-auth-default
+        template: secret.yaml
+      - equal:
+          path: stringData.username
+          value: solo-user
+        template: secret.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SHS_SERVERS__DEFAULT__AUTH__PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: RELEASE-NAME-auth-default
+                key: password
+                optional: true
+        template: deployment.yaml
+      - exists:
+          path: spec.template.metadata.annotations["checksum/secret"]
+        template: deployment.yaml
+
+  - it: wires an existing shared secret even when it is not created
+    set:
+      auth.enabled: true
+      auth.secret.create: false
+      auth.secret.name: prod-spark-auth
+    asserts:
+      - hasDocuments:
+          count: 0
+        template: secret.yaml
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SHS_SERVERS__DEFAULT__AUTH__USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: prod-spark-auth
+                key: username
+                optional: true
+        template: deployment.yaml
+
+  - it: maps server names with underscores to auth env vars
+    set:
+      config.servers.my_server.url: "http://my-spark-history:18080"
+      auth.enabled: true
+      auth.servers.my_server.secret.name: my-server-auth
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SHS_SERVERS__MY_SERVER__AUTH__USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: my-server-auth
+                key: username
+                optional: true
+        template: deployment.yaml
+
+  - it: fails when a server name is not lowercase and auth is enabled
+    set:
+      auth.enabled: true
+      auth.secret.create: true
+      auth.secret.username: shared-user
+      config.servers.Production.url: "http://prod-spark-history:18080"
+    asserts:
+      - failedTemplate:
+          errorMessage: "config.servers.Production must be lowercase when auth is enabled: the chart injects credentials as SHS_SERVERS__<NAME>__AUTH__* and the server lowercases env-derived keys"
+        template: deployment.yaml
+
+  - it: fails when an auth.servers entry does not match any config.servers entry
+    set:
+      auth.enabled: true
+      auth.servers.ghost.secret.name: ghost-auth
+    asserts:
+      - failedTemplate:
+          errorMessage: "auth.servers.ghost does not match any config.servers entry (server names are case-sensitive)"
+        template: deployment.yaml
+
+  - it: fails when per-server credentials have neither create nor name
+    set:
+      auth.enabled: true
+      auth.servers.default.secret.username: incomplete
+    asserts:
+      - failedTemplate:
+          errorMessage: "auth.servers.default.secret defines credentials but neither create nor name is set"
+        template: deployment.yaml

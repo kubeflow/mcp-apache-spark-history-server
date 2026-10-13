@@ -415,6 +415,45 @@
           },
           "required": ["create"]
         },
+        "servers": {
+          "type": "object",
+          "description": "Per-server credentials, each backed by its own Kubernetes Secret",
+          "additionalProperties": false,
+          "patternProperties": {
+            "^[a-z0-9_-]+$": {
+              "type": "object",
+              "properties": {
+                "secret": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "create": {
+                      "type": "boolean",
+                      "description": "Create a Kubernetes Secret for this server"
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "Name of an existing Secret with username, password or token keys"
+                    },
+                    "username": {
+                      "type": "string",
+                      "description": "Username for authentication"
+                    },
+                    "password": {
+                      "type": "string",
+                      "description": "Password for authentication"
+                    },
+                    "token": {
+                      "type": "string",
+                      "description": "Authentication token"
+                    }
+                  }
+                }
+              },
+              "required": ["secret"]
+            }
+          }
+        },
         "externalsecret": {
           "type": "object",
           "properties": {

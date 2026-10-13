@@ -73,7 +73,7 @@ Create the name of the config map
 {{- end }}
 
 {{/*
-Create the name of the secret
+Create the name of the shared auth secret
 */}}
 {{- define "mcp-apache-spark-history-server.secretName" -}}
 {{- $default := printf "%s-auth" (include "mcp-apache-spark-history-server.fullname" .) -}}
@@ -81,7 +81,64 @@ Create the name of the secret
 {{- .Values.auth.secret.name -}}
 {{- else -}}
 {{- $default -}}
+{{- end -}}
 {{- end }}
+
+{{/*
+Create the name of the auth secret for one Spark History Server.
+Requires a dict with "root" (the root context) and "server" (the server name).
+Uses the configured secret name, or derives "<fullname>-auth-<server>".
+*/}}
+{{- define "mcp-apache-spark-history-server.serverSecretName" -}}
+{{- $root := .root -}}
+{{- $server := .server -}}
+{{- $serverAuth := index (default (dict) $root.Values.auth.servers) $server | default (dict) -}}
+{{- $serverSecret := $serverAuth.secret | default (dict) -}}
+{{- if $serverSecret.name -}}
+{{- $serverSecret.name -}}
+{{- else -}}
+{{- printf "%s-auth-%s" (include "mcp-apache-spark-history-server.fullname" $root) ($server | lower | replace "_" "-") | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Whether the chart renders at least one auth Secret (shared or per server)
+*/}}
+{{- define "mcp-apache-spark-history-server.hasManagedAuthSecrets" -}}
+{{- $managed := false -}}
+{{- $sharedSecret := .Values.auth.secret | default (dict) -}}
+{{- if $sharedSecret.create -}}
+{{- $managed = true -}}
+{{- end -}}
+{{- range $serverName, $serverAuth := (default (dict) .Values.auth.servers) -}}
+{{- $auth := $serverAuth | default (dict) -}}
+{{- $secret := $auth.secret | default (dict) -}}
+{{- if $secret.create -}}
+{{- $managed = true -}}
+{{- end -}}
+{{- end -}}
+{{- $managed -}}
+{{- end }}
+
+{{/*
+Validate the per-server authentication values
+*/}}
+{{- define "mcp-apache-spark-history-server.validateAuth" -}}
+{{- range $serverName, $server := $.Values.config.servers -}}
+{{- if ne $serverName ($serverName | lower) -}}
+{{- fail (printf "config.servers.%s must be lowercase when auth is enabled: the chart injects credentials as SHS_SERVERS__<NAME>__AUTH__* and the server lowercases env-derived keys" $serverName) -}}
+{{- end -}}
+{{- end -}}
+{{- range $serverName, $serverAuth := (default (dict) .Values.auth.servers) -}}
+{{- $auth := $serverAuth | default (dict) -}}
+{{- $secret := $auth.secret | default (dict) -}}
+{{- if not (hasKey $.Values.config.servers $serverName) -}}
+{{- fail (printf "auth.servers.%s does not match any config.servers entry (server names are case-sensitive)" $serverName) -}}
+{{- end -}}
+{{- if and (not $secret.create) (not $secret.name) (or $secret.username $secret.password $secret.token) -}}
+{{- fail (printf "auth.servers.%s.secret defines credentials but neither create nor name is set" $serverName) -}}
+{{- end -}}
+{{- end -}}
 {{- end }}
 
 {{/*
@@ -95,30 +152,46 @@ Create image name
 Create environment variables
 */}}
 {{- define "mcp-apache-spark-history-server.env" -}}
-- name: MCP_PORT
+- name: SHS_MCP__PORT
   value: {{ .Values.config.port | quote }}
-- name: MCP_DEBUG
+- name: SHS_MCP__DEBUG
   value: {{ .Values.config.debug | quote }}
-{{- $csi := (default (dict) .Values.auth.csisecretstore) -}}
-{{- if and .Values.auth.enabled (or .Values.auth.secret.create .Values.auth.externalsecret.create $csi.enabled) }}
-- name: SPARK_USERNAME
+{{- if .Values.auth.enabled }}
+{{- include "mcp-apache-spark-history-server.validateAuth" . }}
+{{- $sharedSecret := (default (dict) .Values.auth.secret) -}}
+{{- $externalSecret := (default (dict) .Values.auth.externalsecret) -}}
+{{- $csiSecretStore := (default (dict) .Values.auth.csisecretstore) -}}
+{{- $hasSharedSecret := or $sharedSecret.create $sharedSecret.name $externalSecret.create $csiSecretStore.enabled -}}
+{{- range $serverName, $server := .Values.config.servers }}
+{{- $serverAuth := (index (default (dict) $.Values.auth.servers) $serverName) | default (dict) -}}
+{{- $serverSecret := $serverAuth.secret | default (dict) -}}
+{{- $secretName := "" -}}
+{{- if or $serverSecret.create $serverSecret.name -}}
+{{- $secretName = include "mcp-apache-spark-history-server.serverSecretName" (dict "root" $ "server" $serverName) -}}
+{{- else if $hasSharedSecret -}}
+{{- $secretName = include "mcp-apache-spark-history-server.secretName" $ -}}
+{{- end -}}
+{{- if $secretName }}
+- name: SHS_SERVERS__{{ $serverName | upper }}__AUTH__USERNAME
   valueFrom:
     secretKeyRef:
-      name: {{ include "mcp-apache-spark-history-server.secretName" . }}
+      name: {{ $secretName }}
       key: username
       optional: true
-- name: SPARK_PASSWORD
+- name: SHS_SERVERS__{{ $serverName | upper }}__AUTH__PASSWORD
   valueFrom:
     secretKeyRef:
-      name: {{ include "mcp-apache-spark-history-server.secretName" . }}
+      name: {{ $secretName }}
       key: password
       optional: true
-- name: SPARK_TOKEN
+- name: SHS_SERVERS__{{ $serverName | upper }}__AUTH__TOKEN
   valueFrom:
     secretKeyRef:
-      name: {{ include "mcp-apache-spark-history-server.secretName" . }}
+      name: {{ $secretName }}
       key: token
       optional: true
+{{- end }}
+{{- end }}
 {{- end }}
 {{- range .Values.env }}
 - name: {{ .name }}
