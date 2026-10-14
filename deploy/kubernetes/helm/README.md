@@ -139,7 +139,9 @@ Each server's credentials reach the MCP server through the
 environment variables, so servers can authenticate with different accounts.
 Server names must be lowercase when authentication is enabled, because the
 server lowercases env-derived keys. `externalsecret` and `csisecretstore`
-keep managing the shared secret for servers without their own entry.
+keep managing the shared secret for servers without their own entry, and a
+server that declares inline credentials via `config.servers.<name>.auth`
+keeps them: the shared secret is skipped for that server.
 
 #### 3. High Availability Setup
 ```yaml

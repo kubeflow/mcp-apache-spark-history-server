@@ -168,7 +168,8 @@ Create environment variables
 {{- $secretName := "" -}}
 {{- if or $serverSecret.create $serverSecret.name -}}
 {{- $secretName = include "mcp-apache-spark-history-server.serverSecretName" (dict "root" $ "server" $serverName) -}}
-{{- else if $hasSharedSecret -}}
+{{- /* Servers with inline auth keep their own credentials. */ -}}
+{{- else if and $hasSharedSecret (not $server.auth) -}}
 {{- $secretName = include "mcp-apache-spark-history-server.secretName" $ -}}
 {{- end -}}
 {{- if $secretName }}

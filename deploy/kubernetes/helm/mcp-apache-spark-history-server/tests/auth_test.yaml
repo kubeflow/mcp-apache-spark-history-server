@@ -65,6 +65,47 @@ tests:
           path: spec.template.metadata.annotations["checksum/secret"]
         template: deployment.yaml
 
+  - it: skips the shared secret for a server with inline auth
+    set:
+      auth.enabled: true
+      auth.secret.create: true
+      auth.secret.username: shared-user
+      auth.secret.password: shared-pass
+      config.servers.default.auth.username: inline-user
+      config.servers.default.auth.password: inline-pass
+      config.servers.staging.url: "http://staging-spark-history:18080"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env
+          value:
+            - name: SHS_MCP__PORT
+              value: "18888"
+            - name: SHS_MCP__DEBUG
+              value: "false"
+            - name: SHS_SERVERS__STAGING__AUTH__USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: RELEASE-NAME-auth
+                  key: username
+                  optional: true
+            - name: SHS_SERVERS__STAGING__AUTH__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: RELEASE-NAME-auth
+                  key: password
+                  optional: true
+            - name: SHS_SERVERS__STAGING__AUTH__TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: RELEASE-NAME-auth
+                  key: token
+                  optional: true
+        template: deployment.yaml
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: 'username: inline-user'
+        template: configmap.yaml
+
   - it: overrides the shared secret for a server with its own secret
     set:
       auth.enabled: true

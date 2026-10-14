@@ -102,7 +102,7 @@ auth:
   # secret: use Kubernetes Secret to store spark history server credentials as
   # environment variables (keys: username, password, token). The shared secret
   # applies to every server under config.servers that does not define its own
-  # credentials in auth.servers below.
+  # credentials in auth.servers below or inline via config.servers.<name>.auth.
   secret:
     create: false
     name: ""
