@@ -136,14 +136,22 @@ We use **Ruff** for linting and formatting (automatically enforced by pre-commit
 
 ### 🧪 Adding New MCP Tools
 
-When adding new tools, follow this pattern:
+When adding new tools, follow this pattern in `src/spark_history_mcp/tools/tools.py`:
 
 ```python
-@mcp.tool()
+from mcp.server.mcpserver import Context
+from mcp.types import ToolAnnotations
+
+from spark_history_mcp.core.app import tool
+
+
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def your_new_tool(
     app_id: str,
     server: Optional[str] = None,
     # other parameters
+    *,
+    ctx: Context,
 ) -> YourReturnType:
     """
     Brief description of what this tool does.
@@ -155,17 +163,19 @@ def your_new_tool(
     Returns:
         Description of return value
     """
-    ctx = mcp.get_context()
     client = get_client_or_default(ctx, server)
 
     # Your implementation here
     return client.your_method(app_id)
 ```
 
+- Use `tool` from `spark_history_mcp.core.app`, not `@mcp.tool()`. It keeps the error text of a failed tool in the result, so the agent can correct its call.
+- The SDK injects `ctx` and leaves it out of the tool's input schema. Make it keyword-only (after `*`).
+
 **Don't forget to add tests:**
 
 ```python
-@patch("tools.get_client_or_default")
+@patch("spark_history_mcp.tools.tools.get_client_or_default")
 def test_your_new_tool(self, mock_get_client):
     """Test your new tool functionality"""
     # Setup mocks
@@ -174,12 +184,14 @@ def test_your_new_tool(self, mock_get_client):
     mock_get_client.return_value = mock_client
 
     # Call the tool
-    result = your_new_tool("spark-app-123")
+    result = your_new_tool("spark-app-123", ctx=MagicMock())
 
     # Verify results
     self.assertEqual(result, expected_result)
     mock_client.your_method.assert_called_once_with("spark-app-123")
 ```
+
+Add an end-to-end test in `tests/e2e.py` too. It runs on HTTP in both protocol eras. Mark it `@pytest.mark.stdio_smoke` only if it checks transport startup or protocol negotiation.
 
 ## 🐛 Reporting Issues
 

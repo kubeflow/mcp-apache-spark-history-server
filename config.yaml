@@ -45,7 +45,8 @@ mcp:
 
   # Transport security settings for DNS rebinding protection
   # See: https://github.com/modelcontextprotocol/python-sdk/issues/1798
-  # This is only relevant when actual mcp package version is higher than 1.23.0
+  # Without this block, only localhost Host/Origin headers are allowed, also
+  # when address is 0.0.0.0. Set it to allow other hosts or to turn it off.
   #transport_security:
     # Enable DNS rebinding protection. Set to true for production deployments
     # with proper allowed_hosts/allowed_origins configuration.

@@ -80,6 +80,8 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server that 
 
 **Use the MCP server when** you want an AI agent to conduct multi-step investigations, synthesize findings across tools, or answer natural-language questions about your Spark applications.
 
+The server supports MCP protocol versions `2026-07-28` and `2025-11-25` (and earlier) at the same time. It negotiates the version with each client, so no configuration is needed.
+
 ### Install
 
 ```bash
@@ -267,7 +269,7 @@ graph TB
 |-------|-----------|-------|
 | **Claude Desktop** | stdio | [Setup →](examples/integrations/claude-desktop/) |
 | **Claude Code** | stdio or streamable-http  | [Setup →](examples/integrations/claude-desktop/) |
-| **Kiro** | streamable-http | [Setup →](examples/integrations/kiro/) |
+| **Kiro** | stdio or streamable-http | [Setup →](examples/integrations/kiro/) |
 | **LangGraph** | streamable-http | [Setup →](examples/integrations/langgraph/) |
 | **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
 | **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |

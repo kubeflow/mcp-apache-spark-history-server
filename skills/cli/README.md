@@ -39,7 +39,7 @@ No MCP server. No Python. No daemon. Just `shs`.
 | **AWS EMR** | Config field only | Full Persistent UI + presigned URL session setup |
 | **Multi-server** | `shs apps --all-servers` (apps listing only) | Auto-discovery by app ID across all servers |
 | **Config prefix** | `SHS_CLI__` env vars | `SHS_` env vars |
-| **Binary** | `shs` (compiled Go, no runtime deps) | `spark-mcp` (Python 3.12+, uv, FastMCP) |
+| **Binary** | `shs` (compiled Go, no runtime deps) | `spark-mcp` (Python 3.12+, uv, MCP Python SDK) |
 
 ## Installation
 
