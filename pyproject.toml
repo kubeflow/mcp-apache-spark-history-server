@@ -20,7 +20,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Information Analysis",
 ]
 dependencies = [
-    "mcp[cli]~=1.26",
+    "mcp[cli]~=2.3",
     "pyyaml~=6.0",
     "requests>=2.32.3,<3.0",
     "pydantic~=2.12",
@@ -28,7 +28,7 @@ dependencies = [
     "pydantic-settings~=2.13",
     "requests[socks]>=2.32.3,<3.0",
     "pysocks~=1.7",
-    "mcp-proxy-for-aws>=1.0,<2.0"
+    "httpx2~=2.13",
 ]
 
 [build-system]
@@ -90,6 +90,9 @@ python_functions = ["test_*"]
 addopts = "--cov=. --cov-report=term-missing"
 pythonpath = [".", "src"]
 asyncio_mode = "auto"
+markers = [
+    "stdio_smoke: also run this e2e test on stdio. Other e2e tests run on HTTP only, because each stdio test starts a new server process (slow).",
+]
 
 [dependency-groups]
 dev = [

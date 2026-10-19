@@ -1,7 +1,7 @@
 import os
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import yaml
 
@@ -456,11 +456,26 @@ class TestTransportSecurityConfig(unittest.TestCase):
 class TestAppTransportSecurityIntegration(unittest.TestCase):
     """Test app.py integration with transport security settings."""
 
+    @staticmethod
+    def _config(mcp_section):
+        """Load a Config from a temporary YAML file (no ./config.yaml)."""
+        data = {
+            "servers": {"local": {"url": "http://localhost:18080"}},
+            "mcp": mcp_section,
+        }
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False
+        ) as temp_file:
+            yaml.dump(data, temp_file)
+        try:
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file.name}):
+                return Config()
+        finally:
+            os.unlink(temp_file.name)
+
     def test_app_run_configures_transport_security(self):
         """Test that app.run() correctly configures transport security."""
-        from mcp.server.transport_security import TransportSecuritySettings
-
-        from spark_history_mcp.core.app import mcp
+        from spark_history_mcp.core.app import _transport_security
 
         config_data = {
             "servers": {"local": {"url": "http://localhost:18080", "default": True}},
@@ -485,22 +500,62 @@ class TestAppTransportSecurityIntegration(unittest.TestCase):
             with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
                 config = Config()
 
-            # Manually apply the transport security settings as run() would
-            if config.mcp.transport_security:
-                ts_config = config.mcp.transport_security
-                mcp.settings.transport_security = TransportSecuritySettings(
-                    enable_dns_rebinding_protection=ts_config.enable_dns_rebinding_protection,
-                    allowed_hosts=ts_config.allowed_hosts,
-                    allowed_origins=ts_config.allowed_origins,
-                )
-
-            # Verify settings were applied
-            ts = mcp.settings.transport_security
-            self.assertIsNotNone(ts)
+            # run() passes this value to mcp.run(transport_security=...).
+            ts = _transport_security(config)
             self.assertTrue(ts.enable_dns_rebinding_protection)
             self.assertEqual(ts.allowed_hosts, ["localhost:*", "test-gateway:*"])
             self.assertEqual(ts.allowed_origins, ["http://localhost:*"])
         finally:
             os.unlink(temp_file_path)
-            # Reset to None to avoid affecting other tests
-            mcp.settings.transport_security = None
+
+    def test_app_run_default_transport_security(self):
+        """Without transport_security, keep the localhost allowlist, also on 0.0.0.0."""
+        from spark_history_mcp.core.app import _transport_security
+
+        config = self._config({"address": "0.0.0.0"})  # noqa: S104
+        ts = _transport_security(config)
+        self.assertTrue(ts.enable_dns_rebinding_protection)
+        self.assertEqual(ts.allowed_hosts, ["127.0.0.1:*", "localhost:*", "[::1]:*"])
+        self.assertEqual(
+            ts.allowed_origins,
+            ["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"],
+        )
+
+    def test_app_run_passes_transport_settings_to_sdk(self):
+        """run() passes host, port and transport security to MCPServer.run()."""
+        from spark_history_mcp.core import app
+
+        config = self._config(
+            {"transport": "streamable-http", "address": "0.0.0.0"}  # noqa: S104
+        )
+        with (
+            # No AWS credentials: run() must not register the AWS tools.
+            patch(
+                "boto3.Session",
+                return_value=MagicMock(**{"get_credentials.return_value": None}),
+            ),
+            patch.object(app.mcp, "run") as mock_run,
+        ):
+            app.run(config)
+        mock_run.assert_called_once_with(
+            transport="streamable-http",
+            host="0.0.0.0",  # noqa: S104
+            port=18888,
+            transport_security=app._transport_security(config),
+        )
+
+    def test_app_run_stdio_has_no_http_settings(self):
+        """For stdio, run() passes no HTTP settings (the SDK rejects them)."""
+        from spark_history_mcp.core import app
+
+        config = self._config({"transport": "stdio"})
+        with (
+            # No AWS credentials: run() must not register the AWS tools.
+            patch(
+                "boto3.Session",
+                return_value=MagicMock(**{"get_credentials.return_value": None}),
+            ),
+            patch.object(app.mcp, "run") as mock_run,
+        ):
+            app.run(config)
+        mock_run.assert_called_once_with(transport="stdio")

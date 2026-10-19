@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
+from mcp.server.mcpserver import Context
 from mcp.types import ToolAnnotations
 
 from spark_history_mcp.api_client.models.application import Application
@@ -11,7 +12,7 @@ from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
-from spark_history_mcp.core.app import mcp
+from spark_history_mcp.core.app import tool
 from spark_history_mcp.models.mcp_types import (
     FailedTask,
     SqlCompareSide,
@@ -29,7 +30,7 @@ from spark_history_mcp.models.mcp_types import (
     StageTaskQuantiles,
 )
 
-from ..utils.utils import parallel_execute
+from ..utils.utils import error_text, parallel_execute
 
 logger = logging.getLogger(__name__)
 
@@ -328,7 +329,7 @@ def get_client_or_default(
     )
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_applications(
     server: Optional[str] = None,
     app_id: Optional[str] = None,
@@ -338,6 +339,8 @@ def list_applications(
     min_end_date: Optional[str] = None,
     max_end_date: Optional[str] = None,
     limit: Optional[int] = None,
+    *,
+    ctx: Context,
 ) -> list[Application]:
     """
     Get applications from the Spark History Server.
@@ -362,7 +365,6 @@ def list_applications(
     Returns:
         List of Application objects for all applications
     """
-    ctx = mcp.get_context()
 
     if app_id:
         client = get_client_or_default(ctx, server, app_id)
@@ -404,7 +406,7 @@ def list_applications(
         return all_apps
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_jobs(
     app_id: str,
     server: Optional[str] = None,
@@ -414,6 +416,8 @@ def list_jobs(
     app_attempt_id: Optional[str] = None,
     offset: int = 0,
     length: Optional[int] = None,
+    *,
+    ctx: Context,
 ) -> list:
     """
     Get a list of jobs for a Spark application.
@@ -443,7 +447,6 @@ def list_jobs(
     Returns:
         List of Job objects for the application
     """
-    ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
     if offset < 0:
@@ -466,7 +469,7 @@ def list_jobs(
     return jobs
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_stages(
     app_id: str,
     server: Optional[str] = None,
@@ -476,6 +479,8 @@ def list_stages(
     app_attempt_id: Optional[str] = None,
     offset: int = 0,
     length: Optional[int] = None,
+    *,
+    ctx: Context,
 ) -> list:
     """
     Get a list of stages for a Spark application.
@@ -502,7 +507,6 @@ def list_stages(
     Returns:
         List of StageData objects for the application
     """
-    ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
     if offset < 0:
@@ -527,7 +531,7 @@ def list_stages(
     return stages
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_stage(
     app_id: str,
     stage_id: int,
@@ -535,6 +539,8 @@ def get_stage(
     server: Optional[str] = None,
     with_summaries: bool = False,
     quantiles: Optional[str] = None,
+    *,
+    ctx: Context,
 ) -> StageData:
     """
     Get information about a specific stage.
@@ -551,7 +557,6 @@ def get_stage(
     Returns:
         StageData object containing stage information
     """
-    ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
     if attempt_id is not None:
@@ -614,13 +619,15 @@ def _resolve_latest_stage_attempt_id(client, app_id: str, stage_id: int) -> int:
     return max(attempts, key=lambda s: s.attempt_id or 0).attempt_id or 0
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_stage_task_failures(
     app_id: str,
     stage_id: int,
     server: Optional[str] = None,
     stage_attempt_id: Optional[int] = None,
     app_attempt_id: Optional[str] = None,
+    *,
+    ctx: Context,
 ) -> list:
     """
     Get the per-task error messages for a stage's failed tasks.
@@ -652,7 +659,6 @@ def list_stage_task_failures(
     Raises:
         ValueError: If the stage does not exist (e.g. it was skipped by AQE).
     """
-    ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
     if stage_attempt_id is None:
@@ -718,12 +724,14 @@ def _filter_environment_section(env: Environment, section: str) -> Environment:
     return filtered
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_environment(
     app_id: str,
     server: Optional[str] = None,
     app_attempt_id: Optional[str] = None,
     section: Optional[str] = None,
+    *,
+    ctx: Context,
 ):
     """
     Get the comprehensive Spark runtime configuration for a Spark application.
@@ -744,7 +752,6 @@ def get_environment(
         ApplicationEnvironmentInfo object containing environment details. When
         ``section`` is given, only that section is populated.
     """
-    ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
     env = client.get_environment(app_id=app_id, app_attempt_id=app_attempt_id)
@@ -755,7 +762,7 @@ def get_environment(
     return env
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_executors(
     app_id: str,
     server: Optional[str] = None,
@@ -765,6 +772,8 @@ def list_executors(
     app_attempt_id: Optional[str] = None,
     offset: int = 0,
     length: Optional[int] = None,
+    *,
+    ctx: Context,
 ):
     """
     Get executor information for a Spark application.
@@ -793,7 +802,6 @@ def list_executors(
     Returns:
         List of Executor objects containing executor information
     """
-    ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
     if offset < 0:
@@ -825,8 +833,8 @@ def list_executors(
     return executors
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-def get_executor_summary(app_id: str, server: Optional[str] = None):
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
+def get_executor_summary(app_id: str, server: Optional[str] = None, *, ctx: Context):
     """
     Aggregates metrics across all executors for a Spark application.
 
@@ -840,7 +848,6 @@ def get_executor_summary(app_id: str, server: Optional[str] = None):
     Returns:
         Dictionary containing aggregated executor metrics
     """
-    ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
     executors = client.list_all_executors(app_id=app_id)
@@ -865,7 +872,7 @@ def _filter_threads(threads, state, name, blocked_only):
     return result
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_executor_thread_dump(
     app_id: str,
     executor_id: str,
@@ -874,6 +881,8 @@ def get_executor_thread_dump(
     name: Optional[str] = None,
     blocked_only: bool = False,
     app_attempt_id: Optional[str] = None,
+    *,
+    ctx: Context,
 ) -> list:
     """
     Get the JVM thread dump for a driver or executor.
@@ -899,7 +908,6 @@ def get_executor_thread_dump(
     Returns:
         List of ThreadStackTrace objects, sorted by thread ID
     """
-    ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
     threads = client.get_executor_thread_dump(
@@ -911,9 +919,9 @@ def get_executor_thread_dump(
     return threads
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def compare_job_environments(
-    app_id1: str, app_id2: str, server: Optional[str] = None
+    app_id1: str, app_id2: str, server: Optional[str] = None, *, ctx: Context
 ) -> Dict[str, Any]:
     """
     Compare Spark environment configurations between two jobs.
@@ -929,7 +937,6 @@ def compare_job_environments(
     Returns:
         Dictionary containing configuration differences and similarities
     """
-    ctx = mcp.get_context()
     client1 = get_client_or_default(ctx, server, app_id1)
     client2 = get_client_or_default(ctx, server, app_id2)
 
@@ -1031,9 +1038,9 @@ def _calc_executor_summary_from_client(client, app_id: str):
     return _calculate_executor_metrics(executors)
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def compare_job_performance(
-    app_id1: str, app_id2: str, server: Optional[str] = None
+    app_id1: str, app_id2: str, server: Optional[str] = None, *, ctx: Context
 ) -> Dict[str, Any]:
     """
     Compare performance metrics between two Spark jobs.
@@ -1049,7 +1056,6 @@ def compare_job_performance(
     Returns:
         Dictionary containing detailed performance comparison
     """
-    ctx = mcp.get_context()
     client1 = get_client_or_default(ctx, server, app_id1)
     client2 = get_client_or_default(ctx, server, app_id2)
 
@@ -1089,7 +1095,7 @@ def compare_job_performance(
         except Exception as e:
             # If even basic app info fails, provide the original errors plus this failure
             all_errors = execution_result["errors"] + [
-                f"Sequential fallback failed: {str(e)}"
+                f"Sequential fallback failed: {error_text(e)}"
             ]
             return {"error": f"Complete failure: {'; '.join(all_errors)}"}
 
@@ -1324,7 +1330,7 @@ def _build_node_metrics(nodes) -> List[SqlNodeMetrics]:
     return result
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def list_sql_executions(
     app_id: str,
     server: Optional[str] = None,
@@ -1334,6 +1340,8 @@ def list_sql_executions(
     sort_by: Optional[str] = None,
     limit: int = 20,
     page_size: int = 100,
+    *,
+    ctx: Context,
 ) -> List[SqlExecutionSummary]:
     """
     List SQL executions for a Spark application as curated summaries.
@@ -1357,7 +1365,6 @@ def list_sql_executions(
     Returns:
         List of SqlExecutionSummary objects
     """
-    ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
     if limit < 0:
@@ -1398,7 +1405,7 @@ def list_sql_executions(
     return [_sql_execution_summary(e) for e in all_executions]
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_sql_execution(
     app_id: str,
     execution_id: int,
@@ -1409,6 +1416,8 @@ def get_sql_execution(
     include_aggregated_metrics: bool = False,
     include_stages: bool = False,
     plan_max_length: Optional[int] = None,
+    *,
+    ctx: Context,
 ) -> SqlExecutionDetail:
     """
     Get details about a specific SQL execution.
@@ -1438,7 +1447,6 @@ def get_sql_execution(
     Returns:
         SqlExecutionDetail with the header and any requested sections
     """
-    ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
     # Resolve whether to include the plan. Explicit arg wins; otherwise fall
@@ -1498,7 +1506,7 @@ def get_sql_execution(
     return detail
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def compare_sql_executions(
     app_id1: str,
     app_id2: str,
@@ -1506,6 +1514,8 @@ def compare_sql_executions(
     execution_id2: Optional[int] = None,
     server: Optional[str] = None,
     include_plan_diff: bool = False,
+    *,
+    ctx: Context,
 ) -> SqlExecutionComparison:
     """
     Compare performance metrics between two SQL executions.
@@ -1530,7 +1540,6 @@ def compare_sql_executions(
         SqlExecutionComparison with an ``a`` and ``b`` side, plus an optional
         ``plan_comparison`` when ``include_plan_diff`` is set
     """
-    ctx = mcp.get_context()
     client1 = get_client_or_default(ctx, server, app_id1)
     client2 = get_client_or_default(ctx, server, app_id2)
 
@@ -1653,13 +1662,15 @@ def _collect_stage_side(client, app_id: str, stage_id: int) -> StageCompareSide:
     )
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def compare_stages(
     app_id1: str,
     stage_id1: int,
     app_id2: str,
     stage_id2: int,
     server: Optional[str] = None,
+    *,
+    ctx: Context,
 ) -> StageComparison:
     """
     Compare two stages side by side, optionally across applications.
@@ -1683,7 +1694,6 @@ def compare_stages(
     Returns:
         StageComparison with an ``a`` and ``b`` side
     """
-    ctx = mcp.get_context()
     client1 = get_client_or_default(ctx, server, app_id1)
     client2 = get_client_or_default(ctx, server, app_id2)
 
@@ -1693,9 +1703,9 @@ def compare_stages(
     )
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_job_bottlenecks(
-    app_id: str, server: Optional[str] = None, top_n: int = 5
+    app_id: str, server: Optional[str] = None, top_n: int = 5, *, ctx: Context
 ) -> Dict[str, Any]:
     """
     Identify performance bottlenecks in a Spark job.
@@ -1711,16 +1721,17 @@ def get_job_bottlenecks(
     Returns:
         Dictionary containing identified bottlenecks and recommendations
     """
-    ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
     slowest_stages = list_stages(
-        app_id, server=server, sort_by="duration", length=top_n
+        app_id, server=server, sort_by="duration", length=top_n, ctx=ctx
     )
 
-    slowest_jobs = list_jobs(app_id, server=server, sort_by="duration", length=top_n)
+    slowest_jobs = list_jobs(
+        app_id, server=server, sort_by="duration", length=top_n, ctx=ctx
+    )
 
-    exec_summary = get_executor_summary(app_id, server)
+    exec_summary = get_executor_summary(app_id, server, ctx=ctx)
 
     all_stages = client.list_stages(app_id=app_id)
 
@@ -1830,9 +1841,9 @@ def get_job_bottlenecks(
     return bottlenecks
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_resource_usage_timeline(
-    app_id: str, server: Optional[str] = None
+    app_id: str, server: Optional[str] = None, *, ctx: Context
 ) -> Dict[str, Any]:
     """
     Get resource usage timeline for a Spark application.
@@ -1847,7 +1858,6 @@ def get_resource_usage_timeline(
     Returns:
         Dictionary containing timeline of resource usage
     """
-    ctx = mcp.get_context()
     client = get_client_or_default(ctx, server, app_id)
 
     # Get application info

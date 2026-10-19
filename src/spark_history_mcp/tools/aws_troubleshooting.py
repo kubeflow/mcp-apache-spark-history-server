@@ -7,14 +7,21 @@ registered when AWS credentials and region are detected at startup.
 
 import json
 import logging
+from collections.abc import Generator
 from importlib.metadata import version as pkg_version
 from typing import Any, Dict
 
-from mcp.client.session import ClientSession
+import anyio
+import boto3
+import httpx2
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
+from botocore.credentials import ReadOnlyCredentials
+from mcp import Client
+from mcp.client.streamable_http import streamable_http_client
 from mcp.types import ToolAnnotations
-from mcp_proxy_for_aws.client import aws_iam_streamablehttp_client
 
-from spark_history_mcp.core.app import mcp
+from spark_history_mcp.core.app import tool
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +35,42 @@ _USER_AGENT = f"kubeflow/{_PKG_NAME}/{_VERSION}"
 _BASE_URL = "https://sagemaker-unified-studio-mcp.{region}.api.aws"
 _SERVICE = "sagemaker-unified-studio-mcp"
 
+# The SDK's default MCP HTTP client timeouts (a response stream can stay open).
+_TIMEOUT = httpx2.Timeout(30.0, read=300.0)
+
+
+class SigV4HttpxAuth(httpx2.Auth):
+    """Sign each httpx2 request with AWS Signature Version 4 (botocore)."""
+
+    # The signature includes a hash of the body, so httpx2 must read it first.
+    requires_request_body = True
+
+    def __init__(self, credentials: ReadOnlyCredentials, service: str, region: str):
+        self._signer = SigV4Auth(credentials, service, region)
+
+    def auth_flow(
+        self, request: httpx2.Request
+    ) -> Generator[httpx2.Request, httpx2.Response, None]:
+        headers = dict(request.headers)
+        # AWS leaves the hop-by-hop Connection header out of its signature check.
+        headers.pop("connection", None)
+        aws_request = AWSRequest(
+            method=request.method,
+            url=str(request.url),
+            data=request.content,
+            headers=headers,
+        )
+        self._signer.add_auth(aws_request)
+        request.headers.update(dict(aws_request.headers))
+        yield request
+
+
+def _frozen_credentials() -> ReadOnlyCredentials:
+    credentials = boto3.Session().get_credentials()
+    if credentials is None:
+        raise RuntimeError("No AWS credentials are available.")
+    return credentials.get_frozen_credentials()
+
 
 async def _call_remote_tool(
     region: str,
@@ -38,16 +81,24 @@ async def _call_remote_tool(
     """Call a tool on the remote AWS MCP endpoint."""
     endpoint = f"{_BASE_URL.format(region=region)}/{server_path}/mcp"
 
-    client = aws_iam_streamablehttp_client(
-        endpoint=endpoint,
-        aws_region=region,
-        aws_service=_SERVICE,
+    # Fresh for each call, so rotated credentials apply. The boto3 chain can
+    # block on I/O (for example instance metadata).
+    credentials = await anyio.to_thread.run_sync(_frozen_credentials)
+
+    async with httpx2.AsyncClient(
+        auth=SigV4HttpxAuth(credentials, _SERVICE, region),
         headers={"User-Agent": _USER_AGENT},
-    )
-    async with client as (read, write, _):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            result = await session.call_tool(tool_name, arguments)
+        timeout=_TIMEOUT,
+        # The SDK transport ignores follow_redirects and follows same-origin
+        # redirects up to max_redirects, so set both.
+        follow_redirects=False,
+        max_redirects=0,
+    ) as http_client:
+        # The AWS endpoint is pre-2026. "auto" falls back to initialize now and
+        # uses a newer protocol version when the endpoint supports it.
+        transport = streamable_http_client(endpoint, http_client=http_client)
+        async with Client(transport, mode="auto", cache=None) as client:
+            result = await client.call_tool(tool_name, arguments)
 
     # Extract text content from the MCP result
     for content in result.content:
@@ -60,7 +111,7 @@ async def _call_remote_tool(
 def register_troubleshooting_tools(region: str):
     """Register AWS troubleshooting tools with the MCP server."""
 
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def aws_analyze_spark_workload(
         platform_type: str,
         platform_params: Dict[str, str],
@@ -89,7 +140,7 @@ def register_troubleshooting_tools(region: str):
             },
         )
 
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def aws_spark_code_recommendation(
         platform_type: str,
         platform_params: Dict[str, str],

@@ -21,6 +21,7 @@ a request is rejected with 401/403.
 
 import functools
 import inspect
+import threading
 from typing import Callable, List, Optional
 
 from spark_history_mcp.api_client.api.default_api import DefaultApi
@@ -69,12 +70,13 @@ def _resilient_call(method):
 
     @functools.wraps(method)
     def wrapper(self, *args, **kwargs):
+        cookie_before = self._api.api_client.cookie
         try:
             return method(self, *args, **kwargs)
         except (UnauthorizedException, ForbiddenException):
             if not self._reauth:
                 raise
-            self._apply_cookie(self._reauth())
+            self._refresh_cookie(cookie_before)
             return method(self, *args, **kwargs)
         except NotFoundException as exc:
             bound = signature.bind(self, *args, **kwargs)
@@ -111,6 +113,8 @@ class SparkRestClient:
 
         # Optional callback returning a fresh Cookie header (EMR re-auth).
         self._reauth: Optional[Callable[[], str]] = None
+        # Tools run in worker threads, so concurrent 401/403s must re-auth once.
+        self._reauth_lock = threading.Lock()
 
         self._api = self._build_api_client()
 
@@ -162,6 +166,12 @@ class SparkRestClient:
 
     def _apply_cookie(self, cookie_header: str) -> None:
         self._api.api_client.cookie = cookie_header
+
+    def _refresh_cookie(self, stale_cookie: Optional[str]) -> None:
+        """Re-authenticate, unless another thread already replaced ``stale_cookie``."""
+        with self._reauth_lock:
+            if self._api.api_client.cookie == stale_cookie:
+                self._apply_cookie(self._reauth())
 
     def _invoke(self, fn, *args, **kwargs):
         """Call a generated API method applying the configured request timeout."""

@@ -93,7 +93,7 @@ class TestEMRIntegration(unittest.TestCase):
         """Test app_lifespan context manager with EMR configuration."""
         import asyncio
 
-        from mcp.server.fastmcp import FastMCP
+        from mcp.server.mcpserver import MCPServer
 
         from spark_history_mcp.core.app import app_lifespan
 
@@ -110,8 +110,7 @@ class TestEMRIntegration(unittest.TestCase):
         mock_emr_client.initialize.return_value = ("https://example.com", mock_session)
         mock_emr_client_class.return_value = mock_emr_client
 
-        # Mock the FastMCP server
-        mock_server = MagicMock(spec=FastMCP)
+        mock_server = MagicMock(spec=MCPServer)
 
         # Set up the mock config
         mock_config = MagicMock()

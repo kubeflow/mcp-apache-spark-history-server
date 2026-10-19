@@ -3,13 +3,14 @@ import socket
 import subprocess
 import sys
 import time
-from contextlib import AsyncExitStack, asynccontextmanager
-from types import TracebackType
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
 
 import pytest
-from mcp import ClientSession
-from mcp.client.streamable_http import streamable_http_client
+from mcp import Client, StdioServerParameters
 from mcp.types import TextContent
+from mcp.types.version import LATEST_HANDSHAKE_VERSION, LATEST_MODERN_VERSION
 
 from spark_history_mcp.api_client.models.application import Application
 from spark_history_mcp.api_client.models.environment import Environment
@@ -36,57 +37,111 @@ yarn_app_id = "application_1713000000000_0001"  # shs-e2e-yarn
 sql_exec_id = 6
 
 
+repo_root = Path(__file__).resolve().parent.parent
+e2e_config = repo_root / "tests" / "config-e2e.yaml"
+
+# Pin the modern version instead of "auto": a server that rejects it then fails
+# the test instead of falling back to legacy.
+LEGACY_MODE = "legacy"
+MODERN_MODE = LATEST_MODERN_VERSION
+
+
+@dataclass(frozen=True)
+class Connection:
+    mode: str
+    transport: Literal["http", "stdio"]
+
+
+CONNECTIONS = [
+    Connection(LEGACY_MODE, "http"),
+    Connection(MODERN_MODE, "http"),
+    Connection(LEGACY_MODE, "stdio"),
+    Connection(MODERN_MODE, "stdio"),
+]
+HTTP_CONNECTIONS = [c for c in CONNECTIONS if c.transport == "http"]
+
+# The connection for the test that runs now. The `connection` fixture sets it,
+# so each test body keeps `async with McpClient() as client:` unchanged.
+_current_connection = CONNECTIONS[0]
+
+
+def _connection_id(c: Connection) -> str:
+    return f"{'modern' if c.mode == MODERN_MODE else 'legacy'}-{c.transport}"
+
+
+def pytest_generate_tests(metafunc):
+    """Run on HTTP in both eras; on stdio only for stdio_smoke or E2E_FULL_STDIO=1."""
+    if "connection" not in metafunc.fixturenames:
+        return
+    full_stdio = os.environ.get("E2E_FULL_STDIO") == "1"
+    smoke = metafunc.definition.get_closest_marker("stdio_smoke") is not None
+    connections = CONNECTIONS if (full_stdio or smoke) else HTTP_CONNECTIONS
+    metafunc.parametrize("connection", connections, ids=_connection_id, indirect=True)
+
+
+@pytest.fixture(autouse=True)
+def connection(request):
+    global _current_connection
+    _current_connection = request.param
+    yield request.param
+    _current_connection = CONNECTIONS[0]
+
+
+def _stdio_server_params(
+    env_overrides: dict[str, str | None] | None = None,
+) -> StdioServerParameters:
+    """Build the stdio server command; an override of None removes the variable."""
+    # Drop SHS_* vars from the parent, so only the values below apply.
+    env = {k: v for k, v in os.environ.items() if not k.startswith("SHS_")}
+    env["SHS_MCP_CONFIG"] = str(e2e_config)
+    env["SHS_MCP__TRANSPORT"] = "stdio"
+    # Off EC2, the metadata probe for AWS credentials slows each server start.
+    env["AWS_EC2_METADATA_DISABLED"] = "true"
+    for key, value in (env_overrides or {}).items():
+        if value is None:
+            env.pop(key, None)
+        else:
+            env[key] = value
+    return StdioServerParameters(
+        command=sys.executable,
+        args=["-m", "spark_history_mcp.core.main"],
+        env=env,
+        cwd=str(repo_root),
+    )
+
+
 class McpClient:
-    def __init__(self):
-        self._client_session = None
-        self._exit_stack = None
+    """Connect to the e2e MCP server with the current era and transport."""
 
-    @asynccontextmanager
-    async def initialize(self):
-        self._exit_stack = AsyncExitStack()
-        async with AsyncExitStack() as stack:
-            read, write, _ = await stack.enter_async_context(
-                streamable_http_client(mcp_endpoint)
-            )
-            mcp_client = await stack.enter_async_context(ClientSession(read, write))
-            await mcp_client.initialize()
-            self._client_session = mcp_client
-            yield mcp_client
+    def __init__(self, connection: Connection | None = None, endpoint=mcp_endpoint):
+        conn = connection or _current_connection
+        target = endpoint if conn.transport == "http" else _stdio_server_params()
+        # Each call must reach the server, not the client response cache.
+        self._client = Client(target, mode=conn.mode, cache=None)
 
-    @classmethod
-    @asynccontextmanager
-    async def get_mcp_client(cls):
-        client = cls()
-        async with client.initialize() as session:
-            yield session
+    @property
+    def protocol_version(self) -> str:
+        return self._client.protocol_version
+
+    @property
+    def server_info(self):
+        return self._client.server_info
 
     async def call_tool(self, name, arguments):
-        return await self._client_session.call_tool(name=name, arguments=arguments)
+        return await self._client.call_tool(name, arguments)
 
     async def list_tools(self):
-        return await self._client_session.list_tools()
+        return await self._client.list_tools()
 
     async def get_prompt(self, name, arguments):
-        return await self._client_session.get_prompt(name=name, arguments=arguments)
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        await self._exit_stack.aclose()
+        return await self._client.get_prompt(name, arguments)
 
     async def __aenter__(self):
-        self._exit_stack = AsyncExitStack()
-        read, write, _ = await self._exit_stack.enter_async_context(
-            streamable_http_client(mcp_endpoint)
-        )
-        self._client_session = await self._exit_stack.enter_async_context(
-            ClientSession(read, write)
-        )
-        await self._client_session.initialize()
+        await self._client.__aenter__()
         return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+        await self._client.__aexit__(exc_type, exc_val, exc_tb)
 
 
 def _parse_list(result, model):
@@ -100,6 +155,7 @@ def _parse_one(result, model):
     return model.model_validate_json(result.content[0].text)
 
 
+@pytest.mark.stdio_smoke
 @pytest.mark.asyncio
 async def test_tools_not_empty():
     async with McpClient() as client:
@@ -113,6 +169,75 @@ async def test_tools_not_empty():
             "get_sql_execution",
             "compare_sql_executions",
         }.issubset(names)
+
+
+@pytest.mark.stdio_smoke
+@pytest.mark.asyncio
+async def test_protocol_version_negotiated(connection):
+    """Each era connects at the expected protocol version."""
+    async with McpClient() as client:
+        # A pinned modern mode sends nothing at connect time. This request
+        # makes sure that the server accepts the version.
+        await client.list_tools()
+        if connection.mode == LEGACY_MODE:
+            assert client.protocol_version == LATEST_HANDSHAKE_VERSION
+            assert client.server_info is not None
+            assert client.server_info.name == "Spark Events"
+        else:
+            assert client.protocol_version == MODERN_MODE
+
+
+_CREDENTIAL_HELPER = """
+import json, os, sys
+fd0, null = os.fstat(0), os.stat(os.devnull)
+same = (fd0.st_dev, fd0.st_ino) == (null.st_dev, null.st_ino)
+with open(sys.argv[1], "w") as f:
+    f.write("devnull" if same else "inherited")
+print(json.dumps({"Version": 1, "AccessKeyId": "AKIDEXAMPLE",
+                  "SecretAccessKey": "secret", "SessionToken": "token"}))
+"""
+
+
+@pytest.mark.stdio_smoke
+@pytest.mark.asyncio
+async def test_credential_process_does_not_inherit_stdio(connection, tmp_path):
+    """A credential_process helper must not get the MCP stdin pipe."""
+    if connection.transport != "stdio":
+        pytest.skip("stdio only")
+    helper = tmp_path / "credential_helper.py"
+    helper.write_text(_CREDENTIAL_HELPER)
+    stdin_kind = tmp_path / "stdin_kind"
+    aws_config = tmp_path / "aws_config"
+    aws_config.write_text(
+        "[default]\n"
+        "region = us-west-2\n"
+        f"credential_process = {sys.executable} {helper} {stdin_kind}\n"
+    )
+    # Remove other credential sources, so only credential_process applies.
+    env: dict[str, str | None] = {k: None for k in os.environ if k.startswith("AWS_")}
+    env.update(
+        AWS_CONFIG_FILE=str(aws_config),
+        AWS_SHARED_CREDENTIALS_FILE=str(tmp_path / "no_credentials"),
+        AWS_EC2_METADATA_DISABLED="true",
+    )
+    client = Client(_stdio_server_params(env), mode=connection.mode, cache=None)
+    async with client:
+        names = {t.name for t in (await client.list_tools()).tools}
+
+    assert "aws_analyze_spark_workload" in names
+    assert stdin_kind.read_text() == "devnull"
+
+
+@pytest.mark.stdio_smoke
+@pytest.mark.asyncio
+async def test_auto_mode_discovers_modern_server(connection):
+    """The SDK default (mode="auto") discovers the newest modern version."""
+    if connection.mode != MODERN_MODE:
+        pytest.skip("runs once for each transport, on the modern rows")
+    async with McpClient(Connection("auto", connection.transport)) as client:
+        assert client.protocol_version == MODERN_MODE
+        assert client.server_info is not None
+        assert client.server_info.name == "Spark Events"
 
 
 def _prompt_text(result):
@@ -143,6 +268,7 @@ async def test_investigate_failure_prompt_without_server():
         assert 'server="secondary"' not in text
 
 
+@pytest.mark.stdio_smoke
 @pytest.mark.asyncio
 async def test_investigate_failure_prompt_with_server():
     """When a server is specified, it is threaded into the rendered tool calls."""
@@ -198,11 +324,12 @@ async def test_compare_applications_prompt_with_server_and_context():
         assert "A is the baseline run" in text
 
 
+@pytest.mark.stdio_smoke
 @pytest.mark.asyncio
 async def test_list_applications():
     async with McpClient() as client:
         result = await client.call_tool("list_applications", {})
-        assert not result.isError
+        assert not result.is_error
         apps = [Application.model_validate_json(c.text) for c in result.content]
         by_id = {a.id: a.name for a in apps}
         assert by_id.get(app1_id) == "shs-e2e-app1"
@@ -213,7 +340,7 @@ async def test_list_applications():
 async def test_list_applications_by_id():
     async with McpClient() as client:
         result = await client.call_tool("list_applications", {"app_id": app1_id})
-        assert not result.isError
+        assert not result.is_error
         apps = [Application.model_validate_json(c.text) for c in result.content]
         assert len(apps) == 1
         assert apps[0].id == app1_id
@@ -227,13 +354,14 @@ async def test_list_applications_by_id_via_secondary_server():
         result = await client.call_tool(
             "list_applications", {"app_id": app2_id, "server": "secondary"}
         )
-        assert not result.isError
+        assert not result.is_error
         apps = [Application.model_validate_json(c.text) for c in result.content]
         assert len(apps) == 1
         assert apps[0].id == app2_id
         assert apps[0].name == "shs-e2e-app2"
 
 
+@pytest.mark.stdio_smoke
 @pytest.mark.asyncio
 async def test_unknown_server_errors():
     async with McpClient() as client:
@@ -242,7 +370,12 @@ async def test_unknown_server_errors():
         result = await client.call_tool(
             "list_applications", {"app_id": app2_id, "server": "does-not-exist"}
         )
-        assert result.isError
+        assert result.is_error
+        # The error text tells the agent how to correct the call.
+        assert result.content[0].text == (
+            "Error executing tool list_applications: No Spark server named "
+            "'does-not-exist' is configured (available servers: local, secondary)."
+        )
 
 
 @pytest.mark.asyncio
@@ -250,7 +383,7 @@ async def test_list_applications_includes_attempts():
     """The unfiltered listing embeds each application's attempts."""
     async with McpClient() as client:
         result = await client.call_tool("list_applications", {})
-        assert not result.isError
+        assert not result.is_error
         apps = [Application.model_validate_json(c.text) for c in result.content]
         by_id = {a.id: a for a in apps}
 
@@ -276,7 +409,7 @@ async def test_list_applications_by_id_includes_attempts():
     """Fetching a single app by id returns the same embedded attempts."""
     async with McpClient() as client:
         result = await client.call_tool("list_applications", {"app_id": yarn_app_id})
-        assert not result.isError
+        assert not result.is_error
         apps = [Application.model_validate_json(c.text) for c in result.content]
         assert len(apps) == 1
         attempts = apps[0].attempts
@@ -295,7 +428,7 @@ async def test_list_applications_by_id_includes_attempts():
 async def test_list_jobs_no_filter():
     async with McpClient() as client:
         jobs_result = await client.call_tool("list_jobs", {"app_id": app1_id})
-        assert not jobs_result.isError
+        assert not jobs_result.is_error
         jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
         assert len(jobs) == 23
         failed = [j for j in jobs if j.status == "FAILED"]
@@ -312,7 +445,7 @@ async def test_list_jobs_with_status_filter():
         jobs_result = await client.call_tool(
             "list_jobs", {"app_id": app1_id, "status": ["FAILED"]}
         )
-        assert not jobs_result.isError
+        assert not jobs_result.is_error
         jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
         assert len(jobs) == 1
         assert jobs[0].status == "FAILED"
@@ -325,7 +458,7 @@ async def test_list_jobs_with_job_id_filter():
         jobs_result = await client.call_tool(
             "list_jobs", {"app_id": app1_id, "job_id": 4}
         )
-        assert not jobs_result.isError
+        assert not jobs_result.is_error
         jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
         assert len(jobs) == 1
         assert jobs[0].job_id == 4
@@ -338,7 +471,7 @@ async def test_list_jobs_sort_by_id():
         jobs_result = await client.call_tool(
             "list_jobs", {"app_id": app1_id, "sort_by": "id", "length": 5}
         )
-        assert not jobs_result.isError
+        assert not jobs_result.is_error
         jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
         # Descending job ID, limited to 5.
         assert [j.job_id for j in jobs] == [22, 21, 20, 19, 18]
@@ -350,7 +483,7 @@ async def test_list_jobs_sort_by_duration():
         jobs_result = await client.call_tool(
             "list_jobs", {"app_id": app1_id, "sort_by": "duration"}
         )
-        assert not jobs_result.isError
+        assert not jobs_result.is_error
         jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
         # Job 20 is the longest-running job (~2.085s); pure duration sort ignores
         # status, so it comes before the failed job.
@@ -363,7 +496,7 @@ async def test_list_jobs_sort_by_failed_tasks():
         jobs_result = await client.call_tool(
             "list_jobs", {"app_id": app1_id, "sort_by": "failed-tasks"}
         )
-        assert not jobs_result.isError
+        assert not jobs_result.is_error
         jobs = [Job.model_validate_json(c.text) for c in jobs_result.content]
         # Job 4 has the most failed tasks (7), then job 3 (4); the rest have 0.
         assert [j.job_id for j in jobs[:2]] == [4, 3]
@@ -376,7 +509,7 @@ async def test_list_jobs_sort_by_failed_tasks():
 async def test_list_stages_default_order():
     async with McpClient() as client:
         result = await client.call_tool("list_stages", {"app_id": app1_id, "length": 5})
-        assert not result.isError
+        assert not result.is_error
         stages = [StageData.model_validate_json(c.text) for c in result.content]
         # Default: failed first, then by duration descending.
         assert [s.stage_id for s in stages] == [5, 43, 4, 0, 14]
@@ -389,7 +522,7 @@ async def test_list_stages_sort_by_duration():
         result = await client.call_tool(
             "list_stages", {"app_id": app1_id, "sort_by": "duration"}
         )
-        assert not result.isError
+        assert not result.is_error
         stages = [StageData.model_validate_json(c.text) for c in result.content]
         # Stage 43 is the longest-running stage (~2.083s).
         assert stages[0].stage_id == 43
@@ -401,7 +534,7 @@ async def test_list_stages_sort_by_failed_tasks():
         result = await client.call_tool(
             "list_stages", {"app_id": app1_id, "sort_by": "failed-tasks"}
         )
-        assert not result.isError
+        assert not result.is_error
         stages = [StageData.model_validate_json(c.text) for c in result.content]
         # Stage 5 has the most failed tasks (7), then stage 4 (4); the rest have 0.
         assert [s.stage_id for s in stages[:2]] == [5, 4]
@@ -413,7 +546,7 @@ async def test_list_stages_sort_by_id():
         result = await client.call_tool(
             "list_stages", {"app_id": app1_id, "sort_by": "id", "length": 5}
         )
-        assert not result.isError
+        assert not result.is_error
         stages = [StageData.model_validate_json(c.text) for c in result.content]
         # Descending stage ID, limited to 5 (app1 has 47 stages: 0..46).
         assert [s.stage_id for s in stages] == [46, 45, 44, 43, 42]
@@ -426,7 +559,7 @@ async def test_list_stages_sort_by_id():
 async def test_list_executors_default():
     async with McpClient() as client:
         result = await client.call_tool("list_executors", {"app_id": app1_id})
-        assert not result.isError
+        assert not result.is_error
         execs = [Executor.model_validate_json(c.text) for c in result.content]
         # The driver is always present in this corpus (local mode).
         assert any(e.id == "driver" for e in execs)
@@ -438,7 +571,7 @@ async def test_list_executors_executor_id_filter():
         result = await client.call_tool(
             "list_executors", {"app_id": app1_id, "executor_id": "driver"}
         )
-        assert not result.isError
+        assert not result.is_error
         execs = [Executor.model_validate_json(c.text) for c in result.content]
         assert len(execs) == 1
         assert execs[0].id == "driver"
@@ -453,7 +586,7 @@ async def test_list_sql_executions_default_order():
         result = await client.call_tool(
             "list_sql_executions", {"app_id": app1_id, "limit": 0}
         )
-        assert not result.isError
+        assert not result.is_error
         execs = _parse_list(result, SqlExecutionSummary)
         # Default ordering: failed first, then by duration descending.
         assert [e.id for e in execs] == [2, 8, 6, 0, 1, 3, 7, 9, 4, 5]
@@ -467,7 +600,7 @@ async def test_list_sql_executions_status_filter():
         result = await client.call_tool(
             "list_sql_executions", {"app_id": app1_id, "status": "FAILED"}
         )
-        assert not result.isError
+        assert not result.is_error
         execs = _parse_list(result, SqlExecutionSummary)
         assert [e.id for e in execs] == [2]
 
@@ -479,7 +612,7 @@ async def test_list_sql_executions_description_filter():
             "list_sql_executions",
             {"app_id": app1_id, "description": "createOrReplaceTempView"},
         )
-        assert not result.isError
+        assert not result.is_error
         execs = _parse_list(result, SqlExecutionSummary)
         assert {e.id for e in execs} == {4, 5}
 
@@ -490,7 +623,7 @@ async def test_get_sql_execution_header_only():
         result = await client.call_tool(
             "get_sql_execution", {"app_id": app1_id, "execution_id": sql_exec_id}
         )
-        assert not result.isError
+        assert not result.is_error
         detail = _parse_one(result, SqlExecutionDetail)
         assert detail.execution.id == sql_exec_id
         assert detail.execution.status == "COMPLETED"
@@ -504,6 +637,7 @@ async def test_get_sql_execution_header_only():
         assert detail.stages is None
 
 
+@pytest.mark.stdio_smoke
 @pytest.mark.asyncio
 async def test_get_sql_execution_with_summary():
     async with McpClient() as client:
@@ -515,7 +649,7 @@ async def test_get_sql_execution_with_summary():
                 "include_aggregated_metrics": True,
             },
         )
-        assert not result.isError
+        assert not result.is_error
         detail = _parse_one(result, SqlExecutionDetail)
         assert detail.jobs is not None
         assert len(detail.jobs) == 7
@@ -540,7 +674,7 @@ async def test_get_sql_execution_with_plan():
             "get_sql_execution",
             {"app_id": app1_id, "execution_id": sql_exec_id, "include_plan": True},
         )
-        assert not result.isError
+        assert not result.is_error
         detail = _parse_one(result, SqlExecutionDetail)
         assert detail.plan_description
         # AQE initial plans are stripped unless explicitly requested.
@@ -556,7 +690,7 @@ async def test_get_sql_execution_with_stages():
             "get_sql_execution",
             {"app_id": app1_id, "execution_id": sql_exec_id, "include_stages": True},
         )
-        assert not result.isError
+        assert not result.is_error
         detail = _parse_one(result, SqlExecutionDetail)
         assert detail.stages is not None
         assert len(detail.stages) == 25
@@ -574,7 +708,7 @@ async def test_compare_sql_executions():
                 "execution_id2": sql_exec_id,
             },
         )
-        assert not result.isError
+        assert not result.is_error
         cmp = _parse_one(result, SqlExecutionComparison)
 
         assert cmp.a.app == app1_id
@@ -617,7 +751,7 @@ async def test_compare_sql_executions_with_plan_diff():
                 "include_plan_diff": True,
             },
         )
-        assert not result.isError
+        assert not result.is_error
         cmp = _parse_one(result, SqlExecutionComparison)
 
         # Metrics are still present.
@@ -668,7 +802,7 @@ ENV_SECTION_FIELDS = [
 async def test_get_environment_full():
     async with McpClient() as client:
         result = await client.call_tool("get_environment", {"app_id": app1_id})
-        assert not result.isError
+        assert not result.is_error
         env = _parse_one(result, Environment)
         # The full environment exposes every section the corpus provides.
         for field in ENV_SECTION_FIELDS:
@@ -682,7 +816,7 @@ async def test_get_environment_section(section):
         result = await client.call_tool(
             "get_environment", {"app_id": app1_id, "section": section}
         )
-        assert not result.isError
+        assert not result.is_error
         env = _parse_one(result, Environment)
         # The requested section is populated and every other section is cleared.
         assert getattr(env, section) is not None, section
@@ -698,7 +832,10 @@ async def test_get_environment_invalid_section():
         result = await client.call_tool(
             "get_environment", {"app_id": app1_id, "section": "invalid"}
         )
-        assert result.isError
+        assert result.is_error
+        assert result.content[0].text.startswith(
+            "Error executing tool get_environment: invalid section 'invalid'"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -722,7 +859,7 @@ async def test_compare_stages_across_apps():
                 "stage_id2": app2_stage_id,
             },
         )
-        assert not result.isError
+        assert not result.is_error
         cmp = _parse_one(result, StageComparison)
 
         # Side A: app1 / stage 43.
@@ -767,7 +904,7 @@ async def test_compare_stages_task_quantiles():
                 "stage_id2": app2_stage_id,
             },
         )
-        assert not result.isError
+        assert not result.is_error
         cmp = _parse_one(result, StageComparison)
 
         qa = cmp.a.task_quantiles
@@ -815,7 +952,7 @@ async def test_compare_stages_same_stage():
                 "stage_id2": app1_stage_id,
             },
         )
-        assert not result.isError
+        assert not result.is_error
         cmp = _parse_one(result, StageComparison)
         # Comparing a stage with itself yields identical sides.
         assert cmp.a.duration == cmp.b.duration
@@ -835,7 +972,7 @@ async def test_compare_stages_not_found():
                 "stage_id2": app2_stage_id,
             },
         )
-        assert result.isError
+        assert result.is_error
 
 
 # ---------------------------------------------------------------------------
@@ -853,7 +990,11 @@ async def test_get_executor_thread_dump_completed_app_errors():
             "get_executor_thread_dump",
             {"app_id": app1_id, "executor_id": "driver"},
         )
-        assert result.isError
+        assert result.is_error
+        text = result.content[0].text
+        assert text.startswith("Error executing tool get_executor_thread_dump: (")
+        assert "Reason:" in text
+        assert "HTTP response headers" not in text
 
 
 # ---------------------------------------------------------------------------
@@ -871,7 +1012,7 @@ async def test_list_stage_task_failures():
             "list_stage_task_failures",
             {"app_id": app1_id, "stage_id": failed_stage_id},
         )
-        assert not result.isError
+        assert not result.is_error
         tasks = _parse_list(result, FailedTask)
         assert len(tasks) == 7
         for t in tasks:
@@ -893,7 +1034,7 @@ async def test_list_stage_task_failures_none_for_successful_stage():
             "list_stage_task_failures",
             {"app_id": app1_id, "stage_id": app1_stage_id},
         )
-        assert not result.isError
+        assert not result.is_error
         tasks = _parse_list(result, FailedTask)
         assert tasks == []
 
@@ -905,7 +1046,13 @@ async def test_list_stage_task_failures_not_found():
             "list_stage_task_failures",
             {"app_id": app1_id, "stage_id": 999999},
         )
-        assert result.isError
+        assert result.is_error
+        # The Spark History Server answers HTTP 404 for an unknown stage.
+        text = result.content[0].text
+        assert text.startswith(
+            "Error executing tool list_stage_task_failures: (404)\n"
+        ), text
+        assert "HTTP response headers" not in text, text
 
 
 # Spark History Server backing the e2e corpus (started by `task cli:start-shs`).
@@ -923,19 +1070,8 @@ def _wait_for_port(host, port, timeout=30.0):
     return False
 
 
-@asynccontextmanager
-async def _mcp_client_at(endpoint):
-    async with AsyncExitStack() as stack:
-        read, write, _ = await stack.enter_async_context(
-            streamable_http_client(endpoint)
-        )
-        session = await stack.enter_async_context(ClientSession(read, write))
-        await session.initialize()
-        yield session
-
-
 @pytest.mark.asyncio
-async def test_legacy_single_underscore_env_vars_still_work(tmp_path):
+async def test_legacy_single_underscore_env_vars_still_work(tmp_path, connection):
     """A server configured entirely with deprecated single-underscore SHS_* env
     vars still starts, serves, and warns about the deprecation.
 
@@ -943,6 +1079,8 @@ async def test_legacy_single_underscore_env_vars_still_work(tmp_path):
     and SHS_SERVERS_LOCAL_URL proves the configured Spark History Server is
     reached (the e2e corpus comes back).
     """
+    if connection.transport != "http":
+        pytest.skip("this test starts its own HTTP server")
     # Drop every SHS_* var the harness set, then configure exclusively through
     # the legacy single-underscore form. This dict is the child's env only; the
     # pytest process environment is never modified.
@@ -973,9 +1111,9 @@ async def test_legacy_single_underscore_env_vars_still_work(tmp_path):
                 + log_path.read_text()
             )
             # Listening on legacy_mcp_port proves SHS_MCP_PORT was honored.
-            async with _mcp_client_at(legacy_mcp_endpoint) as client:
+            async with McpClient(connection, endpoint=legacy_mcp_endpoint) as client:
                 result = await client.call_tool("list_applications", {})
-                assert not result.isError
+                assert not result.is_error
                 apps = [Application.model_validate_json(c.text) for c in result.content]
                 by_id = {a.id: a.name for a in apps}
                 # SHS_SERVERS_LOCAL_URL routed to the e2e corpus.

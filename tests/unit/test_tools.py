@@ -158,7 +158,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_jobs.return_value = [job1, job2, job3]
         mock_get_client.return_value = mock_client
 
-        result = list_jobs("app-123", sort_by="duration", length=2)
+        result = list_jobs("app-123", sort_by="duration", length=2, ctx=self.mock_ctx)
 
         self.assertEqual([j.job_id for j in result], [3, 2])
         # When sorting, the full set is fetched (no server-side pagination).
@@ -179,7 +179,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_jobs.return_value = [job_a, job_b, job_c]
         mock_get_client.return_value = mock_client
 
-        result = list_jobs("app-123", sort_by="id")
+        result = list_jobs("app-123", sort_by="id", ctx=self.mock_ctx)
 
         self.assertEqual([j.job_id for j in result], [3, 2, 1])
 
@@ -199,7 +199,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_jobs.return_value = [job_a, job_b, job_c]
         mock_get_client.return_value = mock_client
 
-        result = list_jobs("app-123", sort_by="failed-tasks")
+        result = list_jobs("app-123", sort_by="failed-tasks", ctx=self.mock_ctx)
 
         self.assertEqual([j.job_id for j in result], [2, 1, 3])
 
@@ -223,7 +223,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_jobs.return_value = [succeeded, failed]
         mock_get_client.return_value = mock_client
 
-        result = list_jobs("app-123")
+        result = list_jobs("app-123", ctx=self.mock_ctx)
 
         # Failed job first despite its shorter duration.
         self.assertEqual([j.job_id for j in result], [2, 1])
@@ -236,7 +236,7 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         with self.assertRaises(ValueError):
-            list_jobs("app-123", sort_by="bogus")
+            list_jobs("app-123", sort_by="bogus", ctx=self.mock_ctx)
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_get_stage_with_attempt_id(self, mock_get_client):
@@ -250,7 +250,7 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         # Call the function with attempt_id
-        result = get_stage("app-123", stage_id=1, attempt_id=0)
+        result = get_stage("app-123", stage_id=1, attempt_id=0, ctx=self.mock_ctx)
 
         self.assertEqual(result, mock_stage)
         mock_client.get_stage_attempt.assert_called_once_with(
@@ -272,7 +272,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_stage_attempts.return_value = mock_stage
         mock_get_client.return_value = mock_client
 
-        result = get_stage("app-123", stage_id=1)
+        result = get_stage("app-123", stage_id=1, ctx=self.mock_ctx)
 
         self.assertEqual(result, mock_stage)
         mock_client.list_stage_attempts.assert_called_once_with(
@@ -299,7 +299,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_stage_attempts.return_value = [mock_stage1, mock_stage2]
         mock_get_client.return_value = mock_client
 
-        result = get_stage("app-123", stage_id=1)
+        result = get_stage("app-123", stage_id=1, ctx=self.mock_ctx)
 
         # Verify results - should return the stage with highest attempt_id
         self.assertEqual(result, mock_stage2)
@@ -326,7 +326,9 @@ class TestTools(unittest.TestCase):
         mock_client.get_stage_task_summary.return_value = mock_summary
         mock_get_client.return_value = mock_client
 
-        result = get_stage("app-123", stage_id=1, attempt_id=0, with_summaries=True)
+        result = get_stage(
+            "app-123", stage_id=1, attempt_id=0, with_summaries=True, ctx=self.mock_ctx
+        )
 
         self.assertEqual(result, mock_stage)
         self.assertEqual(result.task_metrics_distributions, mock_summary)
@@ -353,7 +355,7 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         with self.assertRaises(ValueError) as context:
-            get_stage("app-123", stage_id=1)
+            get_stage("app-123", stage_id=1, ctx=self.mock_ctx)
 
         self.assertIn("No stage found with ID 1", str(context.exception))
 
@@ -368,7 +370,7 @@ class TestTools(unittest.TestCase):
         mock_client.get_application.return_value = mock_app
         mock_get_client.return_value = mock_client
 
-        result = list_applications(app_id="spark-app-123")
+        result = list_applications(app_id="spark-app-123", ctx=self.mock_ctx)
 
         self.assertEqual(result, [mock_app])
         mock_client.get_application.assert_called_once_with("spark-app-123")
@@ -384,7 +386,9 @@ class TestTools(unittest.TestCase):
         mock_client.get_application.return_value = mock_app
         mock_get_client.return_value = mock_client
 
-        list_applications(app_id="spark-app-123", server="production")
+        list_applications(
+            app_id="spark-app-123", server="production", ctx=self.mock_ctx
+        )
 
         mock_get_client.assert_called_once_with(
             unittest.mock.ANY, "production", "spark-app-123"
@@ -398,7 +402,7 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         with self.assertRaises(Exception) as context:
-            list_applications(app_id="non-existent-app")
+            list_applications(app_id="non-existent-app", ctx=self.mock_ctx)
 
         self.assertIn("Application not found", str(context.exception))
 
@@ -448,21 +452,19 @@ class TestTools(unittest.TestCase):
         self.assertEqual(result["disk_used"], 11)
 
     # Tests for list_applications tool
-    @patch("spark_history_mcp.tools.tools.mcp.get_context")
-    def test_list_applications_no_filter(self, mock_get_context):
+    def test_list_applications_no_filter(self):
         """Test application listing without filters"""
         mock_context = MagicMock()
         mock_context.request_context.lifespan_context.clients = {
             "server1": self.mock_client1
         }
-        mock_get_context.return_value = mock_context
 
         mock_apps = [MagicMock(spec=Application), MagicMock(spec=Application)]
         mock_apps[0].id = "app-1"
         mock_apps[1].id = "app-2"
         self.mock_client1.list_applications.return_value = mock_apps
 
-        result = list_applications()
+        result = list_applications(ctx=mock_context)
 
         self.assertEqual(result, mock_apps)
         self.mock_client1.list_applications.assert_called_once_with(
@@ -474,14 +476,12 @@ class TestTools(unittest.TestCase):
             limit=None,
         )
 
-    @patch("spark_history_mcp.tools.tools.mcp.get_context")
-    def test_list_applications_with_filters(self, mock_get_context):
+    def test_list_applications_with_filters(self):
         """Test application listing with filters"""
         mock_context = MagicMock()
         mock_context.request_context.lifespan_context.clients = {
             "server1": self.mock_client1
         }
-        mock_get_context.return_value = mock_context
 
         mock_apps = [MagicMock(spec=Application)]
         mock_apps[0].id = "completed-app"
@@ -489,7 +489,7 @@ class TestTools(unittest.TestCase):
 
         # Call with filters
         result = list_applications(
-            status=["COMPLETED"], min_date="2024-01-01", limit=10
+            status=["COMPLETED"], min_date="2024-01-01", limit=10, ctx=mock_context
         )
 
         self.assertEqual(result, mock_apps)
@@ -502,18 +502,16 @@ class TestTools(unittest.TestCase):
             limit=10,
         )
 
-    @patch("spark_history_mcp.tools.tools.mcp.get_context")
-    def test_list_applications_empty_result(self, mock_get_context):
+    def test_list_applications_empty_result(self):
         """Test application listing with empty result"""
         mock_context = MagicMock()
         mock_context.request_context.lifespan_context.clients = {
             "server1": self.mock_client1
         }
-        mock_get_context.return_value = mock_context
 
         self.mock_client1.list_applications.return_value = []
 
-        result = list_applications()
+        result = list_applications(ctx=mock_context)
 
         self.assertEqual(result, [])
 
@@ -526,7 +524,7 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         # Call with server
-        list_applications(server="production")
+        list_applications(server="production", ctx=self.mock_ctx)
 
         # Verify server parameter is passed
         mock_get_client.assert_called_once_with(unittest.mock.ANY, "production")
@@ -540,7 +538,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_jobs.return_value = mock_jobs
         mock_get_client.return_value = mock_client
 
-        result = list_jobs("spark-app-123")
+        result = list_jobs("spark-app-123", ctx=self.mock_ctx)
 
         self.assertEqual({j.job_id for j in result}, {0, 1})
         mock_client.list_jobs.assert_called_once_with(
@@ -557,7 +555,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_jobs.return_value = mock_jobs
         mock_get_client.return_value = mock_client
 
-        result = list_jobs("spark-app-123", status=["SUCCEEDED"])
+        result = list_jobs("spark-app-123", status=["SUCCEEDED"], ctx=self.mock_ctx)
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].status, "SUCCEEDED")
@@ -569,7 +567,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_jobs.return_value = [self._job(1), self._job(2)]
         mock_get_client.return_value = mock_client
 
-        result = list_jobs("spark-app-123", job_id=2)
+        result = list_jobs("spark-app-123", job_id=2, ctx=self.mock_ctx)
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].job_id, 2)
@@ -581,7 +579,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_jobs.return_value = [self._job(1)]
         mock_get_client.return_value = mock_client
 
-        result = list_jobs("spark-app-123", job_id=99)
+        result = list_jobs("spark-app-123", job_id=99, ctx=self.mock_ctx)
 
         self.assertEqual(result, [])
 
@@ -592,7 +590,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_jobs.return_value = []
         mock_get_client.return_value = mock_client
 
-        result = list_jobs("spark-app-123")
+        result = list_jobs("spark-app-123", ctx=self.mock_ctx)
 
         self.assertEqual(result, [])
 
@@ -605,7 +603,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_jobs.return_value = [self._job(2, "SUCCEEDED")]
         mock_get_client.return_value = mock_client
 
-        result = list_jobs("spark-app-123", status=["SUCCEEDED"])
+        result = list_jobs("spark-app-123", status=["SUCCEEDED"], ctx=self.mock_ctx)
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].status, "SUCCEEDED")
@@ -619,7 +617,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_stages.return_value = mock_stages
         mock_get_client.return_value = mock_client
 
-        result = list_stages("spark-app-123")
+        result = list_stages("spark-app-123", ctx=self.mock_ctx)
 
         self.assertEqual({s.stage_id for s in result}, {0, 1})
         mock_client.list_stages.assert_called_once_with(
@@ -637,7 +635,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_stages.return_value = [self._stage(1, "COMPLETE")]
         mock_get_client.return_value = mock_client
 
-        result = list_stages("spark-app-123", status=["COMPLETE"])
+        result = list_stages("spark-app-123", status=["COMPLETE"], ctx=self.mock_ctx)
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].status, "COMPLETE")
@@ -649,7 +647,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_stages.return_value = [self._stage(0)]
         mock_get_client.return_value = mock_client
 
-        list_stages("spark-app-123", with_summaries=True)
+        list_stages("spark-app-123", with_summaries=True, ctx=self.mock_ctx)
 
         # Verify summaries parameter is passed
         mock_client.list_stages.assert_called_once_with(
@@ -666,7 +664,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_stages.return_value = []
         mock_get_client.return_value = mock_client
 
-        result = list_stages("spark-app-123")
+        result = list_stages("spark-app-123", ctx=self.mock_ctx)
 
         self.assertEqual(result, [])
 
@@ -688,6 +686,7 @@ class TestTools(unittest.TestCase):
             attempt_id=0,
             with_summaries=True,
             quantiles="0.25,0.5,0.75",
+            ctx=self.mock_ctx,
         )
 
         mock_client.get_stage_task_summary.assert_called_once_with(
@@ -709,7 +708,7 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_stages("app-123", sort_by="duration", length=2)
+        result = list_stages("app-123", sort_by="duration", length=2, ctx=self.mock_ctx)
 
         self.assertEqual([s.stage_id for s in result], [2, 3])
         mock_client.list_stages.assert_called_once_with(
@@ -730,7 +729,7 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_stages("app-123", sort_by="failed-tasks")
+        result = list_stages("app-123", sort_by="failed-tasks", ctx=self.mock_ctx)
 
         self.assertEqual([s.stage_id for s in result], [2, 1, 3])
 
@@ -745,7 +744,7 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_stages("app-123", sort_by="id")
+        result = list_stages("app-123", sort_by="id", ctx=self.mock_ctx)
 
         self.assertEqual([s.stage_id for s in result], [3, 2, 1])
 
@@ -759,7 +758,7 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_stages("app-123")
+        result = list_stages("app-123", ctx=self.mock_ctx)
 
         # Failed stage first despite its shorter duration.
         self.assertEqual([s.stage_id for s in result], [2, 1])
@@ -772,7 +771,7 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         with self.assertRaises(ValueError):
-            list_stages("app-123", sort_by="bogus")
+            list_stages("app-123", sort_by="bogus", ctx=self.mock_ctx)
 
     # Tests for list_sql_executions tool
     def _mk_sql(
@@ -807,7 +806,9 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_sql_executions("spark-app-123", sort_by="duration")
+        result = list_sql_executions(
+            "spark-app-123", sort_by="duration", ctx=self.mock_ctx
+        )
 
         self.assertEqual([r.id for r in result], [2, 1, 3])
         self.assertEqual(result[0].duration, 10000)
@@ -833,7 +834,7 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_sql_executions("spark-app-123")
+        result = list_sql_executions("spark-app-123", ctx=self.mock_ctx)
 
         self.assertEqual([r.status for r in result], ["FAILED", "RUNNING", "COMPLETED"])
 
@@ -847,7 +848,9 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_sql_executions("spark-app-123", status="failed")
+        result = list_sql_executions(
+            "spark-app-123", status="failed", ctx=self.mock_ctx
+        )
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].status, "FAILED")
@@ -862,7 +865,9 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_sql_executions("spark-app-123", description="BENCHMARK")
+        result = list_sql_executions(
+            "spark-app-123", description="BENCHMARK", ctx=self.mock_ctx
+        )
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0].id, 1)
@@ -876,7 +881,9 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_sql_executions("spark-app-123", sort_by="duration", limit=3)
+        result = list_sql_executions(
+            "spark-app-123", sort_by="duration", limit=3, ctx=self.mock_ctx
+        )
 
         self.assertEqual(len(result), 3)
         self.assertEqual([r.duration for r in result], [10000, 9000, 8000])
@@ -888,7 +895,7 @@ class TestTools(unittest.TestCase):
         mock_client.get_sql_list.return_value = []
         mock_get_client.return_value = mock_client
 
-        result = list_sql_executions("spark-app-123")
+        result = list_sql_executions("spark-app-123", ctx=self.mock_ctx)
 
         self.assertEqual(result, [])
 
@@ -903,7 +910,7 @@ class TestTools(unittest.TestCase):
         )
         mock_get_client.return_value = mock_client
 
-        result = get_sql_execution("spark-app-123", execution_id=42)
+        result = get_sql_execution("spark-app-123", execution_id=42, ctx=self.mock_ctx)
 
         self.assertEqual(result.execution.id, 42)
         self.assertEqual(result.execution.success_job_ids, [1, 2])
@@ -943,7 +950,9 @@ class TestTools(unittest.TestCase):
         mock_client.get_sql_execution.return_value = execution
         mock_get_client.return_value = mock_client
 
-        result = get_sql_execution("spark-app-123", execution_id=7, include_plan=True)
+        result = get_sql_execution(
+            "spark-app-123", execution_id=7, include_plan=True, ctx=self.mock_ctx
+        )
 
         self.assertIn("Physical Plan", result.plan_description)
         self.assertNotIn("Initial Plan", result.plan_description)
@@ -971,7 +980,10 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         result = get_sql_execution(
-            "spark-app-123", execution_id=7, include_initial_plan=True
+            "spark-app-123",
+            execution_id=7,
+            include_initial_plan=True,
+            ctx=self.mock_ctx,
         )
 
         self.assertIn("Initial Plan", result.plan_description)
@@ -987,7 +999,7 @@ class TestTools(unittest.TestCase):
         mock_client.get_sql_execution.return_value = execution
         mock_get_client.return_value = mock_client
 
-        result = get_sql_execution("spark-app-123", execution_id=7)
+        result = get_sql_execution("spark-app-123", execution_id=7, ctx=self.mock_ctx)
 
         self.assertIsNotNone(result.plan_description)
         mock_client.get_sql_execution.assert_called_once_with(
@@ -1009,7 +1021,11 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         result = get_sql_execution(
-            "spark-app-123", execution_id=7, include_plan=True, plan_max_length=50
+            "spark-app-123",
+            execution_id=7,
+            include_plan=True,
+            plan_max_length=50,
+            ctx=self.mock_ctx,
         )
 
         self.assertIn("[truncated]", result.plan_description)
@@ -1065,7 +1081,10 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         result = get_sql_execution(
-            "spark-app-123", execution_id=7, include_aggregated_metrics=True
+            "spark-app-123",
+            execution_id=7,
+            include_aggregated_metrics=True,
+            ctx=self.mock_ctx,
         )
 
         self.assertEqual({j.job_id for j in result.jobs}, {1, 2})
@@ -1090,7 +1109,9 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = get_sql_execution("spark-app-123", execution_id=7, include_stages=True)
+        result = get_sql_execution(
+            "spark-app-123", execution_id=7, include_stages=True, ctx=self.mock_ctx
+        )
 
         self.assertIsNotNone(result.stages)
         self.assertEqual({s.stage_id for s in result.stages}, {10, 11})
@@ -1115,7 +1136,7 @@ class TestTools(unittest.TestCase):
 
         mock_get_client.side_effect = [client_a, client_b]
 
-        result = compare_sql_executions("app-a", "app-b", 1, 2)
+        result = compare_sql_executions("app-a", "app-b", 1, 2, ctx=self.mock_ctx)
 
         self.assertEqual(result.a.app, "app-a")
         self.assertEqual(result.a.sql_id, 1)
@@ -1163,7 +1184,9 @@ class TestTools(unittest.TestCase):
 
         mock_get_client.side_effect = [client_a, client_b]
 
-        result = compare_sql_executions("app-a", "app-b", 1, 2, include_plan_diff=True)
+        result = compare_sql_executions(
+            "app-a", "app-b", 1, 2, include_plan_diff=True, ctx=self.mock_ctx
+        )
 
         self.assertEqual(result.a.tasks, 10)
         self.assertEqual(result.b.tasks, 30)
@@ -1188,7 +1211,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_jobs.return_value = [self._job(i) for i in range(20)]
         mock_get_client.return_value = mock_client
 
-        result = list_jobs("spark-app-123", offset=5, length=10)
+        result = list_jobs("spark-app-123", offset=5, length=10, ctx=self.mock_ctx)
 
         self.assertEqual([j.job_id for j in result], list(range(5, 15)))
         mock_client.list_jobs.assert_called_once_with(
@@ -1204,7 +1227,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_jobs.return_value = []
         mock_get_client.return_value = mock_client
 
-        list_jobs("spark-app-123")
+        list_jobs("spark-app-123", ctx=self.mock_ctx)
 
         mock_client.list_jobs.assert_called_once_with(
             app_id="spark-app-123",
@@ -1218,7 +1241,7 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = MagicMock()
 
         with self.assertRaises(ValueError):
-            list_jobs("spark-app-123", offset=-1)
+            list_jobs("spark-app-123", offset=-1, ctx=self.mock_ctx)
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_list_stages_with_pagination(self, mock_get_client):
@@ -1227,7 +1250,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_stages.return_value = [self._stage(i) for i in range(20)]
         mock_get_client.return_value = mock_client
 
-        result = list_stages("spark-app-123", offset=2, length=5)
+        result = list_stages("spark-app-123", offset=2, length=5, ctx=self.mock_ctx)
 
         self.assertEqual([s.stage_id for s in result], [2, 3, 4, 5, 6])
         mock_client.list_stages.assert_called_once_with(
@@ -1243,7 +1266,7 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = MagicMock()
 
         with self.assertRaises(ValueError):
-            list_stages("spark-app-123", length=-1)
+            list_stages("spark-app-123", length=-1, ctx=self.mock_ctx)
 
     @staticmethod
     def _exec(exec_id="1", active=True, duration=0, gc=0, failed=0):
@@ -1265,7 +1288,7 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_executors("spark-app-123", offset=3, length=2)
+        result = list_executors("spark-app-123", offset=3, length=2, ctx=self.mock_ctx)
 
         self.assertEqual([e.id for e in result], ["3", "4"])
         mock_client.list_executors.assert_called_once_with(
@@ -1279,7 +1302,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_all_executors.return_value = []
         mock_get_client.return_value = mock_client
 
-        list_executors("spark-app-123", include_inactive=True)
+        list_executors("spark-app-123", include_inactive=True, ctx=self.mock_ctx)
 
         mock_client.list_all_executors.assert_called_once_with(
             app_id="spark-app-123", app_attempt_id=None
@@ -1295,7 +1318,7 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_executors("spark-app-123", executor_id="1")
+        result = list_executors("spark-app-123", executor_id="1", ctx=self.mock_ctx)
 
         self.assertEqual([e.id for e in result], ["1"])
         # Lookup searches all executors (incl. inactive).
@@ -1310,7 +1333,7 @@ class TestTools(unittest.TestCase):
         mock_client.list_all_executors.return_value = [self._exec("driver")]
         mock_get_client.return_value = mock_client
 
-        result = list_executors("spark-app-123", executor_id="99")
+        result = list_executors("spark-app-123", executor_id="99", ctx=self.mock_ctx)
 
         self.assertEqual(result, [])
 
@@ -1325,7 +1348,7 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_executors("spark-app-123", sort_by="gc")
+        result = list_executors("spark-app-123", sort_by="gc", ctx=self.mock_ctx)
 
         self.assertEqual([e.id for e in result], ["2", "3", "1"])
 
@@ -1341,7 +1364,7 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_executors("spark-app-123", sort_by="id")
+        result = list_executors("spark-app-123", sort_by="id", ctx=self.mock_ctx)
 
         # Ascending lexicographic string order.
         self.assertEqual([e.id for e in result], ["1", "10", "2", "driver"])
@@ -1356,7 +1379,7 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        result = list_executors("spark-app-123")
+        result = list_executors("spark-app-123", ctx=self.mock_ctx)
 
         # Active executor first despite shorter duration.
         self.assertEqual([e.id for e in result], ["active-short", "dead-long"])
@@ -1369,7 +1392,7 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         with self.assertRaises(ValueError):
-            list_executors("spark-app-123", sort_by="bogus")
+            list_executors("spark-app-123", sort_by="bogus", ctx=self.mock_ctx)
 
     # Tests for get_environment section filtering
     @staticmethod
@@ -1409,7 +1432,7 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         with self.assertRaises(ValueError):
-            get_environment("spark-app-123", section="bogus")
+            get_environment("spark-app-123", section="bogus", ctx=self.mock_ctx)
 
     # Tests for compare_stages
     def test_build_stage_task_quantiles_maps_nested_metrics(self):
@@ -1447,7 +1470,7 @@ class TestTools(unittest.TestCase):
         mock_get_client.return_value = mock_client
 
         with self.assertRaises(ValueError):
-            compare_stages("app-1", 999, "app-2", 1)
+            compare_stages("app-1", 999, "app-2", 1, ctx=self.mock_ctx)
 
     # Tests for get_executor_thread_dump / _filter_threads
     @staticmethod
@@ -1488,9 +1511,8 @@ class TestTools(unittest.TestCase):
                 got = _filter_threads(self._sample_threads(), state, name, blocked_only)
                 self.assertEqual([t.thread_id for t in got], want_ids)
 
-    @patch("spark_history_mcp.tools.tools.mcp")
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_get_executor_thread_dump_sorts_by_id(self, mock_get_client, mock_mcp):
+    def test_get_executor_thread_dump_sorts_by_id(self, mock_get_client):
         mock_client = MagicMock()
         # Returned out of order; the tool sorts by thread ID.
         mock_client.get_executor_thread_dump.return_value = list(
@@ -1498,16 +1520,15 @@ class TestTools(unittest.TestCase):
         )
         mock_get_client.return_value = mock_client
 
-        threads = get_executor_thread_dump("app-1", "driver")
+        threads = get_executor_thread_dump("app-1", "driver", ctx=self.mock_ctx)
         self.assertEqual([t.thread_id for t in threads], [1, 2, 3, 4])
         mock_client.get_executor_thread_dump.assert_called_once_with(
             app_id="app-1", executor_id="driver", app_attempt_id=None
         )
 
     # Tests for list_stage_task_failures
-    @patch("spark_history_mcp.tools.tools.mcp")
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_list_stage_task_failures(self, mock_get_client, mock_mcp):
+    def test_list_stage_task_failures(self, mock_get_client):
         from spark_history_mcp.api_client.models.task import Task
 
         mock_client = MagicMock()
@@ -1529,7 +1550,7 @@ class TestTools(unittest.TestCase):
         ]
         mock_get_client.return_value = mock_client
 
-        failures = list_stage_task_failures("app-1", 5)
+        failures = list_stage_task_failures("app-1", 5, ctx=self.mock_ctx)
 
         self.assertEqual(len(failures), 1)
         self.assertEqual(failures[0].task_id, 7)
@@ -1546,12 +1567,11 @@ class TestTools(unittest.TestCase):
             app_attempt_id=None,
         )
 
-    @patch("spark_history_mcp.tools.tools.mcp")
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
-    def test_list_stage_task_failures_not_found(self, mock_get_client, mock_mcp):
+    def test_list_stage_task_failures_not_found(self, mock_get_client):
         mock_client = MagicMock()
         mock_client.list_stage_attempts.return_value = []
         mock_get_client.return_value = mock_client
 
         with self.assertRaises(ValueError):
-            list_stage_task_failures("app-1", 999)
+            list_stage_task_failures("app-1", 999, ctx=self.mock_ctx)

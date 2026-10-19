@@ -13,6 +13,16 @@ from spark_history_mcp.api_client.exceptions import ApiException
 logger = logging.getLogger(__name__)
 
 
+def error_text(exc: BaseException) -> str:
+    """Return ``exc`` as client text, without ApiException headers (cookies)."""
+    if isinstance(exc, ApiException):
+        text = f"({exc.status})\nReason: {exc.reason}\n"
+        if exc.body:
+            text += f"HTTP response body: {exc.body}\n"
+        return text
+    return str(exc)
+
+
 def parallel_execute(
     api_calls: List[Tuple[str, Callable]], max_workers: int = 6, timeout: int = 180
 ) -> Dict[str, Any]:
@@ -50,10 +60,10 @@ def parallel_execute(
                 ):
                     error_msg = f"{name} failed: Spark History Server out of memory (increase SPARK_DAEMON_MEMORY)"
                 else:
-                    error_msg = f"{name} failed: HTTP {status} - {str(e)}"
+                    error_msg = f"{name} failed: HTTP {status} - {error_text(e)}"
                 errors.append(error_msg)
             except Exception as e:
-                error_msg = f"{name} failed: {str(e)}"
+                error_msg = f"{name} failed: {error_text(e)}"
                 errors.append(error_msg)
 
     return {"results": results, "errors": errors}

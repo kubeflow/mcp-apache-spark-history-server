@@ -43,7 +43,7 @@ class TestInvestigateFailurePrompt(unittest.TestCase):
         self.assertIn('status=["FAILED"]', result)
 
     def test_prompt_is_registered_with_mcp(self):
-        """The prompt is discoverable via the shared FastMCP instance."""
+        """The prompt is discoverable via the shared MCPServer instance."""
         # Importing the module registers the prompt; the manager lists it.
         registered = {p.name for p in mcp._prompt_manager.list_prompts()}
 
@@ -104,7 +104,7 @@ class TestCompareApplicationsPrompt(unittest.TestCase):
         self.assertNotIn("Context for this comparison", result)
 
     def test_prompt_is_registered_with_mcp(self):
-        """The prompt is discoverable via the shared FastMCP instance."""
+        """The prompt is discoverable via the shared MCPServer instance."""
         registered = {p.name for p in mcp._prompt_manager.list_prompts()}
 
         self.assertIn("compare_applications", registered)

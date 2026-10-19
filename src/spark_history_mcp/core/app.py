@@ -1,19 +1,28 @@
+import functools
+import inspect
 import logging
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from functools import partial
-from typing import Optional
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as pkg_version
+from typing import Any, Optional
 
-from mcp.server.fastmcp import FastMCP
+from mcp import MCPError
+from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
 
 from spark_history_mcp.api.emr_persistent_ui_client import EMRPersistentUIClient
 from spark_history_mcp.api.spark_client import SparkRestClient
 from spark_history_mcp.config.config import Config, load_config
 
-from ..utils.utils import ApplicationDiscovery
+from ..utils.aws_credentials import isolate_credential_process_stdin
+from ..utils.utils import ApplicationDiscovery, error_text
+
+logger = logging.getLogger(__name__)
 
 
 def _emr_cookie_reauth(emr_client: EMRPersistentUIClient) -> str:
@@ -30,7 +39,7 @@ class AppContext:
 
 
 @asynccontextmanager
-async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
+async def app_lifespan(server: MCPServer) -> AsyncIterator[AppContext]:
     config = load_config()
 
     clients: dict[str, SparkRestClient] = {}
@@ -72,6 +81,9 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
 
 
 def run(config: Config):
+    # Before any boto3 credential lookup: startup check, EMR, and AWS tools.
+    isolate_credential_process_stdin()
+
     # Auto-detect AWS credentials and register troubleshooting tools if available
     try:
         import boto3
@@ -89,19 +101,7 @@ def run(config: Config):
             "AWS troubleshooting tools not registered: %s", e
         )
 
-    mcp.settings.host = config.mcp.address
-    mcp.settings.port = int(config.mcp.port)
     mcp.settings.debug = bool(config.mcp.debug)
-
-    # Configure transport security settings for DNS rebinding protection
-    # See: https://github.com/modelcontextprotocol/python-sdk/issues/1798
-    if config.mcp.transport_security:
-        ts_config = config.mcp.transport_security
-        mcp.settings.transport_security = TransportSecuritySettings(
-            enable_dns_rebinding_protection=ts_config.enable_dns_rebinding_protection,
-            allowed_hosts=ts_config.allowed_hosts,
-            allowed_origins=ts_config.allowed_origins,
-        )
 
     mcp_cfg = config.mcp
     transport = os.getenv("SHS_MCP_TRANSPORT") or mcp_cfg.transport
@@ -112,10 +112,91 @@ def run(config: Config):
     ):
         transport = mcp_cfg.transports[0]
     transport = transport or "streamable-http"
-    mcp.run(transport=transport)
+
+    if transport == "stdio":
+        mcp.run(transport="stdio")
+        return
+
+    mcp.run(
+        transport=transport,
+        host=config.mcp.address,
+        port=int(config.mcp.port),
+        transport_security=_transport_security(config),
+    )
 
 
-mcp = FastMCP("Spark Events", lifespan=app_lifespan)
+# SDK 1.x applied this allowlist for every bind address. SDK 2.x applies it
+# only to a localhost host, so pass it explicitly to keep the 1.x behavior.
+_DEFAULT_TRANSPORT_SECURITY = TransportSecuritySettings(
+    enable_dns_rebinding_protection=True,
+    allowed_hosts=["127.0.0.1:*", "localhost:*", "[::1]:*"],
+    allowed_origins=["http://127.0.0.1:*", "http://localhost:*", "http://[::1]:*"],
+)
+
+
+def _transport_security(config: Config) -> TransportSecuritySettings:
+    # See: https://github.com/modelcontextprotocol/python-sdk/issues/1798
+    ts_config = config.mcp.transport_security
+    if not ts_config:
+        return _DEFAULT_TRANSPORT_SECURITY
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=ts_config.enable_dns_rebinding_protection,
+        allowed_hosts=ts_config.allowed_hosts,
+        allowed_origins=ts_config.allowed_origins,
+    )
+
+
+def _server_version() -> str:
+    # The distribution name differs from the package name (spark_history_mcp).
+    try:
+        return pkg_version("mcp-apache-spark-history-server")
+    except PackageNotFoundError:
+        return ""
+
+
+mcp: MCPServer[Any] = MCPServer(
+    "Spark Events", version=_server_version(), lifespan=app_lifespan
+)
+
+
+def _with_error_text(fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Keep the SDK 1.x error text, which SDK 2.x hides unless it is a ToolError."""
+    if inspect.iscoroutinefunction(fn):
+
+        @functools.wraps(fn)
+        async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
+            try:
+                return await fn(*args, **kwargs)
+            except (ToolError, MCPError):
+                raise
+            except Exception as exc:
+                logger.debug("Tool %s failed", fn.__name__, exc_info=True)
+                raise ToolError(error_text(exc)) from exc
+
+        return async_wrapper
+
+    @functools.wraps(fn)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        try:
+            return fn(*args, **kwargs)
+        except (ToolError, MCPError):
+            raise
+        except Exception as exc:
+            logger.debug("Tool %s failed", fn.__name__, exc_info=True)
+            raise ToolError(error_text(exc)) from exc
+
+    return wrapper
+
+
+def tool(**kwargs: Any) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Like ``@mcp.tool(**kwargs)`` with SDK 1.x error text; returns ``fn`` as is."""
+
+    def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
+        mcp.add_tool(_with_error_text(fn), **kwargs)
+        return fn
+
+    return decorator
+
 
 # Import tools and prompts to register them with MCP
 from spark_history_mcp.prompts import prompts  # noqa: E402,F401
