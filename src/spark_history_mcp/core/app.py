@@ -14,6 +14,8 @@ from mcp import MCPError
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.server.transport_security import TransportSecuritySettings
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 from spark_history_mcp.api.emr_persistent_ui_client import EMRPersistentUIClient
 from spark_history_mcp.api.spark_client import SparkRestClient
@@ -157,6 +159,16 @@ def _server_version() -> str:
 mcp: MCPServer[Any] = MCPServer(
     "Spark Events", version=_server_version(), lifespan=app_lifespan
 )
+
+
+@mcp.custom_route("/health", methods=["GET"])
+async def health(_request: Request) -> JSONResponse:
+    return JSONResponse({"status": "ok"})
+
+
+@mcp.custom_route("/ready", methods=["GET"])
+async def ready(_request: Request) -> JSONResponse:
+    return JSONResponse({"status": "ok"})
 
 
 def _with_error_text(fn: Callable[..., Any]) -> Callable[..., Any]:
