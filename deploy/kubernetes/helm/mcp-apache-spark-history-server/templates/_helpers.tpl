@@ -206,3 +206,32 @@ Get the name of the SecretProviderClass (must be created externally)
 {{- define "mcp-apache-spark-history-server.secretProviderClassName" -}}
 {{- .Values.auth.csisecretstore.secretProviderClassName -}}
 {{- end }}
+
+{{/*
+Host/Origin allowlist: localhost (port-forward), the Service DNS names and the
+ingress hosts. The SDK matches "name" exactly and "name:*" with any port.
+*/}}
+{{- define "mcp-apache-spark-history-server.transportSecurity" -}}
+{{- $ts := .Values.config.transportSecurity -}}
+{{- $svc := include "mcp-apache-spark-history-server.fullname" . -}}
+{{- $ns := .Release.Namespace -}}
+{{- $names := list "localhost" "127.0.0.1" "[::1]" $svc (printf "%s.%s" $svc $ns) (printf "%s.%s.svc" $svc $ns) (printf "%s.%s.svc.%s" $svc $ns .Values.clusterDomain) -}}
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+{{- if .host }}
+{{- $names = append $names .host -}}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- $hosts := list -}}
+{{- $origins := list -}}
+{{- range $names }}
+{{- $hosts = concat $hosts (list . (printf "%s:*" .)) -}}
+{{- $origins = concat $origins (list (printf "http://%s" .) (printf "http://%s:*" .) (printf "https://%s" .) (printf "https://%s:*" .)) -}}
+{{- end }}
+enable_dns_rebinding_protection: {{ $ts.enabled }}
+allowed_hosts:
+{{- concat $hosts $ts.allowedHosts | toYaml | nindent 2 }}
+allowed_origins:
+{{- concat $origins $ts.allowedOrigins | toYaml | nindent 2 }}
+{{- end }}

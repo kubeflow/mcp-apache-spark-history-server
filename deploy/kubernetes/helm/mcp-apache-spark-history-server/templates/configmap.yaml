@@ -12,6 +12,8 @@ data:
       port: "{{ .Values.config.port }}"
       debug: {{ .Values.config.debug }}
       address: 0.0.0.0
+      transport_security:
+        {{- include "mcp-apache-spark-history-server.transportSecurity" . | trim | nindent 8 }}
     servers:
       {{- range $name, $server := .Values.config.servers }}
       {{ $name }}:
