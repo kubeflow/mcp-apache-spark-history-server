@@ -6,8 +6,10 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urljoin
 
 import pytest
+import requests
 from mcp import Client, StdioServerParameters
 from mcp.types import TextContent
 from mcp.types.version import LATEST_HANDSHAKE_VERSION, LATEST_MODERN_VERSION
@@ -238,6 +240,15 @@ async def test_auto_mode_discovers_modern_server(connection):
         assert client.protocol_version == MODERN_MODE
         assert client.server_info is not None
         assert client.server_info.name == "Spark Events"
+
+
+@pytest.mark.parametrize("path", ["/health", "/ready"])
+def test_probe_route_returns_ok(connection, path):
+    if connection != Connection(MODERN_MODE, "http"):
+        pytest.skip("HTTP route without an MCP era; runs on the modern-http row")
+    response = requests.get(urljoin(mcp_endpoint, path), timeout=10)
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
 
 
 def _prompt_text(result):
