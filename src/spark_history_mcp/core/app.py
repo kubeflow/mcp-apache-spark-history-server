@@ -18,6 +18,7 @@ from mcp.server.transport_security import TransportSecuritySettings
 from spark_history_mcp.api.emr_persistent_ui_client import EMRPersistentUIClient
 from spark_history_mcp.api.spark_client import SparkRestClient
 from spark_history_mcp.config.config import Config, load_config
+from spark_history_mcp.core.offload import offload_sync_tools
 
 from ..utils.aws_credentials import isolate_credential_process_stdin
 from ..utils.utils import ApplicationDiscovery, error_text
@@ -102,6 +103,11 @@ def run(config: Config):
         )
 
     mcp.settings.debug = bool(config.mcp.debug)
+
+    # Sync @mcp.tool handlers call SHS over blocking HTTP. Run them in a
+    # worker thread so a slow History Server cannot stall TCP accepts on the
+    # MCP port (and trip Kubernetes liveness probes).
+    offload_sync_tools(mcp)
 
     mcp_cfg = config.mcp
     transport = os.getenv("SHS_MCP_TRANSPORT") or mcp_cfg.transport

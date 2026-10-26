@@ -24,6 +24,9 @@ import inspect
 import threading
 from typing import Callable, List, Optional
 
+from urllib3.exceptions import MaxRetryError, ReadTimeoutError
+from urllib3.exceptions import TimeoutError as Urllib3TimeoutError
+
 from spark_history_mcp.api_client.api.default_api import DefaultApi
 from spark_history_mcp.api_client.api_client import ApiClient
 from spark_history_mcp.api_client.configuration import Configuration
@@ -54,6 +57,14 @@ class AttemptRequiredError(Exception):
     multi-attempt YARN application with an actionable message listing the
     available attempts. No data is returned; the caller must retry with
     ``app_attempt_id``.
+    """
+
+
+class SparkHistoryTimeoutError(TimeoutError):
+    """SHS did not answer within the configured HTTP timeout.
+
+    Prefer this over hanging with urllib3 retries: callers (and agents) get a
+    clear "backend is slow, try again" signal instead of a multi-minute stall.
     """
 
 
@@ -129,6 +140,11 @@ class SparkRestClient:
         # ("{base-app-id}/{attempt-id}") is sent as a real path, not "%2F".
         configuration.safe_chars_for_path_param = "/"
 
+        # urllib3 defaults to Retry(total=3). Combined with a ~30s read timeout
+        # that is ~90s of blocking per call — longer than typical K8s liveness
+        # budgets when tools still ran on the event loop. Fail once, clearly.
+        configuration.retries = False
+
         if self.use_proxy:
             configuration.proxy = _PROXY_URL
 
@@ -175,7 +191,20 @@ class SparkRestClient:
 
     def _invoke(self, fn, *args, **kwargs):
         """Call a generated API method applying the configured request timeout."""
-        return fn(*args, _request_timeout=self.timeout, **kwargs)
+        try:
+            return fn(*args, _request_timeout=self.timeout, **kwargs)
+        except (
+            MaxRetryError,
+            ReadTimeoutError,
+            Urllib3TimeoutError,
+            TimeoutError,
+        ) as exc:
+            raise SparkHistoryTimeoutError(
+                f"Spark History Server at {self.config.url!r} did not respond "
+                f"within {self.timeout}s. The backend may still be loading "
+                f"this application; try again shortly. "
+                f"({type(exc).__name__}: {exc})"
+            ) from exc
 
     @staticmethod
     def _app_path(app_id: str, app_attempt_id: Optional[str] = None) -> str:
