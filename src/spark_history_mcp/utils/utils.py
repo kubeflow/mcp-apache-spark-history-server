@@ -99,7 +99,14 @@ class ApplicationDiscovery:
                 )
                 continue
 
-        self._cache[app_id] = {"servers": servers, "last_updated": time.time()}
+        # Only remember where an application was found. A miss is often
+        # transient (the History Server has not picked up the event log yet, or
+        # a server was unreachable), and caching it would keep reporting the
+        # application as missing for the whole TTL.
+        if servers:
+            self._cache[app_id] = {"servers": servers, "last_updated": time.time()}
+        else:
+            self._cache.pop(app_id, None)
 
         return servers
 
