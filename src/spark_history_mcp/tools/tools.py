@@ -891,8 +891,10 @@ def get_executor_thread_dump(
     lock/blocking information, and full stack trace. Use ``executor_id="driver"``
     for the driver.
 
-    The application must be **running**: completed applications return an error
-    because the Spark History Server does not persist thread dumps.
+    Only a live Spark UI (the driver of a **running** application) serves
+    thread dumps; the Spark History Server returns an error for every
+    application. Pass ``server`` to target a server configured with the
+    driver UI URL.
 
     Args:
         app_id: The Spark application ID
