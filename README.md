@@ -218,6 +218,41 @@ Agents can target a specific server per query:
 
 > *"Get application `<app_id>` from the production server"*
 
+### Running Applications (Live Spark UI)
+
+The driver of a running application serves the same REST API (`/api/v1`) as
+the Spark History Server, on its Spark UI port (`spark.ui.port`, `4040` by
+default). Add the driver UI as another server to query an application while it
+runs:
+
+```yaml
+servers:
+  history:
+    default: true
+    url: "http://spark-history-server:18080"
+  live:
+    url: "http://spark-driver:4040"
+```
+
+If the Spark UI is reached through a reverse proxy under a path prefix, put the
+prefix in `url` (e.g. `https://sparkui.example.com/<namespace>/<pod>`); the
+server appends `/api/v1` to it.
+
+How a driver UI differs from a History Server:
+
+- A driver only serves its own application, so `list_applications` on it
+  returns that single application, and the driver UI goes away when the
+  application ends. Each server entry is a fixed URL, so to cover every running
+  application, put a proxy in front that routes each application to its driver
+  UI while it runs and to the History Server afterwards.
+- `get_executor_thread_dump` only works against a driver UI. The History Server
+  responds with `503` for every application, including running ones.
+- When a tool call does not name a server, the first configured server that has
+  the application is used. With event logging enabled, a running application is
+  also listed by the History Server, so name the server explicitly:
+
+> *"Get the driver thread dump of `<app_id>` from the live server"*
+
 ### Custom CA bundle
 
 For a private CA or TLS-inspecting proxy, keep `verify_ssl: true` and point
@@ -302,7 +337,7 @@ graph TB
 | `list_executors` | List executors with executor-id filtering and sorting (failed-tasks/duration/gc/id) |
 | `get_executor_summary` | Aggregate metrics across all executors |
 | `get_resource_usage_timeline` | Chronological executor add/remove with resource totals |
-| `get_executor_thread_dump` | JVM thread dump for a driver/executor, with state/name/blocked filters (running apps only) |
+| `get_executor_thread_dump` | JVM thread dump for a driver/executor, with state/name/blocked filters ([live Spark UI](#running-applications-live-spark-ui) only) |
 
 #### Configuration & Environment
 | Tool | Description |

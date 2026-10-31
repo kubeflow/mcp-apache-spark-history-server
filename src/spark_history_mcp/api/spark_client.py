@@ -416,9 +416,9 @@ class SparkRestClient:
     ) -> List[ThreadStackTrace]:
         """Get the JVM thread dump for a driver or executor.
 
-        Use ``"driver"`` for the driver. The application must be running;
-        completed applications return 404 because the History Server does not
-        persist thread dumps.
+        Use ``"driver"`` for the driver. Only a live Spark UI (the driver of a
+        running application) serves thread dumps; the History Server responds
+        with 503 for every application.
         """
         app_path = self._app_path(app_id, app_attempt_id)
         return self._invoke(self._api.get_executor_threads, app_path, executor_id)
