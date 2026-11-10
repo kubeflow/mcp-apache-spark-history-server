@@ -474,10 +474,10 @@ spec:
 
 ## 📚 Additional Resources
 
-- [Kubernetes Documentation](../README.md) - Detailed K8s deployment guide
-- [Values Reference](values.yaml) - Complete values documentation
-- [Templates](templates/) - Kubernetes manifest templates
-- [Examples](examples/) - Real-world configuration examples
+- [Kubernetes Documentation](../../../README.md#-kubernetes-deployment) - Detailed K8s deployment guide
+- [Values Reference](mcp-apache-spark-history-server/values.yaml) - Complete values documentation
+- [Templates](mcp-apache-spark-history-server/templates/) - Kubernetes manifest templates
+- [Examples](#common-configuration-examples) - Real-world configuration examples
 
 ## 🤝 Contributing
 

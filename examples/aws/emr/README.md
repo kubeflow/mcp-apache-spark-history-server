@@ -51,4 +51,4 @@ SHS_SERVERS__LOCAL__URL=http://YOUR_PRIMARY_NODE_PRIVATE_DNS:18080 USE_PROXY=1 t
 
 ## Step 5: Interact with the MCP Server using an AI Agent
 
-You can use an AI Agent to start interacting with the Spark History MCP server following the steps for [Amazon Q CLI](../../../examples/integrations/amazon-q-cli/README.md) or [Claude Desktop](../../../examples/integrations/claude-desktop/README.md). For more instructions on other Agents, please refer to the AI Agent Integration section in the main README.
+You can use an AI Agent to start interacting with the Spark History MCP server following the steps for [Kiro](../../../examples/integrations/kiro/README.md) or [Claude Desktop](../../../examples/integrations/claude-desktop/README.md). For more instructions on other Agents, please refer to the [Connect an AI Agent](../../../README.md#connect-an-ai-agent) section in the main README.
