@@ -979,8 +979,8 @@ async def test_compare_stages_not_found():
 # get_executor_thread_dump tool
 # ---------------------------------------------------------------------------
 # The e2e corpus is replayed from event logs, so every application is completed.
-# The History Server does not persist thread dumps, so the endpoint returns 404
-# and the tool surfaces an error. This confirms the tool is wired up end to end.
+# The History Server never serves thread dumps (only a live Spark UI does), so
+# the endpoint returns 503 and the tool surfaces an error. This confirms the tool is wired up end to end.
 
 
 @pytest.mark.asyncio
