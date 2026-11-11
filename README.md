@@ -436,7 +436,14 @@ Kiro CLI prompts you for arguments interactively when the prompt declares them, 
 
 ## 🚀 Kubernetes Deployment
 
-Deploy the MCP server using Helm:
+Deploy the MCP server using the Helm chart published to GHCR with each release:
+
+```bash
+helm install spark-history-mcp oci://ghcr.io/kubeflow/helm-charts/mcp-apache-spark-history-server \
+  --version <version>
+```
+
+Or install the chart from a local checkout:
 
 ```bash
 helm install spark-history-mcp ./deploy/kubernetes/helm/mcp-apache-spark-history-server/
