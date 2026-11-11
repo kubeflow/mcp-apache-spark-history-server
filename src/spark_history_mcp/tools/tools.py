@@ -1874,18 +1874,20 @@ def get_resource_usage_timeline(
     # Create timeline events
     timeline_events = []
 
-    # Add executor events
+    # Add executor events. A removal carries the executor's resources too, so
+    # they can be released from the running totals.
     for executor in executors:
+        cores = executor.total_cores or 0
+        memory_mb = executor.max_memory / (1024 * 1024) if executor.max_memory else 0
+
         if executor.add_time:
             timeline_events.append(
                 {
                     "timestamp": _parse_spark_datetime(executor.add_time),
                     "type": "executor_add",
                     "executor_id": executor.id,
-                    "cores": executor.total_cores,
-                    "memory_mb": executor.max_memory / (1024 * 1024)
-                    if executor.max_memory
-                    else 0,
+                    "cores": cores,
+                    "memory_mb": memory_mb,
                 }
             )
 
@@ -1895,6 +1897,8 @@ def get_resource_usage_timeline(
                     "timestamp": _parse_spark_datetime(executor.remove_time),
                     "type": "executor_remove",
                     "executor_id": executor.id,
+                    "cores": cores,
+                    "memory_mb": memory_mb,
                     "reason": executor.remove_reason,
                 }
             )
@@ -1944,7 +1948,8 @@ def get_resource_usage_timeline(
             total_memory += event["memory_mb"]
         elif event["type"] == "executor_remove":
             active_executors -= 1
-            # Note: We don't have cores/memory info in remove events
+            total_cores -= event["cores"]
+            total_memory -= event["memory_mb"]
 
         resource_timeline.append(
             {
