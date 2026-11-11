@@ -9,6 +9,27 @@ This Helm chart provides a production-ready deployment of the MCP Server for Apa
 - Helm 3.8+
 - Spark History Server running in cluster or accessible via network
 
+### Install from GHCR
+
+Each release publishes the chart to GHCR as an OCI artifact. The chart version
+is the release version without the `v` prefix (`1.0.3` for release `v1.0.3`),
+and the chart deploys the container image of the same version. Charts are
+published for releases after `v1.0.2`.
+
+```bash
+# Install a released chart
+helm install my-spark-mcp oci://ghcr.io/kubeflow/helm-charts/mcp-apache-spark-history-server \
+  --version <version> \
+  --namespace spark-history-mcp \
+  --create-namespace
+
+# Show the default values of a released chart
+helm show values oci://ghcr.io/kubeflow/helm-charts/mcp-apache-spark-history-server --version <version>
+```
+
+The image tag defaults to the chart `appVersion`. Set `image.tag` to run a
+different image version.
+
 ### Install from Local Chart
 
 ```bash
@@ -402,7 +423,11 @@ sidecars:
 ### Upgrade Chart
 
 ```bash
-# Upgrade to new version
+# Upgrade to a new released version
+helm upgrade my-spark-mcp oci://ghcr.io/kubeflow/helm-charts/mcp-apache-spark-history-server \
+  --version <version> -f my-values.yaml
+
+# Upgrade from a local chart
 helm upgrade my-spark-mcp ./mcp-apache-spark-history-server/ -f my-values.yaml
 
 # Rollback if needed

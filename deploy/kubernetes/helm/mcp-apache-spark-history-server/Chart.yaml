@@ -2,8 +2,10 @@ apiVersion: v2
 name: mcp-apache-spark-history-server
 description: A Helm chart for Spark History Server MCP
 type: application
-version: 0.1.0
-appVersion: "0.1.0"
+# The release workflow sets version and appVersion to the release version when
+# it publishes the chart. appVersion is also the default image tag.
+version: 1.0.2
+appVersion: "1.0.2"
 keywords:
   - spark
   - mcp
