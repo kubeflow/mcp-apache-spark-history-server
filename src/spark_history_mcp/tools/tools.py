@@ -539,6 +539,7 @@ def get_stage(
     server: Optional[str] = None,
     with_summaries: bool = False,
     quantiles: Optional[str] = None,
+    app_attempt_id: Optional[str] = None,
     *,
     ctx: Context,
 ) -> StageData:
@@ -553,6 +554,7 @@ def get_stage(
         with_summaries: Whether to include task metric distributions for the stage
         quantiles: Optional comma-separated quantiles for the task metric
             distributions (only used when with_summaries is set; server default if omitted)
+        app_attempt_id: Optional YARN application attempt ID (latest if omitted)
 
     Returns:
         StageData object containing stage information
@@ -567,6 +569,7 @@ def get_stage(
             attempt_id=attempt_id,
             details=False,
             with_summaries=with_summaries,
+            app_attempt_id=app_attempt_id,
         )
     else:
         # Get all attempts and use the latest one
@@ -575,6 +578,7 @@ def get_stage(
             stage_id=stage_id,
             details=False,
             with_summaries=with_summaries,
+            app_attempt_id=app_attempt_id,
         )
 
         if not stages:
@@ -596,6 +600,7 @@ def get_stage(
             app_id=app_id,
             stage_id=stage_id,
             attempt_id=stage_data.attempt_id,
+            app_attempt_id=app_attempt_id,
             **summary_kwargs,
         )
         stage_data.task_metrics_distributions = task_summary
@@ -603,13 +608,16 @@ def get_stage(
     return stage_data
 
 
-def _resolve_latest_stage_attempt_id(client, app_id: str, stage_id: int) -> int:
+def _resolve_latest_stage_attempt_id(
+    client, app_id: str, stage_id: int, app_attempt_id: Optional[str] = None
+) -> int:
     """Return the highest attempt id for a stage, or raise if the stage is absent."""
     attempts = client.list_stage_attempts(
         app_id=app_id,
         stage_id=stage_id,
         details=False,
         with_summaries=False,
+        app_attempt_id=app_attempt_id,
     )
     if not attempts:
         raise ValueError(
@@ -662,7 +670,9 @@ def list_stage_task_failures(
     client = get_client_or_default(ctx, server, app_id)
 
     if stage_attempt_id is None:
-        stage_attempt_id = _resolve_latest_stage_attempt_id(client, app_id, stage_id)
+        stage_attempt_id = _resolve_latest_stage_attempt_id(
+            client, app_id, stage_id, app_attempt_id
+        )
 
     tasks = client.list_stage_tasks(
         app_id=app_id,
@@ -834,7 +844,13 @@ def list_executors(
 
 
 @tool(annotations=ToolAnnotations(readOnlyHint=True))
-def get_executor_summary(app_id: str, server: Optional[str] = None, *, ctx: Context):
+def get_executor_summary(
+    app_id: str,
+    server: Optional[str] = None,
+    app_attempt_id: Optional[str] = None,
+    *,
+    ctx: Context,
+):
     """
     Aggregates metrics across all executors for a Spark application.
 
@@ -844,13 +860,14 @@ def get_executor_summary(app_id: str, server: Optional[str] = None, *, ctx: Cont
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
+        app_attempt_id: Optional YARN application attempt ID (latest if omitted)
 
     Returns:
         Dictionary containing aggregated executor metrics
     """
     client = get_client_or_default(ctx, server, app_id)
 
-    executors = client.list_all_executors(app_id=app_id)
+    executors = client.list_all_executors(app_id=app_id, app_attempt_id=app_attempt_id)
     return _calculate_executor_metrics(executors)
 
 
@@ -1707,7 +1724,12 @@ def compare_stages(
 
 @tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_job_bottlenecks(
-    app_id: str, server: Optional[str] = None, top_n: int = 5, *, ctx: Context
+    app_id: str,
+    server: Optional[str] = None,
+    top_n: int = 5,
+    app_attempt_id: Optional[str] = None,
+    *,
+    ctx: Context,
 ) -> Dict[str, Any]:
     """
     Identify performance bottlenecks in a Spark job.
@@ -1719,6 +1741,7 @@ def get_job_bottlenecks(
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
         top_n: Number of top bottlenecks to return
+        app_attempt_id: Optional YARN application attempt ID (latest if omitted)
 
     Returns:
         Dictionary containing identified bottlenecks and recommendations
@@ -1726,16 +1749,28 @@ def get_job_bottlenecks(
     client = get_client_or_default(ctx, server, app_id)
 
     slowest_stages = list_stages(
-        app_id, server=server, sort_by="duration", length=top_n, ctx=ctx
+        app_id,
+        server=server,
+        sort_by="duration",
+        app_attempt_id=app_attempt_id,
+        length=top_n,
+        ctx=ctx,
     )
 
     slowest_jobs = list_jobs(
-        app_id, server=server, sort_by="duration", length=top_n, ctx=ctx
+        app_id,
+        server=server,
+        sort_by="duration",
+        app_attempt_id=app_attempt_id,
+        length=top_n,
+        ctx=ctx,
     )
 
-    exec_summary = get_executor_summary(app_id, server, ctx=ctx)
+    exec_summary = get_executor_summary(
+        app_id, server, app_attempt_id=app_attempt_id, ctx=ctx
+    )
 
-    all_stages = client.list_stages(app_id=app_id)
+    all_stages = client.list_stages(app_id=app_id, app_attempt_id=app_attempt_id)
 
     # Identify stages with high spill
     high_spill_stages = []
@@ -1845,7 +1880,11 @@ def get_job_bottlenecks(
 
 @tool(annotations=ToolAnnotations(readOnlyHint=True))
 def get_resource_usage_timeline(
-    app_id: str, server: Optional[str] = None, *, ctx: Context
+    app_id: str,
+    server: Optional[str] = None,
+    app_attempt_id: Optional[str] = None,
+    *,
+    ctx: Context,
 ) -> Dict[str, Any]:
     """
     Get resource usage timeline for a Spark application.
@@ -1856,6 +1895,7 @@ def get_resource_usage_timeline(
     Args:
         app_id: The Spark application ID
         server: Optional server name to use (uses default if not specified)
+        app_attempt_id: Optional YARN application attempt ID (latest if omitted)
 
     Returns:
         Dictionary containing timeline of resource usage
@@ -1866,10 +1906,10 @@ def get_resource_usage_timeline(
     app = client.get_application(app_id)
 
     # Get all executors
-    executors = client.list_all_executors(app_id=app_id)
+    executors = client.list_all_executors(app_id=app_id, app_attempt_id=app_attempt_id)
 
     # Get stages
-    stages = client.list_stages(app_id=app_id)
+    stages = client.list_stages(app_id=app_id, app_attempt_id=app_attempt_id)
 
     # Create timeline events
     timeline_events = []

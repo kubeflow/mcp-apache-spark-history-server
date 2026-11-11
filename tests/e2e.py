@@ -1,3 +1,4 @@
+import json
 import os
 import socket
 import subprocess
@@ -1053,6 +1054,118 @@ async def test_list_stage_task_failures_not_found():
             "Error executing tool list_stage_task_failures: (404)\n"
         ), text
         assert "HTTP response headers" not in text, text
+
+
+# ---------------------------------------------------------------------------
+# app_attempt_id on single-application tools
+# ---------------------------------------------------------------------------
+# The YARN app has two attempts, so its data is only reachable through a named
+# attempt. Both attempts have a FAILED stage 5 with 8 failed tasks; attempt 1
+# stopped after a few stages, attempt 2 ran the whole script.
+yarn_failed_stage_id = 5
+
+
+@pytest.mark.asyncio
+async def test_get_stage_multi_attempt_app_requires_app_attempt_id():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "get_stage", {"app_id": yarn_app_id, "stage_id": yarn_failed_stage_id}
+        )
+        assert result.is_error
+        assert "retry with app_attempt_id" in result.content[0].text
+
+
+@pytest.mark.asyncio
+async def test_get_stage_with_app_attempt_id():
+    async with McpClient() as client:
+        stages = {}
+        for attempt in ("1", "2"):
+            result = await client.call_tool(
+                "get_stage",
+                {
+                    "app_id": yarn_app_id,
+                    "stage_id": yarn_failed_stage_id,
+                    "app_attempt_id": attempt,
+                },
+            )
+            assert not result.is_error, result.content[0].text
+            stage = _parse_one(result, StageData)
+            assert stage.stage_id == yarn_failed_stage_id
+            assert stage.status == "FAILED"
+            assert stage.num_failed_tasks == 8
+            stages[attempt] = stage
+        # Each app attempt ran its own copy of the stage.
+        assert stages["1"].submission_time != stages["2"].submission_time
+
+
+@pytest.mark.asyncio
+async def test_list_stage_task_failures_with_app_attempt_id():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_stage_task_failures",
+            {
+                "app_id": yarn_app_id,
+                "stage_id": yarn_failed_stage_id,
+                "app_attempt_id": "1",
+            },
+        )
+        assert not result.is_error, result.content[0].text
+        tasks = _parse_list(result, FailedTask)
+        assert sorted(t.task_id for t in tasks) == [13, 14, 15, 16, 17, 18, 19, 20]
+        for t in tasks:
+            assert t.status == "FAILED"
+            assert t.error_message.startswith(
+                "org.apache.spark.api.python.PythonException"
+            )
+
+
+@pytest.mark.asyncio
+async def test_get_executor_summary_with_app_attempt_id():
+    async with McpClient() as client:
+        completed = {}
+        for attempt in ("1", "2"):
+            result = await client.call_tool(
+                "get_executor_summary",
+                {"app_id": yarn_app_id, "app_attempt_id": attempt},
+            )
+            assert not result.is_error, result.content[0].text
+            summary = json.loads(result.content[0].text)
+            assert summary["total_executors"] == 1
+            completed[attempt] = summary["completed_tasks"]
+        assert completed == {"1": 9, "2": 38}
+
+
+@pytest.mark.asyncio
+async def test_get_job_bottlenecks_with_app_attempt_id():
+    async with McpClient() as client:
+        slowest = {}
+        for attempt in ("1", "2"):
+            result = await client.call_tool(
+                "get_job_bottlenecks",
+                {"app_id": yarn_app_id, "app_attempt_id": attempt, "top_n": 1},
+            )
+            assert not result.is_error, result.content[0].text
+            bottlenecks = json.loads(result.content[0].text)
+            assert bottlenecks["application_id"] == yarn_app_id
+            stages = bottlenecks["performance_bottlenecks"]["slowest_stages"]
+            slowest[attempt] = stages[0]["stage_id"]
+        assert slowest == {"1": 4, "2": 33}
+
+
+@pytest.mark.asyncio
+async def test_get_resource_usage_timeline_with_app_attempt_id():
+    async with McpClient() as client:
+        stage_executions = {}
+        for attempt in ("1", "2"):
+            result = await client.call_tool(
+                "get_resource_usage_timeline",
+                {"app_id": yarn_app_id, "app_attempt_id": attempt},
+            )
+            assert not result.is_error, result.content[0].text
+            timeline = json.loads(result.content[0].text)
+            assert timeline["application_name"] == "shs-e2e-yarn"
+            stage_executions[attempt] = timeline["summary"]["stage_executions"]
+        assert stage_executions == {"1": 5, "2": 23}
 
 
 # Spark History Server backing the e2e corpus (started by `task cli:start-shs`).
