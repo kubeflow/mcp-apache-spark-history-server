@@ -46,6 +46,11 @@
       "type": "string",
       "description": "Override the full resource name"
     },
+    "clusterDomain": {
+      "type": "string",
+      "description": "Cluster DNS domain for the Service DNS names in config.transportSecurity",
+      "minLength": 1
+    },
     "replicaCount": {
       "type": "integer",
       "description": "Number of pod replicas (when autoscaling is disabled)",
@@ -354,6 +359,33 @@
         "debug": {
           "type": "boolean",
           "description": "Enable debug mode"
+        },
+        "transportSecurity": {
+          "type": "object",
+          "description": "DNS rebinding protection (Host and Origin header allowlist)",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Reject requests with a Host or Origin header that is not allowed"
+            },
+            "allowedHosts": {
+              "type": "array",
+              "description": "Allowed Host values in addition to localhost, the Service DNS names and ingress.hosts",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "allowedOrigins": {
+              "type": "array",
+              "description": "Allowed Origin values in addition to the ones for the allowed names",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "additionalProperties": false
         },
         "servers": {
           "type": "object",

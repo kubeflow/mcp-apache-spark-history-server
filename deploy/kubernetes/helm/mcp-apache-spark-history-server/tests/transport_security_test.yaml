@@ -1,0 +1,82 @@
+suite: Transport security allowlist
+templates:
+  - configmap.yaml
+release:
+  name: rel
+  namespace: ns
+
+tests:
+  - it: allows localhost and the Service DNS names by default
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "enable_dns_rebinding_protection: true"
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^ +- localhost:\\*$"
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^ +- rel\\.ns\\.svc\\.cluster\\.local:\\*$"
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^ +- https://rel\\.ns\\.svc\\.cluster\\.local$"
+
+  - it: adds the ingress hosts only when ingress is enabled
+    set:
+      ingress.hosts:
+        - host: spark-mcp.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: spark-mcp\.example\.com
+
+  - it: adds the ingress hosts
+    set:
+      ingress.enabled: true
+      ingress.hosts:
+        - host: spark-mcp.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^ +- spark-mcp\\.example\\.com$"
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^ +- https://spark-mcp\\.example\\.com:\\*$"
+
+  - it: appends allowedHosts and allowedOrigins as given
+    set:
+      config.transportSecurity.allowedHosts: ["203.0.113.10:*"]
+      config.transportSecurity.allowedOrigins: ["https://gateway.example.com"]
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^ +- 203\\.0\\.113\\.10:\\*$"
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^ +- https://gateway\\.example\\.com$"
+
+  - it: uses clusterDomain and fullnameOverride for the Service names
+    set:
+      clusterDomain: k8s.internal
+      fullnameOverride: spark-mcp
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "(?m)^ +- spark-mcp\\.ns\\.svc\\.k8s\\.internal:\\*$"
+      - notMatchRegex:
+          path: data["config.yaml"]
+          pattern: cluster\.local
+
+  - it: turns the protection off
+    set:
+      config.transportSecurity.enabled: false
+    asserts:
+      - matchRegex:
+          path: data["config.yaml"]
+          pattern: "enable_dns_rebinding_protection: false"
