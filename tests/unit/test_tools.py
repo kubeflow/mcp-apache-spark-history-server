@@ -1201,6 +1201,54 @@ class TestTools(unittest.TestCase):
         diffs = {d.node_type: (d.a, d.b) for d in pc.node_type_diffs}
         self.assertEqual(diffs, {"Scan": (2, 1)})
 
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_compare_sql_executions_defaults_to_longest_on_any_page(
+        self, mock_get_client
+    ):
+        """Without execution IDs, the longest execution is searched on every page"""
+        # 120 short executions; the longest one is on the second page.
+        executions = [self._mk_sql(i, 1000) for i in range(120)]
+        executions[110] = self._mk_sql(110, 9000)
+
+        def get_sql_list(offset=0, length=20, **kwargs):
+            return executions[offset : offset + length]
+
+        mock_client = MagicMock()
+        mock_client.get_sql_list.side_effect = get_sql_list
+        mock_client.get_sql_execution.side_effect = lambda app_id, exec_id, **kw: (
+            self._mk_sql(exec_id, 9000)
+        )
+        mock_client.list_jobs.return_value = []
+        mock_client.list_stages.return_value = []
+        mock_get_client.return_value = mock_client
+
+        result = compare_sql_executions("app-a", "app-b", ctx=self.mock_ctx)
+
+        self.assertEqual(result.a.sql_id, 110)
+        self.assertEqual(result.b.sql_id, 110)
+        mock_client.get_sql_list.assert_any_call(
+            app_id="app-a",
+            app_attempt_id=None,
+            details=False,
+            plan_description=False,
+            offset=100,
+            length=100,
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_compare_sql_executions_no_executions(self, mock_get_client):
+        """An application without SQL executions cannot default an execution ID"""
+        mock_client = MagicMock()
+        mock_client.get_sql_list.return_value = []
+        mock_get_client.return_value = mock_client
+
+        with self.assertRaises(ValueError) as context:
+            compare_sql_executions("app-a", "app-b", ctx=self.mock_ctx)
+
+        self.assertIn(
+            "No SQL executions found in application app-a", str(context.exception)
+        )
+
     # Tests for pagination support
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")

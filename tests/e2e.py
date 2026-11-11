@@ -784,6 +784,24 @@ async def test_compare_sql_executions_with_plan_diff():
         }
 
 
+@pytest.mark.asyncio
+async def test_compare_sql_executions_defaults_to_longest():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "compare_sql_executions", {"app_id1": app1_id, "app_id2": app2_id}
+        )
+        assert not result.is_error
+        cmp = _parse_one(result, SqlExecutionComparison)
+
+        # SQL execution 8 is the longest-running one in both apps.
+        assert cmp.a.app == app1_id
+        assert cmp.a.sql_id == 8
+        assert cmp.a.duration == 2689
+        assert cmp.b.app == app2_id
+        assert cmp.b.sql_id == 8
+        assert cmp.b.duration == 2217
+
+
 # ---------------------------------------------------------------------------
 # Environment tool
 # ---------------------------------------------------------------------------
