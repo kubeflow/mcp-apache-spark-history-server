@@ -20,7 +20,10 @@ from spark_history_mcp.tools.tools import (
     compare_stages,
     get_client_or_default,
     get_environment,
+    get_executor_summary,
     get_executor_thread_dump,
+    get_job_bottlenecks,
+    get_resource_usage_timeline,
     get_sql_execution,
     get_stage,
     list_applications,
@@ -259,6 +262,7 @@ class TestTools(unittest.TestCase):
             attempt_id=0,
             details=False,
             with_summaries=False,
+            app_attempt_id=None,
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
@@ -280,6 +284,7 @@ class TestTools(unittest.TestCase):
             stage_id=1,
             details=False,
             with_summaries=False,
+            app_attempt_id=None,
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
@@ -308,6 +313,7 @@ class TestTools(unittest.TestCase):
             stage_id=1,
             details=False,
             with_summaries=False,
+            app_attempt_id=None,
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
@@ -339,12 +345,14 @@ class TestTools(unittest.TestCase):
             attempt_id=0,
             details=False,
             with_summaries=True,
+            app_attempt_id=None,
         )
 
         mock_client.get_stage_task_summary.assert_called_once_with(
             app_id="app-123",
             stage_id=1,
             attempt_id=0,
+            app_attempt_id=None,
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
@@ -693,6 +701,7 @@ class TestTools(unittest.TestCase):
             app_id="app-123",
             stage_id=1,
             attempt_id=0,
+            app_attempt_id=None,
             quantiles="0.25,0.5,0.75",
         )
 
@@ -1575,3 +1584,133 @@ class TestTools(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             list_stage_task_failures("app-1", 999, ctx=self.mock_ctx)
+
+    # Tests for app_attempt_id on single-application tools
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_stage_forwards_app_attempt_id(self, mock_get_client):
+        mock_client = MagicMock()
+        mock_stage = MagicMock(spec=StageData)
+        mock_stage.attempt_id = 0
+        mock_stage.task_metrics_distributions = None
+        mock_client.list_stage_attempts.return_value = [mock_stage]
+        mock_get_client.return_value = mock_client
+
+        get_stage(
+            "app-1",
+            stage_id=5,
+            with_summaries=True,
+            app_attempt_id="2",
+            ctx=self.mock_ctx,
+        )
+
+        mock_client.list_stage_attempts.assert_called_once_with(
+            app_id="app-1",
+            stage_id=5,
+            details=False,
+            with_summaries=True,
+            app_attempt_id="2",
+        )
+        mock_client.get_stage_task_summary.assert_called_once_with(
+            app_id="app-1", stage_id=5, attempt_id=0, app_attempt_id="2"
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_stage_with_attempt_id_forwards_app_attempt_id(self, mock_get_client):
+        mock_client = MagicMock()
+        mock_stage = MagicMock(spec=StageData)
+        mock_stage.attempt_id = 1
+        mock_client.get_stage_attempt.return_value = mock_stage
+        mock_get_client.return_value = mock_client
+
+        get_stage(
+            "app-1", stage_id=5, attempt_id=1, app_attempt_id="2", ctx=self.mock_ctx
+        )
+
+        mock_client.get_stage_attempt.assert_called_once_with(
+            app_id="app-1",
+            stage_id=5,
+            attempt_id=1,
+            details=False,
+            with_summaries=False,
+            app_attempt_id="2",
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_stage_task_failures_resolves_stage_attempt_in_app_attempt(
+        self, mock_get_client
+    ):
+        mock_client = MagicMock()
+        stage_attempt = MagicMock()
+        stage_attempt.attempt_id = 0
+        mock_client.list_stage_attempts.return_value = [stage_attempt]
+        mock_client.list_stage_tasks.return_value = []
+        mock_get_client.return_value = mock_client
+
+        list_stage_task_failures("app-1", 5, app_attempt_id="1", ctx=self.mock_ctx)
+
+        # The latest stage attempt is looked up within the requested app attempt.
+        mock_client.list_stage_attempts.assert_called_once_with(
+            app_id="app-1",
+            stage_id=5,
+            details=False,
+            with_summaries=False,
+            app_attempt_id="1",
+        )
+        mock_client.list_stage_tasks.assert_called_once_with(
+            app_id="app-1",
+            stage_id=5,
+            attempt_id=0,
+            status="failed",
+            app_attempt_id="1",
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_executor_summary_forwards_app_attempt_id(self, mock_get_client):
+        mock_client = MagicMock()
+        mock_client.list_all_executors.return_value = []
+        mock_get_client.return_value = mock_client
+
+        result = get_executor_summary("app-1", app_attempt_id="2", ctx=self.mock_ctx)
+
+        self.assertEqual(result["total_executors"], 0)
+        mock_client.list_all_executors.assert_called_once_with(
+            app_id="app-1", app_attempt_id="2"
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_job_bottlenecks_forwards_app_attempt_id(self, mock_get_client):
+        mock_client = MagicMock()
+        mock_client.list_stages.return_value = []
+        mock_client.list_jobs.return_value = []
+        mock_client.list_all_executors.return_value = []
+        mock_get_client.return_value = mock_client
+
+        get_job_bottlenecks("app-1", app_attempt_id="2", ctx=self.mock_ctx)
+
+        for call in mock_client.list_stages.call_args_list:
+            self.assertEqual(call.kwargs["app_attempt_id"], "2")
+        self.assertEqual(mock_client.list_stages.call_count, 2)
+        mock_client.list_jobs.assert_called_once_with(
+            app_id="app-1", status=None, app_attempt_id="2"
+        )
+        mock_client.list_all_executors.assert_called_once_with(
+            app_id="app-1", app_attempt_id="2"
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_get_resource_usage_timeline_forwards_app_attempt_id(self, mock_get_client):
+        mock_client = MagicMock()
+        mock_client.list_all_executors.return_value = []
+        mock_client.list_stages.return_value = []
+        mock_get_client.return_value = mock_client
+
+        get_resource_usage_timeline("app-1", app_attempt_id="2", ctx=self.mock_ctx)
+
+        # The application itself is looked up by its base ID (all attempts).
+        mock_client.get_application.assert_called_once_with("app-1")
+        mock_client.list_all_executors.assert_called_once_with(
+            app_id="app-1", app_attempt_id="2"
+        )
+        mock_client.list_stages.assert_called_once_with(
+            app_id="app-1", app_attempt_id="2"
+        )
