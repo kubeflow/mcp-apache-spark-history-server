@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from spark_history_mcp.api.spark_client import AttemptRequiredError, SparkRestClient
+from spark_history_mcp.api.spark_client import SparkRestClient
 from spark_history_mcp.api_client.exceptions import (
     ForbiddenException,
     NotFoundException,
@@ -151,23 +151,23 @@ class TestSparkRestClient(unittest.TestCase):
         with self.assertRaises(NotFoundException):
             self.client.list_jobs("app-123")
 
-    def test_missing_attempt_raises_attempt_required(self):
-        self.mock_api.list_jobs.side_effect = NotFoundException(status=404)
+    def test_missing_attempt_retries_latest_attempt(self):
+        # YARN applications have named attempts even when there is only one;
+        # without an attempt id the History Server returns 404.
+        self.mock_api.list_jobs.side_effect = [NotFoundException(status=404), ["job"]]
         self.mock_api.get_application.return_value = Application(
             id="app-123",
             name="multi",
             attempts=[
-                ApplicationAttempt(attemptId="2"),
-                ApplicationAttempt(attemptId="1"),
+                ApplicationAttempt(attemptId="9"),
+                ApplicationAttempt(attemptId="10"),
             ],
         )
 
-        with self.assertRaises(AttemptRequiredError) as ctx:
-            self.client.list_jobs("app-123")
+        self.assertEqual(self.client.list_jobs("app-123"), ["job"])
 
-        message = str(ctx.exception)
-        self.assertIn("multiple attempts (2, 1)", message)
-        self.assertIn("app_attempt_id='2'", message)
+        retry = self.mock_api.list_jobs.call_args_list[1]
+        self.assertEqual(retry.args[0], "app-123/10")
 
     def test_404_with_explicit_attempt_not_enriched(self):
         self.mock_api.list_jobs.side_effect = NotFoundException(status=404)

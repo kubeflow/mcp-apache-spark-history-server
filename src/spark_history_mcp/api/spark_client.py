@@ -57,12 +57,18 @@ class AttemptRequiredError(Exception):
     """
 
 
+def _attempt_order(attempt_id: str) -> tuple[int, str]:
+    """Sorts attempt ids numerically where they are numbers ("10" after "9")."""
+    return (int(attempt_id), "") if attempt_id.isdigit() else (-1, attempt_id)
+
+
 def _resilient_call(method):
     """Cross-cutting error handling for application-scoped methods.
 
     * On 401/403, if a re-auth callback is configured, refresh the cookie and
       retry once (covers EMR session-cookie rotation).
     * On 404 with no ``app_attempt_id`` for an app that has named attempts,
+      retry once with the latest attempt when the method accepts one, else
       re-raise as :class:`AttemptRequiredError`; otherwise propagate. The
       attempt lookup only happens on the failure path.
     """
@@ -85,6 +91,11 @@ def _resilient_call(method):
                 raise
             app_id = bound.arguments.get("app_id")
             attempts = self._attempt_ids(app_id) if app_id else []
+            if attempts and "app_attempt_id" in signature.parameters:
+                # YARN apps always have named attempts, even with only one.
+                # Default to the latest, as the History Server's UI does.
+                bound.arguments["app_attempt_id"] = max(attempts, key=_attempt_order)
+                return method(*bound.args, **bound.kwargs)
             if attempts:
                 raise AttemptRequiredError(
                     f"Application '{app_id}' has multiple attempts "
