@@ -11,6 +11,7 @@ from spark_history_mcp.api_client.models.application import Application
 from spark_history_mcp.api_client.models.application_attempt import ApplicationAttempt
 from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
+from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.config.config import ServerConfig
 
 
@@ -212,6 +213,45 @@ class TestSparkRestClient(unittest.TestCase):
         self.assertEqual(
             client._api.api_client.configuration.proxy, "socks5h://localhost:8157"
         )
+
+    def test_list_all_sql_executions_pages_through_everything(self):
+        executions = [SQLExecution(id=i) for i in range(250)]
+        self.mock_api.list_sql_executions.side_effect = (
+            lambda app_path, details, plan_description, offset, length, **kw: (
+                executions[offset : offset + length]
+            )
+        )
+
+        result = self.client.list_all_sql_executions("app-1", page_size=100)
+
+        self.assertEqual([e.id for e in result], list(range(250)))
+        offsets = [
+            c.kwargs["offset"] for c in self.mock_api.list_sql_executions.call_args_list
+        ]
+        self.assertEqual(offsets, [0, 100, 200])
+        for c in self.mock_api.list_sql_executions.call_args_list:
+            self.assertFalse(c.kwargs["details"])
+            self.assertFalse(c.kwargs["plan_description"])
+            self.assertEqual(c.kwargs["length"], 100)
+
+    def test_list_all_sql_executions_stops_after_full_last_page(self):
+        executions = [SQLExecution(id=i) for i in range(200)]
+        self.mock_api.list_sql_executions.side_effect = (
+            lambda app_path, details, plan_description, offset, length, **kw: (
+                executions[offset : offset + length]
+            )
+        )
+
+        result = self.client.list_all_sql_executions("app-1", page_size=100)
+
+        self.assertEqual(len(result), 200)
+        self.assertEqual(self.mock_api.list_sql_executions.call_count, 3)
+
+    def test_list_all_sql_executions_empty(self):
+        self.mock_api.list_sql_executions.return_value = []
+
+        self.assertEqual(self.client.list_all_sql_executions("app-1"), [])
+        self.mock_api.list_sql_executions.assert_called_once()
 
 
 class TestCookieAuth(unittest.TestCase):

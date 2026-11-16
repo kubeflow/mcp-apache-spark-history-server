@@ -799,7 +799,7 @@ class TestTools(unittest.TestCase):
     def test_list_sql_executions_sort_by_duration(self, mock_get_client):
         """list_sql_executions sorts by duration descending and returns summaries"""
         mock_client = MagicMock()
-        mock_client.get_sql_list.return_value = [
+        mock_client.list_all_sql_executions.return_value = [
             self._mk_sql(1, 5000, success=[1, 2]),
             self._mk_sql(2, 10000, success=[3]),
             self._mk_sql(3, 2000, success=[4]),
@@ -814,20 +814,15 @@ class TestTools(unittest.TestCase):
         self.assertEqual(result[0].duration, 10000)
         self.assertEqual(result[0].success_job_ids, [3])
         # List view must be lightweight: no plan text or node details fetched.
-        mock_client.get_sql_list.assert_called_with(
-            app_id="spark-app-123",
-            app_attempt_id=None,
-            details=False,
-            plan_description=False,
-            offset=0,
-            length=100,
+        mock_client.list_all_sql_executions.assert_called_with(
+            "spark-app-123", app_attempt_id=None, page_size=100
         )
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_list_sql_executions_default_sort_failed_first(self, mock_get_client):
         """Default ordering puts FAILED first, then RUNNING, then COMPLETED"""
         mock_client = MagicMock()
-        mock_client.get_sql_list.return_value = [
+        mock_client.list_all_sql_executions.return_value = [
             self._mk_sql(1, 10000, status="COMPLETED"),
             self._mk_sql(2, 1000, status="FAILED"),
             self._mk_sql(3, 5000, status="RUNNING"),
@@ -842,7 +837,7 @@ class TestTools(unittest.TestCase):
     def test_list_sql_executions_status_filter(self, mock_get_client):
         """status filter keeps only matching executions (case-insensitive)"""
         mock_client = MagicMock()
-        mock_client.get_sql_list.return_value = [
+        mock_client.list_all_sql_executions.return_value = [
             self._mk_sql(1, 5000, status="COMPLETED"),
             self._mk_sql(2, 1000, status="FAILED"),
         ]
@@ -859,7 +854,7 @@ class TestTools(unittest.TestCase):
     def test_list_sql_executions_description_filter(self, mock_get_client):
         """description filter does a case-insensitive substring match"""
         mock_client = MagicMock()
-        mock_client.get_sql_list.return_value = [
+        mock_client.list_all_sql_executions.return_value = [
             self._mk_sql(1, 5000, description="benchmark q5"),
             self._mk_sql(2, 1000, description="warmup"),
         ]
@@ -876,7 +871,7 @@ class TestTools(unittest.TestCase):
     def test_list_sql_executions_limit(self, mock_get_client):
         """limit caps the number of returned executions"""
         mock_client = MagicMock()
-        mock_client.get_sql_list.return_value = [
+        mock_client.list_all_sql_executions.return_value = [
             self._mk_sql(i, (10 - i) * 1000) for i in range(10)
         ]
         mock_get_client.return_value = mock_client
@@ -892,7 +887,7 @@ class TestTools(unittest.TestCase):
     def test_list_sql_executions_empty(self, mock_get_client):
         """Empty result returns an empty list"""
         mock_client = MagicMock()
-        mock_client.get_sql_list.return_value = []
+        mock_client.list_all_sql_executions.return_value = []
         mock_get_client.return_value = mock_client
 
         result = list_sql_executions("spark-app-123", ctx=self.mock_ctx)
@@ -1206,15 +1201,12 @@ class TestTools(unittest.TestCase):
         self, mock_get_client
     ):
         """Without execution IDs, the longest execution is searched on every page"""
-        # 120 short executions; the longest one is on the second page.
+        # 120 short executions; the longest one is far from the first 20.
         executions = [self._mk_sql(i, 1000) for i in range(120)]
         executions[110] = self._mk_sql(110, 9000)
 
-        def get_sql_list(offset=0, length=20, **kwargs):
-            return executions[offset : offset + length]
-
         mock_client = MagicMock()
-        mock_client.get_sql_list.side_effect = get_sql_list
+        mock_client.list_all_sql_executions.return_value = executions
         mock_client.get_sql_execution.side_effect = lambda app_id, exec_id, **kw: (
             self._mk_sql(exec_id, 9000)
         )
@@ -1226,20 +1218,13 @@ class TestTools(unittest.TestCase):
 
         self.assertEqual(result.a.sql_id, 110)
         self.assertEqual(result.b.sql_id, 110)
-        mock_client.get_sql_list.assert_any_call(
-            app_id="app-a",
-            app_attempt_id=None,
-            details=False,
-            plan_description=False,
-            offset=100,
-            length=100,
-        )
+        mock_client.list_all_sql_executions.assert_any_call("app-a")
 
     @patch("spark_history_mcp.tools.tools.get_client_or_default")
     def test_compare_sql_executions_no_executions(self, mock_get_client):
         """An application without SQL executions cannot default an execution ID"""
         mock_client = MagicMock()
-        mock_client.get_sql_list.return_value = []
+        mock_client.list_all_sql_executions.return_value = []
         mock_get_client.return_value = mock_client
 
         with self.assertRaises(ValueError) as context:

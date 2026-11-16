@@ -1193,43 +1193,11 @@ def compare_job_performance(
     return comparison
 
 
-def _fetch_all_sql_executions(
-    client,
-    app_id: str,
-    app_attempt_id: Optional[str] = None,
-    page_size: int = 100,
-) -> List[SQLExecution]:
-    """Fetch every SQL execution of an application, one page at a time.
-
-    The History Server paginates the SQL list (20 executions unless a length
-    is given), so a single request can miss executions. The executions are
-    lightweight: no plan text and no node details.
-    """
-    executions: List[SQLExecution] = []
-    offset = 0
-    while True:
-        page: List[SQLExecution] = client.get_sql_list(
-            app_id=app_id,
-            app_attempt_id=app_attempt_id,
-            details=False,
-            plan_description=False,
-            offset=offset,
-            length=page_size,
-        )
-        if not page:
-            break
-        executions.extend(page)
-        offset += page_size
-        if len(page) < page_size:
-            break
-    return executions
-
-
 def _resolve_longest_sql_id(client, app_id: str, execution_id: Optional[int]) -> int:
     """Resolve a SQL execution id, defaulting to the longest-running execution."""
     if execution_id is not None:
         return execution_id
-    executions = _fetch_all_sql_executions(client, app_id)
+    executions = client.list_all_sql_executions(app_id)
     if executions:
         return max(executions, key=lambda x: x.duration or 0).id
     raise ValueError(f"No SQL executions found in application {app_id}")
@@ -1404,8 +1372,8 @@ def list_sql_executions(
     if limit < 0:
         raise ValueError("limit must be non-negative")
 
-    all_executions = _fetch_all_sql_executions(
-        client, app_id, app_attempt_id=app_attempt_id, page_size=page_size
+    all_executions = client.list_all_sql_executions(
+        app_id, app_attempt_id=app_attempt_id, page_size=page_size
     )
 
     if description:
