@@ -247,6 +247,10 @@ How a driver UI differs from a History Server:
   UI while it runs and to the History Server afterwards.
 - `get_executor_thread_dump` only works against a driver UI. The History Server
   responds with `503` for every application, including running ones.
+- `list_cached_rdds` sees the cached blocks on a driver UI. The History Server
+  only sees them when the application ran with
+  `spark.eventLog.logBlockUpdates.enabled=true` (default `false`); otherwise
+  it reports no cached RDDs.
 - When a tool call does not name a server, the first configured server that has
   the application is used. With event logging enabled, a running application is
   also listed by the History Server, so name the server explicitly:
@@ -309,7 +313,7 @@ graph TB
 | **Strands Agents** | streamable-http | [Setup →](examples/integrations/strands-agents/) |
 | **Local / Inspector** | streamable-http | [Setup →](TESTING.md) |
 
-### Available Tools (19)
+### Available Tools (20)
 
 <details>
 <summary>Available Tools</summary>
@@ -338,6 +342,7 @@ graph TB
 | `get_executor_summary` | Aggregate metrics across all executors |
 | `get_resource_usage_timeline` | Chronological executor add/remove with resource totals |
 | `get_executor_thread_dump` | JVM thread dump for a driver/executor, with state/name/blocked filters ([live Spark UI](#running-applications-live-spark-ui) only) |
+| `list_cached_rdds` | Cached RDDs and DataFrames (Storage tab): storage level, cached vs total partitions, memory and disk used, largest first; opt-in per-executor and per-partition detail ([History Server needs block updates in the event log](#running-applications-live-spark-ui)) |
 
 #### Configuration & Environment
 | Tool | Description |

@@ -11,6 +11,7 @@ from spark_history_mcp.api_client.models.application import Application
 from spark_history_mcp.api_client.models.application_attempt import ApplicationAttempt
 from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
+from spark_history_mcp.api_client.models.rdd_storage_info import RDDStorageInfo
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.config.config import ServerConfig
 
@@ -142,6 +143,41 @@ class TestSparkRestClient(unittest.TestCase):
         self.assertEqual(len(self.client.list_executors("app-123")), 10)
         executors = self.client.list_executors("app-123", offset=8, length=5)
         self.assertEqual([e.id for e in executors], ["8", "9"])
+
+    def test_list_storage_rdds_composite_app_path(self):
+        rdds = [RDDStorageInfo(id=3, name="cached")]
+        self.mock_api.list_storage_rdds.return_value = rdds
+
+        self.assertEqual(
+            self.client.list_storage_rdds("app-123", app_attempt_id="2"), rdds
+        )
+        self.mock_api.list_storage_rdds.assert_called_once_with(
+            "app-123/2", _request_timeout=self.timeout
+        )
+
+    def test_get_storage_rdd(self):
+        rdd = RDDStorageInfo(id=3, name="cached")
+        self.mock_api.get_storage_rdd.return_value = rdd
+
+        self.assertEqual(self.client.get_storage_rdd("app-123", 3), rdd)
+        self.mock_api.get_storage_rdd.assert_called_once_with(
+            "app-123", 3, _request_timeout=self.timeout
+        )
+
+    def test_get_storage_rdd_missing_attempt_retries_latest_attempt(self):
+        rdd = RDDStorageInfo(id=3, name="cached")
+        self.mock_api.get_storage_rdd.side_effect = [
+            NotFoundException(status=404),
+            rdd,
+        ]
+        self.mock_api.get_application.return_value = Application(
+            id="app-123", name="yarn", attempts=[ApplicationAttempt(attemptId="1")]
+        )
+
+        self.assertEqual(self.client.get_storage_rdd("app-123", 3), rdd)
+
+        retry = self.mock_api.get_storage_rdd.call_args_list[1]
+        self.assertEqual(retry.args, ("app-123/1", 3))
 
     # ----- attempt-aware 404 enrichment -----
     def test_missing_app_404_propagates(self):
