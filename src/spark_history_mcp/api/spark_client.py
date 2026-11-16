@@ -469,6 +469,38 @@ class SparkRestClient:
             length=length,
         )
 
+    def list_all_sql_executions(
+        self,
+        app_id: str,
+        app_attempt_id: Optional[str] = None,
+        page_size: int = 100,
+    ) -> List[SQLExecution]:
+        """List every SQL execution of an application, one page at a time.
+
+        The History Server paginates the SQL list (20 executions unless a
+        length is given), so a single ``get_sql_list`` call can miss
+        executions. The executions are lightweight: no plan text and no node
+        details.
+        """
+        executions: List[SQLExecution] = []
+        offset = 0
+        while True:
+            page = self.get_sql_list(
+                app_id=app_id,
+                app_attempt_id=app_attempt_id,
+                details=False,
+                plan_description=False,
+                offset=offset,
+                length=page_size,
+            )
+            if not page:
+                break
+            executions.extend(page)
+            offset += page_size
+            if len(page) < page_size:
+                break
+        return executions
+
     @_resilient_call
     def get_sql_execution(
         self,
