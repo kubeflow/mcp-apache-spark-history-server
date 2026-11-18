@@ -213,7 +213,7 @@ async def test_credential_process_does_not_inherit_stdio(connection, tmp_path):
     aws_config.write_text(
         "[default]\n"
         "region = us-west-2\n"
-        f"credential_process = {sys.executable} {helper} {stdin_kind}\n"
+        f'credential_process = "{sys.executable}" "{helper}" "{stdin_kind}"\n'
     )
     # Remove other credential sources, so only credential_process applies.
     env: dict[str, str | None] = {k: None for k in os.environ if k.startswith("AWS_")}
