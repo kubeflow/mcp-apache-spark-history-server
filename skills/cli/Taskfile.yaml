@@ -15,7 +15,7 @@ tasks:
     desc: Install oapi-codegen binary
     cmds:
       - mkdir -p {{.BIN_DIR}}
-      - GOBIN=$(pwd)/bin go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@{{.OAPI_CODEGEN_VERSION}}
+      - GOBIN="$(pwd)/bin" go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@{{.OAPI_CODEGEN_VERSION}}
     status:
       - test -x {{.BIN_DIR}}/oapi-codegen
 
@@ -86,7 +86,7 @@ tasks:
       # App 1: small memory, broadcast disabled, 4 shuffle partitions → SortMergeJoin
       - docker rm -f {{.CONTAINER}}
       - docker run --name {{.CONTAINER}}
-          -v $(pwd)/e2e/generate_events.py:/app/generate_events.py:ro
+          -v "$(pwd)/e2e/generate_events.py:/app/generate_events.py:ro"
           {{.SPARK_IMAGE}}
           bash -c "mkdir -p /tmp/spark-events && /opt/spark/bin/spark-submit
             --master 'local[2,4]'
@@ -100,7 +100,7 @@ tasks:
       - docker rm {{.CONTAINER}}
       # App 2: more memory, broadcast enabled, 8 shuffle partitions → BroadcastHashJoin, spill
       - docker run --name {{.CONTAINER}}
-          -v $(pwd)/e2e/generate_events.py:/app/generate_events.py:ro
+          -v "$(pwd)/e2e/generate_events.py:/app/generate_events.py:ro"
           {{.SPARK_IMAGE}}
           bash -c "mkdir -p /tmp/spark-events && /opt/spark/bin/spark-submit
             --master 'local[2,4]'
@@ -126,7 +126,7 @@ tasks:
       - docker rm -f {{.CONTAINER}}
       - docker run --name {{.CONTAINER}}
           -e SPARK_APP_FAIL=1
-          -v $(pwd)/e2e/generate_events.py:/app/generate_events.py:ro
+          -v "$(pwd)/e2e/generate_events.py:/app/generate_events.py:ro"
           {{.SPARK_IMAGE}}
           bash -c "mkdir -p /tmp/spark-events && /opt/spark/bin/spark-submit
             --master 'local[2,4]'
@@ -143,7 +143,7 @@ tasks:
       - docker rm {{.CONTAINER}}
       # Attempt 2: succeeds with full workload
       - docker run --name {{.CONTAINER}}
-          -v $(pwd)/e2e/generate_events.py:/app/generate_events.py:ro
+          -v "$(pwd)/e2e/generate_events.py:/app/generate_events.py:ro"
           {{.SPARK_IMAGE}}
           bash -c "mkdir -p /tmp/spark-events && /opt/spark/bin/spark-submit
             --master 'local[2,4]'
@@ -179,7 +179,7 @@ tasks:
         docker rm -f {{.SHS_CONTAINER}} 2>/dev/null || true
         docker run -d --name {{.SHS_CONTAINER}} \
           -p 18080:18080 \
-          -v $(pwd)/e2e/spark-events:/tmp/spark-events:ro \
+          -v "$(pwd)/e2e/spark-events:/tmp/spark-events:ro" \
           -e SPARK_NO_DAEMONIZE=true \
           -e SPARK_HISTORY_OPTS="-Dspark.history.fs.logDirectory=file:///tmp/spark-events" \
           {{.SPARK_IMAGE}} \

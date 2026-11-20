@@ -56,30 +56,30 @@ tasks:
     desc: Install project dependencies
     deps: [check-uv]
     cmds:
-      - "{{.UV}} sync --group dev --frozen"
+      - '"{{.UV}}" sync --group dev --frozen'
       - echo "✅ Dependencies installed!"
 
   lint:
     desc: Run code linting with ruff
     deps: [check-uv]
     cmds:
-      - "{{.UV}} run ruff check --fix ."
+      - '"{{.UV}}" run ruff check --fix .'
       - echo "✅ Linting completed!"
-      - "{{.UV}} run ruff format ."
+      - '"{{.UV}}" run ruff format .'
       - echo "✅ Code formatted!"
 
   type-check:
     desc: Run type checking with mypy
     deps: [check-uv]
     cmds:
-      - "{{.UV}} run mypy *.py --ignore-missing-imports"
+      - '"{{.UV}}" run mypy *.py --ignore-missing-imports'
       - echo "✅ Type checking completed!"
 
   test:
     desc: Run tests with pytest
     deps: [check-uv]
     cmds:
-      - "{{.UV}} run pytest --cov=. -cov-report=xml --cov-report=term-missing ."
+      - '"{{.UV}}" run pytest --cov=. -cov-report=xml --cov-report=term-missing .'
       - echo "✅ Tests completed!"
 
   test-helm:
@@ -106,20 +106,20 @@ tasks:
           CONFIG: tests/config-e2e.yaml
       - |
         echo "Running e2e tests..."
-        {{.UV}} run pytest tests/e2e.py -v
+        "{{.UV}}" run pytest tests/e2e.py -v
 
   security:
     desc: Run security scan with bandit
     deps: [check-uv]
     cmds:
-      - "{{.UV}} run bandit -r . --exclude src/spark_history_mcp/api_client -f json -o bandit-report.json"
+      - '"{{.UV}}" run bandit -r . --exclude src/spark_history_mcp/api_client -f json -o bandit-report.json'
       - echo "✅ Security scan completed! Check bandit-report.json"
 
   pre-commit:
     desc: Run all pre-commit checks
     deps: [pre-commit-install]
     cmds:
-      - "{{.UV}} run pre-commit run --all-files"
+      - '"{{.UV}}" run pre-commit run --all-files'
       - echo "✅ Pre-commit checks completed!"
 
   pre-commit-install:
@@ -127,7 +127,7 @@ tasks:
     internal: true
     deps: [check-uv]
     cmds:
-      - "{{.UV}} run pre-commit install"
+      - '"{{.UV}}" run pre-commit install'
       - echo "✅ Pre-commit hooks installed!"
 
   clean:
@@ -179,7 +179,7 @@ tasks:
     interactive: true
     deps: [check-uv]
     cmds:
-      - "{{.UV}} run -m spark_history_mcp.core.main --frozen"
+      - '"{{.UV}}" run -m spark_history_mcp.core.main --frozen'
       - task: wait-for-mcp
 
   start-mcp-bg:
@@ -188,7 +188,7 @@ tasks:
     cmds:
       - |
         echo "Starting MCP server in background..."
-        {{if .CONFIG}}export SHS_MCP_CONFIG="{{.CONFIG}}"; {{end}}bash -c 'nohup {{.UV}} run -m spark_history_mcp.core.main > mcp-server.log 2>&1 &'
+        {{if .CONFIG}}export SHS_MCP_CONFIG="{{.CONFIG}}"; {{end}}bash -c 'nohup "{{.UV}}" run -m spark_history_mcp.core.main > mcp-server.log 2>&1 &'
 
       - task: wait-for-mcp
     status:
