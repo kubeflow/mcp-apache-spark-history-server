@@ -20,8 +20,8 @@
         },
         "tag": {
           "type": "string",
-          "description": "Image tag (overrides chart appVersion)",
-          "pattern": "^[a-zA-Z0-9._-]+$"
+          "description": "Image tag (defaults to the chart appVersion when empty)",
+          "pattern": "^[a-zA-Z0-9._-]*$"
         }
       },
       "required": ["repository", "pullPolicy", "tag"]

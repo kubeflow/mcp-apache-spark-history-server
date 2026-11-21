@@ -1,0 +1,25 @@
+suite: Container image
+templates:
+  - deployment.yaml
+  - configmap.yaml
+
+tests:
+  - it: defaults the image tag to the chart appVersion
+    chart:
+      appVersion: 1.2.3
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/kubeflow/mcp-apache-spark-history-server:1.2.3
+        template: deployment.yaml
+
+  - it: uses an explicit image tag instead of the chart appVersion
+    chart:
+      appVersion: 1.2.3
+    set:
+      image.tag: 1.0.0
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/kubeflow/mcp-apache-spark-history-server:1.0.0
+        template: deployment.yaml
