@@ -228,6 +228,7 @@ Thumbs.db
 # Test artifacts
 .pytest_cache/
 .coverage
+coverage.xml
 htmlcov/
 .tox/
 .nox/
