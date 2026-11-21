@@ -75,6 +75,27 @@ class TestSparkRestClient(unittest.TestCase):
             _request_timeout=self.timeout,
         )
 
+    def test_list_applications_running_and_completed_sends_no_status(self):
+        # The History Server returns every app for both states, same as no
+        # filter. Sending only the first one would drop the other state.
+        for status in (
+            ["running", "completed"],
+            ["completed", "running"],
+            ["RUNNING", "completed", "Completed"],
+        ):
+            with self.subTest(status=status):
+                self.mock_api.list_applications.reset_mock()
+                self.client.list_applications(status=status)
+                self.assertIsNone(
+                    self.mock_api.list_applications.call_args.kwargs["status"]
+                )
+
+    def test_list_applications_repeated_status_is_sent_once(self):
+        self.client.list_applications(status=["running", "RUNNING"])
+        self.assertEqual(
+            self.mock_api.list_applications.call_args.kwargs["status"], "running"
+        )
+
     def test_get_application(self):
         app = Application(id="app-1", name="Test App")
         self.mock_api.get_application.return_value = app
