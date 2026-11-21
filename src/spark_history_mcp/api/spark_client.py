@@ -223,8 +223,14 @@ class SparkRestClient:
         limit: Optional[int] = None,
     ) -> List[Application]:
         """List applications, optionally filtered by status/date and limited."""
-        # The generated client accepts a single status string.
-        status_param = status[0] if status else None
+        # The generated client accepts a single status string. The History Server
+        # returns every application both for no status and for running + completed,
+        # so send no filter when both are asked for. Sending only status[0] would
+        # drop one of them.
+        if status and {s.lower() for s in status} == {"running", "completed"}:
+            status_param = None
+        else:
+            status_param = status[0] if status else None
         return self._invoke(
             self._api.list_applications,
             status=status_param,
