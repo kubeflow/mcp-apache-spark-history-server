@@ -18,6 +18,7 @@ from spark_history_mcp.api_client.models.application import Application
 from spark_history_mcp.api_client.models.environment import Environment
 from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
+from spark_history_mcp.api_client.models.rdd_storage_info import RDDStorageInfo
 from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.models.mcp_types import (
     FailedTask,
@@ -1024,6 +1025,35 @@ async def test_get_executor_thread_dump_completed_app_errors():
         assert text.startswith("Error executing tool get_executor_thread_dump: (")
         assert "Reason:" in text
         assert "HTTP response headers" not in text
+
+
+# ---------------------------------------------------------------------------
+# list_cached_rdds tool
+# ---------------------------------------------------------------------------
+# app1 caches a DataFrame, but the corpus was generated without
+# spark.eventLog.logBlockUpdates.enabled, so the History Server has no cached
+# blocks to report. This confirms the tool is wired up end to end.
+
+
+@pytest.mark.asyncio
+async def test_list_cached_rdds_without_block_updates_is_empty():
+    async with McpClient() as client:
+        result = await client.call_tool("list_cached_rdds", {"app_id": app1_id})
+        assert not result.is_error
+        assert _parse_list(result, RDDStorageInfo) == []
+
+
+@pytest.mark.asyncio
+async def test_list_cached_rdds_unknown_rdd_id_errors():
+    async with McpClient() as client:
+        result = await client.call_tool(
+            "list_cached_rdds", {"app_id": app1_id, "rdd_id": 999999}
+        )
+        assert result.is_error
+        # The Spark History Server answers HTTP 404 for an unknown RDD.
+        text = result.content[0].text
+        assert text.startswith("Error executing tool list_cached_rdds: (404)\n"), text
+        assert "HTTP response headers" not in text, text
 
 
 # ---------------------------------------------------------------------------
