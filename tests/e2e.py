@@ -348,6 +348,24 @@ async def test_list_applications():
 
 
 @pytest.mark.asyncio
+async def test_list_applications_running_and_completed_matches_no_filter():
+    """Asking for both states returns the same apps as no filter, in any order."""
+    async with McpClient() as client:
+
+        async def app_ids(args):
+            result = await client.call_tool("list_applications", args)
+            assert not result.is_error
+            return sorted(
+                Application.model_validate_json(c.text).id for c in result.content
+            )
+
+        everything = await app_ids({})
+        assert everything
+        assert await app_ids({"status": ["running", "completed"]}) == everything
+        assert await app_ids({"status": ["completed", "running"]}) == everything
+
+
+@pytest.mark.asyncio
 async def test_list_applications_by_id():
     async with McpClient() as client:
         result = await client.call_tool("list_applications", {"app_id": app1_id})
