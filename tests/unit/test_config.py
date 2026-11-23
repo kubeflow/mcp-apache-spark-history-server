@@ -74,6 +74,41 @@ class TestConfig(unittest.TestCase):
             with patch.dict(os.environ, {"SHS_MCP_CONFIG": "nonexistent_file.yaml"}):
                 Config()
 
+    def _config_with_servers(self, servers):
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
+            yaml.dump({"servers": servers}, temp_file)
+            temp_file_path = temp_file.name
+        try:
+            with patch.dict(os.environ, {"SHS_MCP_CONFIG": temp_file_path}):
+                return Config()
+        finally:
+            os.unlink(temp_file_path)
+
+    @patch.dict(
+        os.environ,
+        {
+            # URL misspelled, so only the timeout reaches servers.prod
+            "SHS_SERVERS__PROD__ULR": "http://prod:18080",
+            "SHS_SERVERS__PROD__TIMEOUT": "60",
+        },
+    )
+    def test_server_without_url_from_env_is_rejected(self):
+        with self.assertRaises(ValueError) as ctx:
+            self._config_with_servers({"local": {"url": "http://localhost:18080"}})
+        self.assertIn("No url set for server(s): prod", str(ctx.exception))
+        self.assertIn("SHS_SERVERS__<NAME>__URL", str(ctx.exception))
+
+    def test_server_without_url_in_yaml_is_rejected(self):
+        with self.assertRaises(ValueError) as ctx:
+            self._config_with_servers({"staging": {"timeout": 10}})
+        self.assertIn("No url set for server(s): staging", str(ctx.exception))
+
+    def test_emr_server_without_url_is_allowed(self):
+        arn = "arn:aws:emr:us-east-1:123:cluster/j-ABC"
+        config = self._config_with_servers({"emr": {"emr_cluster_arn": arn}})
+        self.assertIsNone(config.servers["emr"].url)
+        self.assertEqual(config.servers["emr"].emr_cluster_arn, arn)
+
     @patch.dict(
         os.environ,
         {
