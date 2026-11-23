@@ -16,9 +16,9 @@ vars:
   UV_VERSION: '{{.UV_VERSION | default "0.11.23"}}'
   OS: '{{OS}}'
   ARCH: '{{ARCH}}'
-  BIN_DIR: .bin
+  UV_BIN_DIR: .bin
   # Explicit path to the repo-local, pinned uv binary installed by check-uv.
-  UV: '{{.ROOT_DIR}}/{{.BIN_DIR}}/uv'
+  UV: '{{.ROOT_DIR}}/{{.UV_BIN_DIR}}/uv'
 
 run: once
 silent: true
@@ -37,17 +37,17 @@ tasks:
       - |
         if [ ! -x "{{.UV}}" ]; then
           echo "📦 Installing uv {{.UV_VERSION}}..."
-          mkdir -p "{{.BIN_DIR}}"
+          mkdir -p "{{.UV_BIN_DIR}}"
           base="https://github.com/astral-sh/uv/releases/download/{{.UV_VERSION}}"
           tmp="$(mktemp -d)"
           curl -fsSL "$base/{{.UV_TARGET}}.tar.gz"        -o "$tmp/uv.tar.gz"
           curl -fsSL "$base/{{.UV_TARGET}}.tar.gz.sha256" -o "$tmp/uv.tar.gz.sha256"
           # The .sha256 file references the original asset name; verify by our local name.
           ( cd "$tmp" && echo "$(cut -d' ' -f1 uv.tar.gz.sha256)  uv.tar.gz" | shasum -a 256 -c - )
-          tar -xzf "$tmp/uv.tar.gz" -C "{{.BIN_DIR}}" --strip-components=1 \
+          tar -xzf "$tmp/uv.tar.gz" -C "{{.UV_BIN_DIR}}" --strip-components=1 \
             "{{.UV_TARGET}}/uv" "{{.UV_TARGET}}/uvx"
           rm -rf "$tmp"
-          echo "✅ uv installed to {{.BIN_DIR}}/"
+          echo "✅ uv installed to {{.UV_BIN_DIR}}/"
         else
           echo "✅ uv is already installed"
         fi
