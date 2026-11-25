@@ -1106,20 +1106,24 @@ async def test_list_stage_task_failures_not_found():
 # ---------------------------------------------------------------------------
 # app_attempt_id on single-application tools
 # ---------------------------------------------------------------------------
-# The YARN app has two attempts, so its data is only reachable through a named
-# attempt. Both attempts have a FAILED stage 5 with 8 failed tasks; attempt 1
-# stopped after a few stages, attempt 2 ran the whole script.
+# The YARN app has two attempts. Reads default to the latest, and a named
+# attempt reaches either one. Both attempts have a FAILED stage 5 with 8 failed
+# tasks; attempt 1 stopped after a few stages, attempt 2 ran the whole script.
 yarn_failed_stage_id = 5
 
 
 @pytest.mark.asyncio
-async def test_get_stage_multi_attempt_app_requires_app_attempt_id():
+async def test_get_stage_defaults_to_latest_app_attempt():
     async with McpClient() as client:
-        result = await client.call_tool(
-            "get_stage", {"app_id": yarn_app_id, "stage_id": yarn_failed_stage_id}
+        args = {"app_id": yarn_app_id, "stage_id": yarn_failed_stage_id}
+        default = await client.call_tool("get_stage", args)
+        latest = await client.call_tool("get_stage", {**args, "app_attempt_id": "2"})
+        assert not default.is_error, default.content[0].text
+        assert not latest.is_error, latest.content[0].text
+        assert (
+            _parse_one(default, StageData).submission_time
+            == _parse_one(latest, StageData).submission_time
         )
-        assert result.is_error
-        assert "retry with app_attempt_id" in result.content[0].text
 
 
 @pytest.mark.asyncio
