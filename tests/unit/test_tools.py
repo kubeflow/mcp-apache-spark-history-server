@@ -7,6 +7,7 @@ from spark_history_mcp.api_client.models.application import Application
 from spark_history_mcp.api_client.models.environment import Environment
 from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
+from spark_history_mcp.api_client.models.rdd_storage_info import RDDStorageInfo
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.api_client.models.task_metrics_summary import TaskMetricsSummary
@@ -24,6 +25,7 @@ from spark_history_mcp.tools.tools import (
     get_sql_execution,
     get_stage,
     list_applications,
+    list_cached_rdds,
     list_executors,
     list_jobs,
     list_sql_executions,
@@ -1558,6 +1560,117 @@ class TestTools(unittest.TestCase):
         mock_client.get_executor_thread_dump.assert_called_once_with(
             app_id="app-1", executor_id="driver", app_attempt_id=None
         )
+
+    # Tests for list_cached_rdds
+    @staticmethod
+    def _rdd(rdd_id, memory_used, disk_used=0):
+        return RDDStorageInfo.from_dict(
+            {
+                "id": rdd_id,
+                "name": f"rdd-{rdd_id}",
+                "numPartitions": 4,
+                "numCachedPartitions": 4,
+                "storageLevel": "Disk Memory Deserialized 1x Replicated",
+                "memoryUsed": memory_used,
+                "diskUsed": disk_used,
+                "dataDistribution": [
+                    {"address": "10.0.0.1:7337", "memoryUsed": memory_used}
+                ],
+                "partitions": [
+                    {"blockName": f"rdd_{rdd_id}_{i}", "executors": ["1"]}
+                    for i in range(4)
+                ],
+            }
+        )
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_cached_rdds_largest_first_and_trimmed(self, mock_get_client):
+        """RDDs are sorted by memory plus disk; the bulky lists are dropped."""
+        mock_client = MagicMock()
+        mock_client.list_storage_rdds.return_value = [
+            self._rdd(1, memory_used=100),
+            self._rdd(2, memory_used=50, disk_used=500),
+            self._rdd(3, memory_used=100),
+        ]
+        mock_get_client.return_value = mock_client
+
+        rdds = list_cached_rdds("app-1", ctx=self.mock_ctx)
+
+        # Ties on size keep RDD ID order.
+        self.assertEqual([r.id for r in rdds], [2, 1, 3])
+        for r in rdds:
+            self.assertIsNone(r.data_distribution)
+            self.assertIsNone(r.partitions)
+            self.assertEqual(r.num_cached_partitions, 4)
+        mock_client.list_storage_rdds.assert_called_once_with(
+            app_id="app-1", app_attempt_id=None
+        )
+        mock_client.get_storage_rdd.assert_not_called()
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_cached_rdds_includes_requested_details(self, mock_get_client):
+        cases = [
+            ("distribution only", True, False),
+            ("partitions only", False, True),
+            ("both", True, True),
+        ]
+        for label, include_distribution, include_partitions in cases:
+            with self.subTest(label):
+                mock_client = MagicMock()
+                mock_client.list_storage_rdds.return_value = [self._rdd(1, 10)]
+                mock_get_client.return_value = mock_client
+
+                (rdd,) = list_cached_rdds(
+                    "app-1",
+                    include_distribution=include_distribution,
+                    include_partitions=include_partitions,
+                    ctx=self.mock_ctx,
+                )
+
+                self.assertEqual(
+                    rdd.data_distribution is not None, include_distribution
+                )
+                self.assertEqual(rdd.partitions is not None, include_partitions)
+                if include_partitions:
+                    self.assertEqual(len(rdd.partitions), 4)
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_cached_rdds_pagination(self, mock_get_client):
+        mock_client = MagicMock()
+        mock_client.list_storage_rdds.return_value = [
+            self._rdd(i, memory_used=100 - i) for i in range(5)
+        ]
+        mock_get_client.return_value = mock_client
+
+        rdds = list_cached_rdds("app-1", offset=1, length=2, ctx=self.mock_ctx)
+
+        self.assertEqual([r.id for r in rdds], [1, 2])
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_cached_rdds_invalid_pagination(self, mock_get_client):
+        for kwargs in ({"offset": -1}, {"length": -1}):
+            with self.subTest(**kwargs):
+                with self.assertRaises(ValueError):
+                    list_cached_rdds("app-1", ctx=self.mock_ctx, **kwargs)
+        mock_get_client.assert_not_called()
+
+    @patch("spark_history_mcp.tools.tools.get_client_or_default")
+    def test_list_cached_rdds_by_id(self, mock_get_client):
+        """rdd_id uses the single-RDD endpoint, which also returns uncached RDDs."""
+        mock_client = MagicMock()
+        mock_client.get_storage_rdd.return_value = self._rdd(7, memory_used=0)
+        mock_get_client.return_value = mock_client
+
+        rdds = list_cached_rdds(
+            "app-1", rdd_id=7, app_attempt_id="2", ctx=self.mock_ctx
+        )
+
+        self.assertEqual([r.id for r in rdds], [7])
+        self.assertIsNone(rdds[0].partitions)
+        mock_client.get_storage_rdd.assert_called_once_with(
+            app_id="app-1", rdd_id=7, app_attempt_id="2"
+        )
+        mock_client.list_storage_rdds.assert_not_called()
 
     # Tests for list_stage_task_failures
     @patch("spark_history_mcp.tools.tools.get_client_or_default")

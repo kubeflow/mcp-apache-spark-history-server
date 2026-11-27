@@ -10,6 +10,7 @@ from spark_history_mcp.api_client.models.application import Application
 from spark_history_mcp.api_client.models.environment import Environment
 from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
+from spark_history_mcp.api_client.models.rdd_storage_info import RDDStorageInfo
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.core.app import tool
@@ -919,6 +920,106 @@ def get_executor_thread_dump(
     threads = _filter_threads(threads, state, name, blocked_only)
     threads.sort(key=lambda t: t.thread_id if t.thread_id is not None else 0)
     return threads
+
+
+def _rdd_size(rdd: RDDStorageInfo) -> int:
+    """Bytes an RDD occupies in storage: memory plus disk."""
+    return (rdd.memory_used or 0) + (rdd.disk_used or 0)
+
+
+def _trim_rdd_storage(
+    rdd: RDDStorageInfo, include_distribution: bool, include_partitions: bool
+) -> RDDStorageInfo:
+    """Drop the per-executor and per-partition lists unless they were requested.
+
+    The History Server returns both lists for every RDD; the partition list has
+    one entry per cached block, so it dominates the response for large RDDs.
+    """
+    if include_distribution and include_partitions:
+        return rdd
+    update: Dict[str, Any] = {}
+    if not include_distribution:
+        update["data_distribution"] = None
+    if not include_partitions:
+        update["partitions"] = None
+    return rdd.model_copy(update=update)
+
+
+@tool(annotations=ToolAnnotations(readOnlyHint=True))
+def list_cached_rdds(
+    app_id: str,
+    server: Optional[str] = None,
+    rdd_id: Optional[int] = None,
+    include_distribution: bool = False,
+    include_partitions: bool = False,
+    app_attempt_id: Optional[str] = None,
+    offset: int = 0,
+    length: Optional[int] = None,
+    *,
+    ctx: Context,
+) -> list[RDDStorageInfo]:
+    """
+    Get the cached (persisted) RDDs and DataFrames of a Spark application.
+
+    This is the data behind the Spark UI's Storage tab. Each entry has the RDD
+    name, storage level, how many of its partitions are cached, and the bytes
+    it uses in memory and on disk. Use it to check whether ``cache()`` or
+    ``persist()`` worked: fewer cached than total partitions means blocks were
+    evicted or never stored, so they are recomputed when read again; disk
+    usage under a memory-and-disk level means the data did not fit in memory.
+
+    RDDs are ordered by size (memory plus disk) descending, the largest first.
+
+    Pass ``rdd_id`` to retrieve a single RDD by its ID, returned as a
+    one-element list (``offset`` and ``length`` are ignored in that case).
+    Unlike the listing, this also returns a persisted RDD that has no cached
+    partition.
+
+    The Spark History Server only knows about cached blocks when the
+    application ran with ``spark.eventLog.logBlockUpdates.enabled=true``
+    (default ``false``); otherwise it returns an empty list. A live Spark UI
+    always tracks them. RDDs unpersisted before the application ended are
+    not reported.
+
+    Args:
+        app_id: The Spark application ID
+        server: Optional server name to use (uses default if not specified)
+        rdd_id: Optional RDD ID to return only that RDD
+        include_distribution: Whether to include the per-executor breakdown
+            of memory and disk used (default: False)
+        include_partitions: Whether to include one entry per cached
+            partition, with its executors, storage level and size; this can
+            be very large (default: False)
+        app_attempt_id: Optional YARN application attempt ID (latest if omitted)
+        offset: Number of RDDs to skip from the start (default: 0)
+        length: Maximum number of RDDs to return (default: None, returns all)
+
+    Returns:
+        List of RDDStorageInfo objects, largest first
+    """
+    if offset < 0:
+        raise ValueError("offset must be non-negative")
+    if length is not None and length < 0:
+        raise ValueError("length must be non-negative")
+
+    client = get_client_or_default(ctx, server, app_id)
+
+    if rdd_id is not None:
+        rdds = [
+            client.get_storage_rdd(
+                app_id=app_id, rdd_id=rdd_id, app_attempt_id=app_attempt_id
+            )
+        ]
+    else:
+        rdds = client.list_storage_rdds(app_id=app_id, app_attempt_id=app_attempt_id)
+        rdds = sorted(rdds, key=lambda r: (-_rdd_size(r), r.id or 0))
+        rdds = rdds[offset:]
+        if length is not None:
+            rdds = rdds[:length]
+
+    return [
+        _trim_rdd_storage(r, include_distribution, include_partitions) for r in rdds
+    ]
 
 
 @tool(annotations=ToolAnnotations(readOnlyHint=True))

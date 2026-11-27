@@ -36,6 +36,7 @@ from spark_history_mcp.api_client.models.application import Application
 from spark_history_mcp.api_client.models.environment import Environment
 from spark_history_mcp.api_client.models.executor import Executor
 from spark_history_mcp.api_client.models.job import Job
+from spark_history_mcp.api_client.models.rdd_storage_info import RDDStorageInfo
 from spark_history_mcp.api_client.models.sql_execution import SQLExecution
 from spark_history_mcp.api_client.models.stage_data import StageData
 from spark_history_mcp.api_client.models.task import Task
@@ -439,6 +440,29 @@ class SparkRestClient:
         """
         app_path = self._app_path(app_id, app_attempt_id)
         return self._invoke(self._api.get_executor_threads, app_path, executor_id)
+
+    # ------------------------------------------------------------------
+    # Storage
+    # ------------------------------------------------------------------
+    @_resilient_call
+    def list_storage_rdds(
+        self, app_id: str, app_attempt_id: Optional[str] = None
+    ) -> List[RDDStorageInfo]:
+        """List the RDDs that have at least one cached partition.
+
+        Each entry carries its per-executor data distribution and per-partition
+        block list, which can be large for RDDs with many partitions.
+        """
+        app_path = self._app_path(app_id, app_attempt_id)
+        return self._invoke(self._api.list_storage_rdds, app_path)
+
+    @_resilient_call
+    def get_storage_rdd(
+        self, app_id: str, rdd_id: int, app_attempt_id: Optional[str] = None
+    ) -> RDDStorageInfo:
+        """Get the storage details of one persisted RDD."""
+        app_path = self._app_path(app_id, app_attempt_id)
+        return self._invoke(self._api.get_storage_rdd, app_path, rdd_id)
 
     # ------------------------------------------------------------------
     # Environment
