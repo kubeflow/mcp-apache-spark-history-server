@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Annotated, Any, Dict, List, Literal, Optional, Tuple
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import (
     BaseSettings,
@@ -219,6 +219,23 @@ class Config(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
     )
+
+    @model_validator(mode="after")
+    def _check_servers_have_url(self) -> "Config":
+        # EMR servers get their URL at startup from emr_cluster_arn. Any other
+        # server without a url would only fail later, when its client is built.
+        missing = [
+            name
+            for name, server in self.servers.items()
+            if not server.url and not server.emr_cluster_arn
+        ]
+        if missing:
+            raise ValueError(
+                f"No url set for server(s): {', '.join(missing)}. "
+                "Set servers.<name>.url in the config file or "
+                "SHS_SERVERS__<NAME>__URL, or emr_cluster_arn for an EMR server."
+            )
+        return self
 
     @classmethod
     def settings_customise_sources(
