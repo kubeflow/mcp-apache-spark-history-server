@@ -48,6 +48,36 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Install Helm
+        run: |
+          set -euo pipefail
+          curl -fsSL https://get.helm.sh/helm-v3.19.3-linux-amd64.tar.gz -o helm.tar.gz
+          tar -zxf helm.tar.gz
+          sudo mv linux-amd64/helm /usr/local/bin/helm
+          rm -rf helm.tar.gz linux-amd64
+          helm version --short
+
+      # Publish the chart as oci://ghcr.io/kubeflow/helm-charts/mcp-apache-spark-history-server.
+      # The chart version and appVersion (the default image tag) are the release
+      # version, matching the image tag pushed above.
+      - name: Package and push Helm chart
+        env:
+          TAG: ${{ github.ref_name }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+          CHART_REPOSITORY: oci://ghcr.io/${{ github.repository_owner }}/helm-charts
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          helm package deploy/kubernetes/helm/mcp-apache-spark-history-server \
+            --version "${VERSION}" \
+            --app-version "${VERSION}" \
+            --destination "${RUNNER_TEMP}/charts"
+          echo "${REGISTRY_PASSWORD}" | helm registry login ghcr.io \
+            --username "${REGISTRY_USER}" --password-stdin
+          helm push "${RUNNER_TEMP}/charts/mcp-apache-spark-history-server-${VERSION}.tgz" \
+            "${CHART_REPOSITORY}"
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
