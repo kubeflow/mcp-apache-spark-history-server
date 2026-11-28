@@ -522,3 +522,9 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 *Built by the community, for the community* 💙
 
 </div>
+
+## 👥 Contributors
+
+<a href="https://github.com/kubeflow/mcp-apache-spark-history-server/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=kubeflow/mcp-apache-spark-history-server" alt="Contributors" />
+</a>
